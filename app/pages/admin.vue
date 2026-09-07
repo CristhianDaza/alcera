@@ -98,6 +98,7 @@ onMounted(async () => {
         token.value = "";
         editor.value = null;
         catalog.value = [];
+        checkingSession.value = false;
         return;
       }
       try {
