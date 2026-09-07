@@ -5,7 +5,7 @@ const { data: products, error, refresh } = await useFetch("/api/products");
 const selection = computed(() =>
   [...(products.value ?? [])]
     .sort((a, b) => Number(b.featured) - Number(a.featured))
-    .slice(0, 4),
+    .slice(0, 12),
 );
 const store = useStore();
 usePageSeo(
@@ -191,7 +191,7 @@ onMounted(() => {
     <div
       v-else
       class="product-grid selection-grid"
-      :style="{ '--selection-columns': Math.max(1, selection.length) }"
+      :style="{ '--selection-columns': Math.min(4, Math.max(1, selection.length)) }"
     >
       <ProductCard
         v-for="(product, index) in selection"
