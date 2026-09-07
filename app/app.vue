@@ -57,10 +57,10 @@ const activeCategory = computed(() =>
 <template>
   <div>
     <NuxtLoadingIndicator
-      color="var(--accent)"
-      :height="3"
-      :duration="1_800"
-      :throttle="100"
+      color="#f4b7c4"
+      :height="6"
+      :duration="2_400"
+      :throttle="0"
     />
     <a class="skip" href="#main">Saltar al contenido</a>
     <div class="announcement">

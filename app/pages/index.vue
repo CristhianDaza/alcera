@@ -10,22 +10,65 @@ usePageSeo(
   `Perfumes en Colombia · ${store.value.name}`,
   "Descubre fragancias florales, amaderadas y cítricas. Encuentra un perfume que deje huella y consulta tu pedido por WhatsApp en Colombia.",
 );
+
+const whatsappUrl = computed(() => {
+  const number = store.value.whatsapp?.replace(/\D/g, "");
+  if (!number) return "";
+  const message = `Hola, me gustaría recibir asesoría sobre las fragancias de ${store.value.name}.`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+});
+
+const familyList = [
+  {
+    name: "Floral",
+    tag: "Luminosa",
+    desc: "Delicada, radiante y envolvente. Notas de rosa, jazmín silvestre y azahar.",
+  },
+  {
+    name: "Amaderada",
+    tag: "Profunda",
+    desc: "Cálida, señorial y terrosa. Cedro noble, sándalo cremoso y vetiver.",
+  },
+  {
+    name: "Cítrica",
+    tag: "Vibrante",
+    desc: "Fresca, espontánea y luminosa. Bergamota viva, neroli y mandarina.",
+  },
+  {
+    name: "Oriental",
+    tag: "Seductora",
+    desc: "Intensa, especiada y magnética. Ámbar cálido, vainilla noble y benjuí.",
+  },
+];
 </script>
+
 <template>
   <section class="hero shell">
     <div class="hero-copy">
-      <span class="eyebrow"><i /> ALCÉRA PERFUMES</span>
+      <span class="eyebrow"><i /> ALTA PERFUMERÍA</span>
       <h1>Hay recuerdos<br />que se llevan<br /><em>en la piel.</em></h1>
-      <p>
-        Perfumes para mujer, hombre y unisex en Colombia.<br />Descubre tu
-        fragancia y consulta por WhatsApp.
+      <p class="hero-desc">
+        Fragancias selectas para mujer, hombre y unisex en Colombia. Descubre tu
+        aroma personal con asesoría experta y pedido directo.
       </p>
-      <NuxtLink class="button" to="/catalogo"
-        >Explorar la colección <span>↗</span></NuxtLink
-      >
-      <div class="hero-caption">
-        <span class="little-star">✳</span> ELIGE EN LÍNEA. CONSULTA POR
-        WHATSAPP.
+      <div class="hero-actions">
+        <NuxtLink class="button hero-cta" to="/catalogo">
+          Explorar la colección <span>↗</span>
+        </NuxtLink>
+        <div class="hero-shortcuts">
+          <span class="hero-shortcuts-label">Explora por:</span>
+          <div class="hero-chips">
+            <NuxtLink to="/catalogo?category=Mujer" class="hero-chip"
+              >Mujer</NuxtLink
+            >
+            <NuxtLink to="/catalogo?category=Hombre" class="hero-chip"
+              >Hombre</NuxtLink
+            >
+            <NuxtLink to="/catalogo?category=Unisex" class="hero-chip"
+              >Unisex</NuxtLink
+            >
+          </div>
+        </div>
       </div>
     </div>
     <div class="hero-image">
@@ -42,26 +85,43 @@ usePageSeo(
         width="1000"
         height="1100"
       />
-      <div class="image-note">
-        <span>EL PODER DE LO INVISIBLE</span>
-        <p>Una impresión.<br />Para siempre.</p>
-      </div>
-      <span class="image-number">01 — LA COLECCIÓN</span>
     </div>
   </section>
-  <div class="qualities shell">
-    <span>✧ &nbsp; Fragancias con carácter</span
-    ><span>◌ &nbsp; Encuentra tu presentación</span
-    ><span>↗ &nbsp; Atención por WhatsApp</span>
+
+  <div class="trust-banner shell">
+    <div class="trust-item">
+      <span class="trust-icon" aria-hidden="true">✦</span>
+      <div class="trust-text">
+        <strong>Fijación & Carácter</strong>
+        <span>Esencias de larga duración seleccionadas</span>
+      </div>
+    </div>
+    <div class="trust-divider" aria-hidden="true"></div>
+    <div class="trust-item">
+      <span class="trust-icon" aria-hidden="true">◈</span>
+      <div class="trust-text">
+        <strong>Asesoría Personalizada</strong>
+        <span>Te guiamos por WhatsApp a elegir tu fragancia</span>
+      </div>
+    </div>
+    <div class="trust-divider" aria-hidden="true"></div>
+    <div class="trust-item">
+      <span class="trust-icon" aria-hidden="true">↗</span>
+      <div class="trust-text">
+        <strong>Envíos a toda Colombia</strong>
+        <span>Entrega segura y empaque protegido</span>
+      </div>
+    </div>
   </div>
+
   <section class="section shell">
     <div class="section-heading">
       <div>
-        <span class="eyebrow">EL INICIO DE UNA CONEXIÓN</span>
-        <h2>Una selección que <em>deja huella.</em></h2>
+        <span class="eyebrow">SELECCIÓN DESTACADA</span>
+        <h2>Fragancias que <em>dejan huella.</em></h2>
       </div>
       <NuxtLink class="text-link" to="/catalogo"
-        >Ver todos los perfumes ↗</NuxtLink
+        >Ver toda la colección ↗</NuxtLink
       >
     </div>
     <div v-if="error" class="notice" role="alert">
@@ -80,50 +140,59 @@ usePageSeo(
         :index="index"
       />
     </div>
-    <p v-if="products && !products.length">
+    <p v-if="products && !products.length" class="empty-notice">
       Pronto descubrirás nuestra primera colección.
     </p>
   </section>
-  <section class="ritual shell">
-    <div>
-      <span class="eyebrow">MÁS QUE UNA FRAGANCIA</span>
-      <h2>Un pequeño ritual.<br /><em>Algo muy tuyo.</em></h2>
-    </div>
-    <div>
-      <p>
-        Hay aromas que te transportan. Otros, que te acompañan. Creemos en los
-        que se convierten en parte de ti.
-      </p>
-      <NuxtLink class="text-link" to="/catalogo">Encuentra el tuyo ↗</NuxtLink>
-    </div>
-  </section>
+
   <section class="section shell">
     <div class="section-heading">
       <div>
-        <span class="eyebrow">DÉJATE LLEVAR</span>
-        <h2>¿A qué huele <em>tu mundo?</em></h2>
+        <span class="eyebrow">UNIVERSO OLFATIVO</span>
+        <h2>¿A qué huele <em>tu esencia?</em></h2>
       </div>
-      <span class="muted">Una familia para cada forma de ser.</span>
+      <span class="muted">Elige una familia para descubrir sus notas.</span>
     </div>
-    <div class="family-grid">
+    <div class="family-cards">
       <NuxtLink
-        v-for="(family, i) in ['Floral', 'Amaderada', 'Cítrica', 'Oriental']"
-        :key="family"
-        :to="`/catalogo?family=${family}`"
-        ><span>0{{ i + 1 }}</span>
-        <h3>{{ family }}</h3>
-        <p>
-          {{
-            [
-              "Delicada, luminosa, natural.",
-              "Profunda, cálida, envolvente.",
-              "Fresca, vibrante, espontánea.",
-              "Intensa, especiada, inolvidable.",
-            ][i]
-          }}
-        </p>
-        <b>↗</b></NuxtLink
+        v-for="item in familyList"
+        :key="item.name"
+        :to="`/catalogo?family=${item.name}`"
+        class="family-card"
       >
+        <div class="family-card-head">
+          <span class="family-badge">{{ item.tag }}</span>
+          <span class="family-arrow" aria-hidden="true">↗</span>
+        </div>
+        <h3>{{ item.name }}</h3>
+        <p>{{ item.desc }}</p>
+        <span class="family-link-label">Explorar notas ↗</span>
+      </NuxtLink>
+    </div>
+  </section>
+
+  <section class="shell concierge-card">
+    <div class="concierge-content">
+      <span class="eyebrow">ATENCIÓN PERSONALIZADA</span>
+      <h2>¿Buscas una recomendación <em>a tu medida?</em></h2>
+      <p>
+        Si tienes dudas sobre qué aroma va mejor con tu estilo, ocasión, te
+        asesoramos en tiempo real y coordinamos tu entrega fácilmente.
+      </p>
+      <div class="concierge-actions">
+        <NuxtLink class="button" to="/catalogo"
+          >Ver catálogo completo <span>↗</span></NuxtLink
+        >
+        <a
+          v-if="whatsappUrl"
+          :href="whatsappUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="button button--outline"
+        >
+          Consultar por WhatsApp ↗
+        </a>
+      </div>
     </div>
   </section>
 </template>

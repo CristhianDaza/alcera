@@ -32,16 +32,16 @@ export default defineNuxtConfig({
   },
   routeRules: {
     "/admin/**": { headers: { "X-Robots-Tag": "noindex, nofollow" } },
-    "/api/**": { headers: { "Cache-Control": "no-store" } },
+    "/api/**": { headers: { "cache-control": "no-store" } },
     "/api/products/**": {
       headers: {
-        "Cache-Control":
+        "cache-control":
           "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
       },
     },
     "/api/settings": {
       headers: {
-        "Cache-Control":
+        "cache-control":
           "public, max-age=60, s-maxage=300, stale-while-revalidate=600",
       },
     },
