@@ -812,6 +812,13 @@ p {
     color: var(--muted)
 }
 
+.footer-bottom a {
+    color: var(--ink);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
 .page-intro {
     max-width: 700px;
     margin-bottom: 42px

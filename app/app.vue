@@ -142,10 +142,19 @@ const activeCategory = computed(() =>
         </div>
       </div>
       <div class="shell footer-bottom">
-        <span>© {{ new Date().getFullYear() }} {{ store.name }} · Colombia</span
-        ><span v-if="demo"
+        <span>
+          © 2026 Arcéla Perfumes. Designed &amp; Developed by
+          <a
+            href="https://cris-dev.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >cris-dev</a
+          >.
+        </span>
+        <span v-if="demo"
           >Sitio de demostración · Productos y precios ilustrativos</span
-        ><span v-else>Precios en pesos colombianos</span>
+        >
+        <span v-else>Precios en pesos colombianos</span>
       </div>
     </footer>
     <FloatingActions />
