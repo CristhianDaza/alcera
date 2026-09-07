@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Product } from "#shared/types";
+
 const { data: products, error, refresh } = await useFetch("/api/products");
 const selection = computed(() =>
   [...(products.value ?? [])]
@@ -40,6 +42,33 @@ const familyList = [
     desc: "Intensa, especiada y magnética. Ámbar cálido, vainilla noble y benjuí.",
   },
 ];
+
+const finderOpen = ref(false);
+const savedFinderIds = ref<string[]>([]);
+const savedFinderProducts = computed(() =>
+  savedFinderIds.value
+    .map((id) => products.value?.find((product) => product.id === id))
+    .filter((product): product is Product => Boolean(product)),
+);
+
+function setSavedFinderProducts(productIds: string[]) {
+  savedFinderIds.value = productIds;
+}
+
+onMounted(() => {
+  try {
+    const stored = JSON.parse(
+      localStorage.getItem("alcera-perfume-finder") || "{}",
+    ) as { productIds?: unknown };
+    if (
+      Array.isArray(stored.productIds) &&
+      stored.productIds.every((id) => typeof id === "string")
+    )
+      savedFinderIds.value = stored.productIds;
+  } catch {
+    localStorage.removeItem("alcera-perfume-finder");
+  }
+});
 </script>
 
 <template>
@@ -55,6 +84,13 @@ const familyList = [
         <NuxtLink class="button hero-cta" to="/catalogo">
           Explorar la colección <span>↗</span>
         </NuxtLink>
+        <button
+          class="button button--outline hero-cta"
+          type="button"
+          @click="finderOpen = true"
+        >
+          Encuentra tu perfume ideal <span>✦</span>
+        </button>
         <div class="hero-shortcuts">
           <span class="hero-shortcuts-label">Explora por:</span>
           <div class="hero-chips">
@@ -84,6 +120,30 @@ const familyList = [
         fetchpriority="high"
         width="1000"
         height="1100"
+      />
+    </div>
+  </section>
+
+  <section v-if="savedFinderProducts.length" class="section shell saved-finder">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">TU SELECCIÓN GUARDADA</span>
+        <h2>Perfumes elegidos para <em>ti.</em></h2>
+      </div>
+      <button class="text-link" type="button" @click="finderOpen = true">
+        Actualizar mi selección ↗
+      </button>
+    </div>
+    <div
+      class="product-grid selection-grid"
+      :style="{
+        '--selection-columns': Math.max(1, savedFinderProducts.length),
+      }"
+    >
+      <ProductCard
+        v-for="product in savedFinderProducts"
+        :key="product.id"
+        :product="product"
       />
     </div>
   </section>
@@ -195,4 +255,10 @@ const familyList = [
       </div>
     </div>
   </section>
+
+  <PerfumeFinder
+    v-model="finderOpen"
+    :products="products || []"
+    @complete="setSavedFinderProducts"
+  />
 </template>
