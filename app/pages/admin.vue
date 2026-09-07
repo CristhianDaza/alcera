@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { OlfactoryPyramid, Product, Settings } from "#shared/types";
 import type { User } from "firebase/auth";
+
 type EditableImage = Product["images"][number] & { file?: File };
 type EditableProduct = Omit<
   Product,
@@ -52,7 +53,6 @@ async function auth() {
         projectId: config.public.firebaseProjectId,
       }),
   );
-  // Persiste la cuenta entre recargas y cambios de ruta; Firebase renueva el ID token automáticamente.
   await setPersistence(instance, browserLocalPersistence);
   return instance;
 }
@@ -108,8 +108,7 @@ async function login() {
   busy.value = true;
   notice.value = "";
   try {
-    const { signInWithEmailAndPassword, signOut } =
-      await import("firebase/auth");
+    const { signInWithEmailAndPassword } = await import("firebase/auth");
     const a = await auth(),
       result = await signInWithEmailAndPassword(a, email.value, password.value);
     await restoreSession(result.user);
@@ -277,12 +276,11 @@ async function save() {
 async function saveSettings() {
   busy.value = true;
   try {
-    const result = await $fetch("/api/admin/settings", {
+    useStore().value = await $fetch("/api/admin/settings", {
       method: "PUT",
       headers: await headers(),
       body: storeForm.value,
     });
-    useStore().value = result;
     notice.value = "Configuración guardada.";
   } catch (e) {
     notice.value = message(e);
@@ -400,28 +398,28 @@ function move(index: number, direction: number) {
         <div class="admin-fields">
           <label
             >Nombre<input
-              v-model="editor.name"
+              v-model="editor?.name"
               required
               maxlength="200" /></label
           ><label
             >Enlace único<input
-              :value="editor.slug"
+              :value="editor?.slug"
               readonly
               placeholder="Se genera con el nombre" /></label
           ><label
             >Marca<input
-              v-model="editor.brand"
+              v-model="editor?.brand"
               required
               maxlength="200" /></label
           ><label
-            >Categoría<select v-model="editor.category">
+            >Categoría<select v-model="editor?.category">
               <option>Mujer</option>
               <option>Hombre</option>
               <option>Unisex</option>
             </select></label
           ><label
             >Familia olfativa (opcional)<input
-              v-model="editor.family"
+              v-model="editor?.family"
               maxlength="200"
               list="families"
             /><datalist id="families">
@@ -432,7 +430,7 @@ function move(index: number, direction: number) {
             </datalist></label
           ><label
             >Concentración (opcional)<input
-              v-model="editor.concentration"
+              v-model="editor?.concentration"
               maxlength="500"
               placeholder="Eau de Parfum" /></label
           ><label

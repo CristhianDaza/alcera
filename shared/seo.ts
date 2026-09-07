@@ -22,7 +22,7 @@ export function canIndex(config: {
   return (
     String(config.indexable) === "true" &&
     String(config.demo) !== "true" &&
-    !/^(localhost|127\..*|0\.0\.0\.0|\[::1\])$/.test(host) &&
+    !/^(localhost|127\..*|0\.0\.0\.0|\[::1])$/.test(host) &&
     !host.endsWith(".localhost")
   );
 }
