@@ -1,1 +1,1 @@
-export default defineEventHandler(() => settings())
+export default defineEventHandler(() => settings());

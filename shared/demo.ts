@@ -1,10 +1,93 @@
-import type { Product } from './types'
-const photos = ['photo-1541643600914-78b084683601','photo-1594035910387-fea47794261f','photo-1615634260167-c8cdede054de','photo-1587017539504-67cfbddac569','photo-1592945403244-b3fbafd7f539','photo-1616949755610-8c9bbc08f138']
+import type { Product } from "./types";
+const photos = [
+  "photo-1541643600914-78b084683601",
+  "photo-1594035910387-fea47794261f",
+  "photo-1615634260167-c8cdede054de",
+  "photo-1587017539504-67cfbddac569",
+  "photo-1592945403244-b3fbafd7f539",
+  "photo-1616949755610-8c9bbc08f138",
+];
 export const demoProducts: Product[] = [
-  ['bruma-dorada','Bruma Dorada','ALCÉRA PERFUMES','Unisex','Amaderada','Bergamota, Sándalo, Ámbar',285000],
-  ['rosa-silvestre','Rosa Silvestre','MAISON BOTANIQUE','Mujer','Floral','Rosa, Peonía, Almizcle',245000],
-  ['noche-de-cedro','Noche de Cedro','ALCÉRA PERFUMES','Hombre','Amaderada','Cedro, Vetiver, Pimienta',320000],
-  ['luz-de-neroli','Luz de Neroli','CASA MEDITERRÁNEA','Unisex','Cítrica','Neroli, Mandarina, Té blanco',260000],
-  ['ambar-intimo','Ámbar Íntimo','MAISON BOTANIQUE','Unisex','Oriental','Vainilla, Ámbar, Benjuí',295000],
-  ['jardin-secreto','Jardín Secreto','CASA MEDITERRÁNEA','Mujer','Floral','Jazmín, Higo, Musgo',275000]
-].map((row,i) => ({ id: String(row[0]), slug: String(row[0]), name: String(row[1]), brand: String(row[2]), category: String(row[3]), family: String(row[4]), notes: String(row[5]).split(', '), description: 'Una composición que se descubre despacio. Notas luminosas dan paso a un corazón envolvente y una estela cálida que permanece en la memoria. Un pequeño ritual para hacer tuyo cada día. Producto de demostración: nombre, imagen y precio ilustrativos.', images: [{ publicId: '', url: `https://images.unsplash.com/${photos[i]}?auto=format&fit=crop&w=1000&q=85`, alt: `Fotografía ilustrativa de perfume · ${row[1]}` }], variants: [{ id: '50ml', size: '50 ml', price: Number(row[6]), available: true },{ id: '100ml', size: '100 ml', price: Number(row[6])+135000, available: i !== 2 }], status: 'published', featured: i < 4 }))
+  [
+    "bruma-dorada",
+    "Bruma Dorada",
+    "ALCÉRA PERFUMES",
+    "Unisex",
+    "Amaderada",
+    "Bergamota, Sándalo, Ámbar",
+    285000,
+  ],
+  [
+    "rosa-silvestre",
+    "Rosa Silvestre",
+    "MAISON BOTANIQUE",
+    "Mujer",
+    "Floral",
+    "Rosa, Peonía, Almizcle",
+    245000,
+  ],
+  [
+    "noche-de-cedro",
+    "Noche de Cedro",
+    "ALCÉRA PERFUMES",
+    "Hombre",
+    "Amaderada",
+    "Cedro, Vetiver, Pimienta",
+    320000,
+  ],
+  [
+    "luz-de-neroli",
+    "Luz de Neroli",
+    "CASA MEDITERRÁNEA",
+    "Unisex",
+    "Cítrica",
+    "Neroli, Mandarina, Té blanco",
+    260000,
+  ],
+  [
+    "ambar-intimo",
+    "Ámbar Íntimo",
+    "MAISON BOTANIQUE",
+    "Unisex",
+    "Oriental",
+    "Vainilla, Ámbar, Benjuí",
+    295000,
+  ],
+  [
+    "jardin-secreto",
+    "Jardín Secreto",
+    "CASA MEDITERRÁNEA",
+    "Mujer",
+    "Floral",
+    "Jazmín, Higo, Musgo",
+    275000,
+  ],
+].map((row, i) => ({
+  id: String(row[0]),
+  slug: String(row[0]),
+  name: String(row[1]),
+  brand: String(row[2]),
+  category: String(row[3]),
+  family: String(row[4]),
+  notes: String(row[5]).split(", "),
+  description:
+    "Una composición que se descubre despacio. Notas luminosas dan paso a un corazón envolvente y una estela cálida que permanece en la memoria. Un pequeño ritual para hacer tuyo cada día. Producto de demostración: nombre, imagen y precio ilustrativos.",
+  images: [
+    {
+      publicId: "",
+      url: `https://images.unsplash.com/${photos[i]}?auto=format&fit=crop&w=1000&q=85`,
+      alt: `Fotografía ilustrativa de perfume · ${row[1]}`,
+    },
+  ],
+  variants: [
+    { id: "50ml", size: "50 ml", price: Number(row[6]), available: true },
+    {
+      id: "100ml",
+      size: "100 ml",
+      price: Number(row[6]) + 135000,
+      available: i !== 2,
+    },
+  ],
+  status: "published",
+  featured: i < 4,
+}));
