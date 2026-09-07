@@ -33,11 +33,21 @@ const catalog = ref<Product[]>([]),
   storeForm = ref<Settings>({ ...useStore().value }),
   editor = ref<EditableProduct | null>(null);
 const tab = ref<"products" | "orders" | "settings">("products"),
-  productFilter = ref<"all" | Product["status"]>("all");
+  productFilter = ref<"all" | Product["status"]>("all"),
+  productSearch = ref("");
+const normalize = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 const visibleCatalog = computed(() =>
   catalog.value.filter(
     (product) =>
-      productFilter.value === "all" || product.status === productFilter.value,
+      (productFilter.value === "all" ||
+        product.status === productFilter.value) &&
+      (!productSearch.value ||
+        normalize(product.name).includes(normalize(productSearch.value))),
   ),
 );
 const adminPage = ref(1);
@@ -64,7 +74,7 @@ const displayedAdminPages = computed(() => {
   pages.push(total);
   return pages;
 });
-watch(productFilter, () => {
+watch([productFilter, productSearch], () => {
   adminPage.value = 1;
 });
 watch(adminTotalPages, (total) => {
@@ -477,15 +487,27 @@ function move(index: number, direction: number) {
           <h2>Perfumes · {{ catalog.length }}</h2>
           <button class="button" @click="edit()">Nuevo perfume ＋</button>
         </div>
-        <label class="admin-filter"
-          >Mostrar<select v-model="productFilter">
-            <option value="all">Todos los perfumes</option>
-            <option value="published">Activos (publicados)</option>
-            <option value="draft">Inactivos (borradores)</option>
-          </select></label
-        >
+        <div class="admin-filters">
+          <label class="admin-search-label"
+            >Buscar por nombre<input
+              v-model="productSearch"
+              type="search"
+              placeholder="Nombre del perfume…"
+          /></label>
+          <label class="admin-filter"
+            >Mostrar<select v-model="productFilter">
+              <option value="all">Todos los perfumes</option>
+              <option value="published">Activos (publicados)</option>
+              <option value="draft">Inactivos (borradores)</option>
+            </select></label
+          >
+        </div>
         <p v-if="!visibleCatalog.length" class="empty-notice">
-          No hay perfumes en esta selección.
+          {{
+            productSearch
+              ? `No encontramos ningún perfume con el nombre “${productSearch}”.`
+              : "No hay perfumes en esta selección."
+          }}
         </p>
         <template v-else>
           <div class="admin-list">
