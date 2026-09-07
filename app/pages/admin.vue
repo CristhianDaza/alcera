@@ -27,10 +27,19 @@ const email = ref(""),
   password = ref(""),
   token = ref(""),
   notice = ref(""),
-  busy = ref(false);
+  busy = ref(false),
+  checkingSession = ref(true);
 const catalog = ref<Product[]>([]),
   storeForm = ref<Settings>({ ...useStore().value }),
   editor = ref<EditableProduct | null>(null);
+const tab = ref<"products" | "orders" | "settings">("products"),
+  productFilter = ref<"all" | Product["status"]>("all");
+const visibleCatalog = computed(() =>
+  catalog.value.filter(
+    (product) =>
+      productFilter.value === "all" || product.status === productFilter.value,
+  ),
+);
 const notes = ref("");
 const topNotes = ref(""),
   heartNotes = ref(""),
@@ -97,10 +106,13 @@ onMounted(async () => {
       } catch (e) {
         token.value = "";
         notice.value = message(e);
+      } finally {
+        checkingSession.value = false;
       }
     });
   } catch (e) {
     notice.value = message(e);
+    checkingSession.value = false;
   }
 });
 onBeforeUnmount(() => stopAuthListener?.());
@@ -126,6 +138,28 @@ async function logout() {
   token.value = "";
   editor.value = null;
   catalog.value = [];
+}
+async function removeProduct(product: Product) {
+  if (
+    !window.confirm(
+      `¿Eliminar “${product.name}”? Esta acción no se puede deshacer.`,
+    )
+  )
+    return;
+  busy.value = true;
+  notice.value = "";
+  try {
+    await $fetch(`/api/admin/products/${product.id}`, {
+      method: "DELETE",
+      headers: await headers(),
+    });
+    catalog.value = catalog.value.filter((item) => item.id !== product.id);
+    notice.value = "Perfume eliminado.";
+  } catch (e) {
+    notice.value = message(e);
+  } finally {
+    busy.value = false;
+  }
 }
 function edit(p?: Product) {
   editor.value = p
@@ -332,7 +366,11 @@ function move(index: number, direction: number) {
       servicios y desactiva la demostración.
     </p>
     <p v-if="notice" class="notice" role="status">{{ notice }}</p>
-    <form v-if="!token" class="login-panel" @submit.prevent="login">
+    <div v-if="checkingSession" class="login-panel" role="status">
+      <h2>Preparando el atelier…</h2>
+      <p>Estamos comprobando tu sesión.</p>
+    </div>
+    <form v-else-if="!token" class="login-panel" @submit.prevent="login">
       <h2>Bienvenido de nuevo.</h2>
       <p>Accede con tu cuenta de administrador.</p>
       <label
@@ -351,9 +389,36 @@ function move(index: number, direction: number) {
         {{ busy ? "Entrando…" : "Entrar al atelier ↗" }}
       </button>
     </form>
-    <template v-else
-      ><details class="settings">
-        <summary>Configuración de la tienda</summary>
+    <template v-else>
+      <div class="admin-tabs" role="tablist" aria-label="Administración">
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'products'"
+          @click="tab = 'products'"
+        >
+          Perfumes
+        </button>
+        <button
+          v-if="!demo"
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'orders'"
+          @click="tab = 'orders'"
+        >
+          Pedidos
+        </button>
+        <button
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'settings'"
+          @click="tab = 'settings'"
+        >
+          Configuración
+        </button>
+      </div>
+      <section v-if="tab === 'settings'" class="settings">
+        <h2>Configuración de la tienda</h2>
         <form class="admin-fields" @submit.prevent="saveSettings">
           <label
             >Nombre de la tienda<input
@@ -369,27 +434,52 @@ function move(index: number, direction: number) {
             Guardar configuración
           </button>
         </form>
-      </details>
-      <AdminOrders v-if="!editor && !demo" :get-headers="headers" />
-      <template v-if="!editor"
+      </section>
+      <AdminOrders
+        v-else-if="tab === 'orders' && !demo"
+        :get-headers="headers"
+      />
+      <template v-else-if="tab === 'products' && !editor"
         ><div class="section-heading">
           <h2>Perfumes · {{ catalog.length }}</h2>
           <button class="button" @click="edit()">Nuevo perfume ＋</button>
         </div>
+        <label class="admin-filter"
+          >Mostrar<select v-model="productFilter">
+            <option value="all">Todos los perfumes</option>
+            <option value="published">Activos (publicados)</option>
+            <option value="draft">Inactivos (borradores)</option>
+          </select></label
+        >
         <div class="admin-list">
-          <button v-for="p in catalog" :key="p.id" @click="edit(p)">
-            <img :src="p.images[0]?.url" :alt="p.name" /><span
-              ><strong>{{ p.name }}</strong
-              ><small
-                >{{ p.brand }} · {{ p.variants.length }} presentaciones</small
-              ></span
-            ><span
-              >{{ p.status === "published" ? "Publicado" : "Borrador" }} ↗</span
+          <div v-for="p in visibleCatalog" :key="p.id" class="admin-product">
+            <button type="button" class="edit-product" @click="edit(p)">
+              <img :src="p.images[0]?.url" :alt="p.name" /><span
+                ><strong>{{ p.name }}</strong
+                ><small
+                  >{{ p.brand }} · {{ p.variants.length }} presentaciones</small
+                ></span
+              ><span class="product-status"
+                >{{ p.status === "published" ? "Activo" : "Inactivo" }} · Editar
+                ↗</span
+              >
+            </button>
+            <button
+              type="button"
+              class="text-link delete-product"
+              :disabled="busy || demo"
+              @click="removeProduct(p)"
             >
-          </button>
+              Eliminar
+            </button>
+          </div>
         </div></template
       >
-      <form v-else class="editor" @submit.prevent="save">
+      <form
+        v-else-if="tab === 'products' && editor"
+        class="editor"
+        @submit.prevent="save"
+      >
         <div class="section-heading">
           <h2>{{ editor.id ? "Editar perfume" : "Nuevo perfume" }}</h2>
           <button type="button" class="text-link" @click="editor = null">
@@ -577,7 +667,7 @@ function move(index: number, direction: number) {
             {{ busy ? "Guardando…" : "Guardar perfume" }}
           </button>
         </div>
-      </form></template
-    >
+      </form>
+    </template>
   </section>
 </template>

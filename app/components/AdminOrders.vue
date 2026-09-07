@@ -64,6 +64,10 @@ async function load(more = false) {
   }
 }
 function select(order: Order) {
+  if (selected.value?.id === order.id) {
+    selected.value = null;
+    return;
+  }
   selected.value = order;
   Object.assign(form, {
     status: orderTransitions[order.status][0] || order.status,
@@ -73,6 +77,31 @@ function select(order: Order) {
     paymentConfirmed: false,
   });
   notice.value = "";
+}
+async function remove() {
+  if (
+    !selected.value ||
+    !window.confirm(
+      `¿Eliminar la solicitud ${selected.value.id}? Esta acción no se puede deshacer.`,
+    )
+  )
+    return;
+  saving.value = true;
+  notice.value = "";
+  try {
+    const id = selected.value.id;
+    await $fetch(`/api/admin/orders/${id}`, {
+      method: "DELETE",
+      headers: await props.getHeaders(),
+    });
+    orders.value = orders.value.filter((order) => order.id !== id);
+    selected.value = null;
+    notice.value = "Pedido eliminado.";
+  } catch (error) {
+    notice.value = errorMessage(error);
+  } finally {
+    saving.value = false;
+  }
 }
 async function save() {
   if (!selected.value || (form.status === "paid" && !form.paymentConfirmed))
@@ -160,7 +189,17 @@ onMounted(() => load());
       Cargar más pedidos
     </button>
     <article v-if="selected" class="order-detail">
-      <h3>Solicitud {{ selected.id }}</h3>
+      <div class="order-detail-heading">
+        <h3>Solicitud {{ selected.id }}</h3>
+        <button
+          type="button"
+          class="text-link"
+          :disabled="saving"
+          @click="selected = null"
+        >
+          Cerrar
+        </button>
+      </div>
       <p>
         {{ selected.customer.name }} · {{ selected.customer.city }} ·
         <a
@@ -244,6 +283,18 @@ onMounted(() => load());
           {{ saving ? "Guardando…" : "Guardar estado" }}
         </button>
       </form>
+      <p v-else class="order-final-state">
+        Este pedido fue entregado y no admite más cambios. Puedes eliminarlo si
+        fue creado por error.
+      </p>
+      <button
+        type="button"
+        class="text-link delete-order"
+        :disabled="saving || loading"
+        @click="remove"
+      >
+        Eliminar pedido
+      </button>
       <p v-if="selected.tracking">
         Transportadora y guía: {{ selected.tracking }}
       </p>
@@ -299,6 +350,18 @@ onMounted(() => load());
 }
 .order-detail h3 {
   font-size: 18px;
+}
+.order-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: baseline;
+}
+.order-final-state {
+  color: var(--muted);
+}
+.delete-order {
+  color: var(--error);
 }
 .order-detail li {
   margin: 10px 0;

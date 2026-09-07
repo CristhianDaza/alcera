@@ -186,6 +186,21 @@ describe("Solicitudes de pedido", () => {
       ),
     ).toThrow("pedido pagado");
   });
+  it("permite reabrir solicitudes canceladas o perdidas para corregirlas", () => {
+    const reopened = applyOrderUpdate(
+      { ...order, status: "cancelled" },
+      {
+        expectedStatus: "cancelled",
+        status: "pending",
+        shipping: null,
+        tracking: "",
+        note: "El cliente pidió retomarlo.",
+      },
+      "admin",
+      "now",
+    );
+    expect(reopened.status).toBe("pending");
+  });
   it("genera WhatsApp con referencia, subtotal y condiciones sin declarar una compra", () => {
     const url = new URL(orderWhatsappUrl(order, "573001234567", "ALCÉRA"));
     expect(url.hostname).toBe("wa.me");

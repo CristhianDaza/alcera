@@ -27,8 +27,8 @@ export const orderTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
   paid: ["shipped"],
   shipped: ["delivered"],
   delivered: [],
-  cancelled: [],
-  lost: [],
+  cancelled: ["pending"],
+  lost: ["pending"],
 };
 const identifier = z.string().regex(/^[a-zA-Z0-9-]{1,120}$/);
 export const orderRequestSchema = z.object({
