@@ -87,6 +87,7 @@ const topNotes = ref(""),
   heartNotes = ref(""),
   baseNotes = ref(""),
   idealFor = ref("");
+const addAnother = ref(true);
 const crypto = globalThis.crypto;
 let stopAuthListener: (() => void) | undefined;
 useSeoMeta({ title: "Administración · ALCÉRA", robots: "noindex, nofollow" });
@@ -205,6 +206,7 @@ async function removeProduct(product: Product) {
   }
 }
 function edit(p?: Product) {
+  addAnother.value = !p;
   editor.value = p
     ? {
         ...structuredClone(toRaw(p)),
@@ -288,6 +290,7 @@ watch(
 );
 async function save() {
   if (!editor.value) return;
+  const shouldAddAnother = !editor.value.id && addAnother.value;
   busy.value = true;
   notice.value = "";
   try {
@@ -342,8 +345,13 @@ async function save() {
     const index = catalog.value.findIndex((p) => p.id === result.id);
     if (index >= 0) catalog.value[index] = result;
     else catalog.value.push(result);
-    editor.value = null;
-    notice.value = "Perfume guardado.";
+    if (shouldAddAnother) {
+      edit();
+      notice.value = "Perfume guardado. Agrega el siguiente cuando estés listo.";
+    } else {
+      editor.value = null;
+      notice.value = "Perfume guardado.";
+    }
   } catch (e) {
     notice.value = message(e);
   } finally {
@@ -780,6 +788,9 @@ function move(index: number, direction: number) {
           ><label class="check"
             ><input v-model="editor.featured" type="checkbox" /> Destacar en
             inicio</label
+          ><label v-if="!editor.id" class="check"
+            ><input v-model="addAnother" type="checkbox" /> Agregar otro al
+            guardar</label
           ><button class="button" :disabled="busy || demo">
             {{ busy ? "Guardando…" : "Guardar perfume" }}
           </button>
