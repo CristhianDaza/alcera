@@ -48,8 +48,8 @@ const familyList = [
       <span class="eyebrow"><i /> ALTA PERFUMERÍA</span>
       <h1>Hay recuerdos<br />que se llevan<br /><em>en la piel.</em></h1>
       <p class="hero-desc">
-        Fragancias selectas para mujer, hombre y unisex en Colombia.
-        Descubre tu aroma personal con asesoría experta y pedido directo.
+        Fragancias selectas para mujer, hombre y unisex en Colombia. Descubre tu
+        aroma personal con asesoría experta y pedido directo.
       </p>
       <div class="hero-actions">
         <NuxtLink class="button hero-cta" to="/catalogo">
@@ -58,9 +58,15 @@ const familyList = [
         <div class="hero-shortcuts">
           <span class="hero-shortcuts-label">Explora por:</span>
           <div class="hero-chips">
-            <NuxtLink to="/catalogo?category=Mujer" class="hero-chip">Mujer</NuxtLink>
-            <NuxtLink to="/catalogo?category=Hombre" class="hero-chip">Hombre</NuxtLink>
-            <NuxtLink to="/catalogo?category=Unisex" class="hero-chip">Unisex</NuxtLink>
+            <NuxtLink to="/catalogo?category=Mujer" class="hero-chip"
+              >Mujer</NuxtLink
+            >
+            <NuxtLink to="/catalogo?category=Hombre" class="hero-chip"
+              >Hombre</NuxtLink
+            >
+            <NuxtLink to="/catalogo?category=Unisex" class="hero-chip"
+              >Unisex</NuxtLink
+            >
           </div>
         </div>
       </div>
@@ -170,12 +176,13 @@ const familyList = [
       <span class="eyebrow">ATENCIÓN PERSONALIZADA</span>
       <h2>¿Buscas una recomendación <em>a tu medida?</em></h2>
       <p>
-        Si tienes dudas sobre qué aroma va mejor con tu estilo, ocasión o si
-        deseas un obsequio especial, te asesoramos en tiempo real y coordinamos
-        tu entrega fácilmente.
+        Si tienes dudas sobre qué aroma va mejor con tu estilo, ocasión, te
+        asesoramos en tiempo real y coordinamos tu entrega fácilmente.
       </p>
       <div class="concierge-actions">
-        <NuxtLink class="button" to="/catalogo">Ver catálogo completo <span>↗</span></NuxtLink>
+        <NuxtLink class="button" to="/catalogo"
+          >Ver catálogo completo <span>↗</span></NuxtLink
+        >
         <a
           v-if="whatsappUrl"
           :href="whatsappUrl"
