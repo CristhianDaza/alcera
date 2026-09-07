@@ -20,8 +20,11 @@ const sort = computed({
   get: () => queryText(route.query.sort) || "featured",
   set: (value) => updateQuery({ sort: value === "featured" ? "" : value }),
 });
-function updateQuery(values: Record<string, string>) {
+function updateQuery(values: Record<string, string>, preservePage = false) {
   const query = { ...route.query };
+  if (!preservePage && !("page" in values)) {
+    delete query.page;
+  }
   for (const [key, value] of Object.entries(values)) {
     if (value) query[key] = value;
     else delete query[key];
@@ -69,7 +72,10 @@ const hasFilters = computed(() =>
 function clearFilters() {
   search.value = "";
   clearTimeout(searchTimer);
-  updateQuery({ q: "", category: "", family: "", available: "" });
+  updateQuery(
+    { q: "", category: "", family: "", available: "", page: "" },
+    true,
+  );
 }
 const filtered = computed(() => {
   const list = (data.value ?? []).filter(
@@ -92,6 +98,48 @@ const filtered = computed(() => {
         ? price(b) - price(a)
         : Number(b.featured) - Number(a.featured),
   );
+});
+const page = computed({
+  get: () => {
+    const raw = queryText(route.query.page);
+    const parsed = parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  },
+  set: (value: number) => {
+    updateQuery({ page: value > 1 ? String(value) : "" }, true);
+    if (import.meta.client) {
+      const el = document.querySelector(".catalog");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
+    }
+  },
+});
+const pageSize = 12;
+const totalPages = computed(() =>
+  Math.max(1, Math.ceil(filtered.value.length / pageSize)),
+);
+const paginatedProducts = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  return filtered.value.slice(start, start + pageSize);
+});
+const displayedPages = computed(() => {
+  const total = totalPages.value;
+  const current = page.value;
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages: (number | string)[] = [1];
+  if (current > 3) pages.push("...");
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (current < total - 2) pages.push("...");
+  pages.push(total);
+  return pages;
+});
+watch(totalPages, (total) => {
+  if (page.value > total && total > 0) {
+    page.value = total;
+  }
 });
 usePageSeo(
   `Perfumes para mujer, hombre y unisex · ${useStore().value.name}`,
@@ -196,12 +244,62 @@ usePageSeo(
         Ver toda la colección ↗
       </button>
     </div>
-    <div v-else class="product-grid">
-      <ProductCard
-        v-for="product in filtered"
-        :key="product.id"
-        :product="product"
-      />
-    </div>
+    <template v-else>
+      <div class="product-grid">
+        <ProductCard
+          v-for="product in paginatedProducts"
+          :key="product.id"
+          :product="product"
+        />
+      </div>
+      <nav
+        v-if="totalPages > 1"
+        class="pagination catalog-pagination"
+        aria-label="Paginación de la colección de perfumes"
+      >
+        <span class="pagination-info" role="status">
+          Mostrando
+          {{ (page - 1) * pageSize + 1 }}–{{
+            Math.min(page * pageSize, filtered.length)
+          }}
+          de {{ filtered.length }} perfumes
+        </span>
+        <div class="pagination-controls">
+          <button
+            type="button"
+            class="text-link pagination-btn"
+            :disabled="page <= 1"
+            @click="page--"
+          >
+            ← Anterior
+          </button>
+          <div class="pagination-pages">
+            <template v-for="(p, idx) in displayedPages" :key="idx">
+              <span v-if="typeof p === 'string'" class="pagination-ellipsis">{{
+                p
+              }}</span>
+              <button
+                v-else
+                type="button"
+                class="pagination-page-btn"
+                :class="{ active: p === page }"
+                :aria-current="p === page ? 'page' : undefined"
+                @click="page = p"
+              >
+                {{ p }}
+              </button>
+            </template>
+          </div>
+          <button
+            type="button"
+            class="text-link pagination-btn"
+            :disabled="page >= totalPages"
+            @click="page++"
+          >
+            Siguiente →
+          </button>
+        </div>
+      </nav>
+    </template>
   </section>
 </template>

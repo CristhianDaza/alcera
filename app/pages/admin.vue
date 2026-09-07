@@ -40,6 +40,38 @@ const visibleCatalog = computed(() =>
       productFilter.value === "all" || product.status === productFilter.value,
   ),
 );
+const adminPage = ref(1);
+const adminPageSize = 10;
+const adminTotalPages = computed(() =>
+  Math.max(1, Math.ceil(visibleCatalog.value.length / adminPageSize)),
+);
+const paginatedCatalog = computed(() => {
+  const start = (adminPage.value - 1) * adminPageSize;
+  return visibleCatalog.value.slice(start, start + adminPageSize);
+});
+const displayedAdminPages = computed(() => {
+  const total = adminTotalPages.value;
+  const current = adminPage.value;
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages: (number | string)[] = [1];
+  if (current > 3) pages.push("...");
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (current < total - 2) pages.push("...");
+  pages.push(total);
+  return pages;
+});
+watch(productFilter, () => {
+  adminPage.value = 1;
+});
+watch(adminTotalPages, (total) => {
+  if (adminPage.value > total) {
+    adminPage.value = total;
+  }
+});
 const notes = ref("");
 const topNotes = ref(""),
   heartNotes = ref(""),
@@ -452,29 +484,89 @@ function move(index: number, direction: number) {
             <option value="draft">Inactivos (borradores)</option>
           </select></label
         >
-        <div class="admin-list">
-          <div v-for="p in visibleCatalog" :key="p.id" class="admin-product">
-            <button type="button" class="edit-product" @click="edit(p)">
-              <img :src="p.images[0]?.url" :alt="p.name" /><span
-                ><strong>{{ p.name }}</strong
-                ><small
-                  >{{ p.brand }} · {{ p.variants.length }} presentaciones</small
-                ></span
-              ><span class="product-status"
-                >{{ p.status === "published" ? "Activo" : "Inactivo" }} · Editar
-                ↗</span
-              >
-            </button>
-            <button
-              type="button"
-              class="text-link delete-product"
-              :disabled="busy || demo"
-              @click="removeProduct(p)"
+        <p v-if="!visibleCatalog.length" class="empty-notice">
+          No hay perfumes en esta selección.
+        </p>
+        <template v-else>
+          <div class="admin-list">
+            <div
+              v-for="p in paginatedCatalog"
+              :key="p.id"
+              class="admin-product"
             >
-              Eliminar
-            </button>
+              <button type="button" class="edit-product" @click="edit(p)">
+                <img :src="p.images[0]?.url" :alt="p.name" /><span
+                  ><strong>{{ p.name }}</strong
+                  ><small
+                    >{{ p.brand }} ·
+                    {{ p.variants.length }} presentaciones</small
+                  ></span
+                ><span class="product-status"
+                  >{{ p.status === "published" ? "Activo" : "Inactivo" }} ·
+                  Editar ↗</span
+                >
+              </button>
+              <button
+                type="button"
+                class="text-link delete-product"
+                :disabled="busy || demo"
+                @click="removeProduct(p)"
+              >
+                Eliminar
+              </button>
+            </div>
           </div>
-        </div></template
+          <nav
+            v-if="adminTotalPages > 1"
+            class="pagination admin-pagination"
+            aria-label="Paginación de perfumes en administración"
+          >
+            <span class="pagination-info" role="status">
+              Mostrando
+              {{ (adminPage - 1) * adminPageSize + 1 }}–{{
+                Math.min(adminPage * adminPageSize, visibleCatalog.length)
+              }}
+              de {{ visibleCatalog.length }}
+            </span>
+            <div class="pagination-controls">
+              <button
+                type="button"
+                class="text-link pagination-btn"
+                :disabled="adminPage <= 1"
+                @click="adminPage--"
+              >
+                ← Anterior
+              </button>
+              <div class="pagination-pages">
+                <template v-for="(p, idx) in displayedAdminPages" :key="idx">
+                  <span
+                    v-if="typeof p === 'string'"
+                    class="pagination-ellipsis"
+                    >{{ p }}</span
+                  >
+                  <button
+                    v-else
+                    type="button"
+                    class="pagination-page-btn"
+                    :class="{ active: p === adminPage }"
+                    :aria-current="p === adminPage ? 'page' : undefined"
+                    @click="adminPage = p"
+                  >
+                    {{ p }}
+                  </button>
+                </template>
+              </div>
+              <button
+                type="button"
+                class="text-link pagination-btn"
+                :disabled="adminPage >= adminTotalPages"
+                @click="adminPage++"
+              >
+                Siguiente →
+              </button>
+            </div>
+          </nav>
+        </template></template
       >
       <form
         v-else-if="tab === 'products' && editor"
