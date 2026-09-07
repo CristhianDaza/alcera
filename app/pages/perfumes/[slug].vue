@@ -4,10 +4,9 @@ import { money } from "#shared/commerce";
 import type { Product } from "#shared/types";
 
 const route = useRoute();
-const [{ data: product, error }, { data: catalog }] = await Promise.all([
-  useFetch<Product>("/api/products/" + route.params.slug),
-  useFetch<Product[]>("/api/products"),
-]);
+const { data: product, error } = await useFetch<Product>(
+  "/api/products/" + route.params.slug,
+);
 if (error.value || !product.value)
   throw createError({
     statusCode: error.value?.statusCode || 404,
@@ -30,18 +29,41 @@ usePageSeo(
   p.images[0]?.url,
 );
 
-const relatedProducts = computed(() =>
-  [...(catalog.value ?? [])]
-    .filter((item) => item.id !== p.id)
-    .sort((left, right) => {
-      const score = (item: Product) =>
-        Number(item.featured) +
-        (item.category === p.category ? 4 : 0) +
-        (p.family && item.family === p.family ? 2 : 0);
-      return score(right) - score(left);
-    })
-    .slice(0, 4),
-);
+const relatedProducts = ref<Product[]>([]);
+const relatedProductsTrigger = ref<HTMLElement | null>(null);
+let relatedProductsLoaded = false;
+let relatedProductsObserver: IntersectionObserver | undefined;
+
+async function loadRelatedProducts() {
+  if (relatedProductsLoaded) return;
+  relatedProductsLoaded = true;
+  try {
+    relatedProducts.value = await $fetch<Product[]>(
+      "/api/products/" + p.slug + "/related",
+    );
+  } catch {
+    relatedProductsLoaded = false;
+  }
+}
+
+onMounted(() => {
+  const trigger = relatedProductsTrigger.value;
+  if (!trigger || !window.IntersectionObserver) {
+    void loadRelatedProducts();
+    return;
+  }
+  relatedProductsObserver = new IntersectionObserver(
+    (entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      relatedProductsObserver?.disconnect();
+      void loadRelatedProducts();
+    },
+    { rootMargin: "240px 0px" },
+  );
+  relatedProductsObserver.observe(trigger);
+});
+
+onBeforeUnmount(() => relatedProductsObserver?.disconnect());
 
 function colombiaToday() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -311,6 +333,7 @@ useHead({
       </p>
     </section>
 
+    <div ref="relatedProductsTrigger" aria-hidden="true"></div>
     <section
       v-if="relatedProducts.length"
       class="related-products"
