@@ -11,7 +11,11 @@ export async function requireAdmin(event: import('h3').H3Event) {
   const token = getHeader(event, 'authorization')?.match(/^Bearer (.+)$/)?.[1]
   if (!token) throw createError({ statusCode: 401, statusMessage: 'Inicia sesión' })
   let claims
-  try { claims = await getAuth(firebaseApp()).verifyIdToken(token, true) } catch { throw createError({ statusCode: 401, statusMessage: 'Sesión inválida' }) }
+  try { claims = await getAuth(firebaseApp()).verifyIdToken(token, true) } catch (error) {
+    const failure = error as { code?: string; message?: string }
+    console.warn('[auth] No se pudo validar el token de Firebase', { code: failure.code, message: failure.message })
+    throw createError({ statusCode: 401, statusMessage: 'Sesión inválida' })
+  }
   if (claims.admin !== true) throw createError({ statusCode: 403, statusMessage: 'Acceso restringido' })
   return claims
 }
