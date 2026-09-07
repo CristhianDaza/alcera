@@ -198,7 +198,7 @@ function edit(p?: Product) {
         concentration: "",
         images: [],
         variants: [
-          { id: crypto.randomUUID(), size: "50", price: 0, available: true },
+          { id: crypto.randomUUID(), size: "", price: 0, available: true },
         ],
         status: "draft",
         featured: false,
@@ -578,14 +578,16 @@ function move(index: number, direction: number) {
           class="variant-editor"
         >
           <label
-            >Tamaño<input
-              :value="displaySize(v.size)"
-              @input="setSize(v, $event)"
-              inputmode="numeric"
-              pattern="[0-9]+"
-              required
-              placeholder="50"
-            /><small>ml</small></label
+            >Tamaño<span class="input-with-suffix"
+              ><input
+                :value="displaySize(v.size)"
+                @input="setSize(v, $event)"
+                inputmode="numeric"
+                pattern="[0-9]+"
+                required
+                placeholder="50"
+              /><span>ml</span></span
+            ></label
           ><label
             >Precio COP<input
               :value="displayPrice(v.price)"
@@ -611,7 +613,7 @@ function move(index: number, direction: number) {
           @click="
             editor?.variants.push({
               id: crypto.randomUUID(),
-              size: '50',
+              size: '',
               price: 0,
               available: true,
             })

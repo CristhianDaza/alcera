@@ -1208,6 +1208,27 @@ select {
     margin-bottom: 15px
 }
 
+.input-with-suffix {
+    display: flex;
+    align-items: stretch;
+}
+
+.input-with-suffix input {
+    min-width: 0;
+}
+
+.input-with-suffix span {
+    display: grid;
+    place-items: center;
+    min-width: 42px;
+    padding: 0 10px;
+    border: 1px solid var(--line-strong);
+    border-left: 0;
+    color: var(--muted);
+    background: var(--surface);
+    font-size: 12px;
+}
+
 .image-editor {
     display: flex;
     gap: 15px;
