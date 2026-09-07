@@ -1790,12 +1790,6 @@ body {
     padding-block: 10px;
 }
 
-/* image-note removed */
-
-/* hero-image overlay removed */
-
-/* obsolete hero elements removed */
-
 .selection-grid {
     --selection-columns: 4;
     grid-template-columns: repeat(var(--selection-columns), minmax(0, 1fr));
