@@ -1,0 +1,1 @@
+export default defineEventHandler(event => { setHeader(event, 'content-type', 'text/plain'); return `User-agent: *\nDisallow: /admin\nDisallow: /carrito\nDisallow: /api/\nSitemap: ${useRuntimeConfig().public.siteUrl.replace(/\/$/, '')}/sitemap.xml` })

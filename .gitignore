@@ -1,0 +1,11 @@
+node_modules
+.nuxt
+.output
+.env
+.env.develop
+.env.example
+playwright-report
+test-results
+.idea
+--dotenv
+VERIFICACION.md

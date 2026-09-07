@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Monograma ALCÉRA</title>
+  <desc id="desc">Monograma abstracto de las letras A y C de Alcéra.</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M175 750 500 120l325 630M310 530h380" stroke="#6f2636" stroke-width="40"/>
+    <path d="M790 235c-204-125-420 24-420 303s216 428 420 303" stroke="#211713" stroke-width="28"/>
+  </g>
+</svg>
