@@ -1,7 +1,5 @@
 export default defineEventHandler(async (event) => {
-  const product = (await products()).find(
-    (p) => p.slug === getRouterParam(event, "slug"),
-  );
+  const product = await productBySlug(getRouterParam(event, "slug") || "");
   if (!product)
     throw createError({
       statusCode: 404,

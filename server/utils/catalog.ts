@@ -9,6 +9,20 @@ export async function products(all = false): Promise<Product[]> {
   ).get();
   return snapshot.docs.map((d) => ({ ...d.data(), id: d.id }) as Product);
 }
+
+export async function productBySlug(slug: string): Promise<Product | null> {
+  if (isDemo())
+    return structuredClone(demoProducts.find((product) => product.slug === slug) ?? null);
+
+  const snapshot = await database()
+    .collection("products")
+    .where("status", "==", "published")
+    .where("slug", "==", slug)
+    .limit(1)
+    .get();
+  const document = snapshot.docs[0];
+  return document ? ({ ...document.data(), id: document.id } as Product) : null;
+}
 export async function settings(): Promise<Settings> {
   if (isDemo()) return { name: "ALCÉRA", whatsapp: "" };
   const doc = await database().collection("settings").doc("store").get();

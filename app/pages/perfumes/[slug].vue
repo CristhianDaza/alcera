@@ -4,9 +4,10 @@ import { money } from "#shared/commerce";
 import type { Product } from "#shared/types";
 
 const route = useRoute();
-const { data: product, error } = await useFetch<Product>(
-  "/api/products/" + route.params.slug,
-);
+const [{ data: product, error }, { data: catalog }] = await Promise.all([
+  useFetch<Product>("/api/products/" + route.params.slug),
+  useFetch<Product[]>("/api/products"),
+]);
 if (error.value || !product.value)
   throw createError({
     statusCode: error.value?.statusCode || 404,
@@ -14,7 +15,6 @@ if (error.value || !product.value)
   });
 
 const p = product.value;
-const { data: catalog } = await useFetch<Product[]>("/api/products");
 const selected = ref(
   p.variants.find((variant) => variant.available)?.id || p.variants[0]!.id,
 );

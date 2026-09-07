@@ -56,6 +56,12 @@ const activeCategory = computed(() =>
 </script>
 <template>
   <div>
+    <NuxtLoadingIndicator
+      color="var(--accent)"
+      :height="3"
+      :duration="1_800"
+      :throttle="100"
+    />
     <a class="skip" href="#main">Saltar al contenido</a>
     <div class="announcement">
       EL ARTE DE DEJAR HUELLA <span>·</span> UNA FRAGANCIA, MIL HISTORIAS
