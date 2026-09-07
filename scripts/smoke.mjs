@@ -1,5 +1,7 @@
 import { chromium, expect } from "@playwright/test";
 import assert from "node:assert/strict";
+import { mkdirSync } from "node:fs";
+mkdirSync("test-results", { recursive: true });
 const base = process.env.BASE_URL || "http://127.0.0.1:3000";
 for (const path of [
   "/",
@@ -51,7 +53,7 @@ try {
       false,
     );
     await page.screenshot({
-      path: `../../work/home-${viewport.width}.png`,
+      path: `test-results/home-${viewport.width}.png`,
       fullPage: true,
     });
     await page.goto(base + "/catalogo");
@@ -66,9 +68,11 @@ try {
     await page.reload();
     await page.locator(".cart-row").waitFor();
     assert.equal(await page.locator(".cart-row").count(), 1);
-    await page
-      .getByRole("button", { name: "Preparar consulta por WhatsApp" })
-      .click();
+    await page.getByLabel("Nombre", { exact: true }).fill("Cliente de prueba");
+    await page.getByLabel("WhatsApp con código de país").fill("573001234567");
+    await page.getByLabel("Ciudad y departamento").fill("Medellín, Antioquia");
+    await page.getByRole("checkbox", { name: /Autorizo/ }).check();
+    await page.getByRole("button", { name: "Registrar solicitud" }).click();
     await page
       .getByRole("status")
       .filter({ hasText: "WhatsApp configurado" })
@@ -78,43 +82,52 @@ try {
     await page.route("**/api/products", (route) =>
       route.fulfill({ json: changedProducts }),
     );
-    await page
-      .getByRole("button", { name: "Preparar consulta por WhatsApp" })
-      .click();
+    await page.getByRole("button", { name: "Registrar solicitud" }).click();
     await page
       .getByRole("status")
       .filter({ hasText: "Actualizamos" })
       .waitFor();
     changedProducts[0].variants[0].available = false;
-    await page
-      .getByRole("button", { name: "Preparar consulta por WhatsApp" })
-      .click();
+    await page.getByRole("button", { name: "Registrar solicitud" }).click();
     await page.getByText("Agotado o retirado del catálogo").waitFor();
-    await page
-      .getByRole("button", { name: "Preparar consulta por WhatsApp" })
-      .click();
+    await page.getByRole("button", { name: "Registrar solicitud" }).click();
     await page
       .getByRole("status")
       .filter({ hasText: "Retira las presentaciones" })
       .waitFor();
     changedProducts[0].variants[0].available = true;
+    const requests = [];
+    await page.route("**/api/orders", (route) => {
+      const request = route.request().postDataJSON();
+      requests.push(request);
+      if (requests.length === 1) return route.abort();
+      return route.fulfill({
+        json: {
+          id: request.requestId,
+          whatsappUrl: `https://wa.me/573000000000?text=${encodeURIComponent("Solicitud " + request.requestId + "\nSubtotal: $600.000")}`,
+        },
+      });
+    });
     await page.route("**/api/settings", (route) =>
       route.fulfill({
         json: { name: "Tienda de prueba", whatsapp: "573000000000" },
       }),
     );
-    await page
-      .getByRole("button", { name: "Preparar consulta por WhatsApp" })
-      .click();
+    await page.getByRole("button", { name: "Registrar solicitud" }).click();
     await page
       .getByRole("status")
       .filter({ hasText: "Actualizamos" })
       .waitFor();
-    await page
-      .getByRole("button", { name: "Preparar consulta por WhatsApp" })
-      .click();
+    await page.getByRole("button", { name: "Registrar solicitud" }).click();
     const link = page.getByRole("link", { name: "Abrir WhatsApp" });
+    await page.getByRole("status").filter({ hasText: "Reintenta" }).waitFor();
+    await page.getByRole("button", { name: "Registrar solicitud" }).click();
     await expect(link).toBeVisible();
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0].requestId, requests[1].requestId);
+    await expect(page.locator(".order-reference")).toContainText(
+      requests[1].requestId,
+    );
     assert.match(
       decodeURIComponent(await link.getAttribute("href")),
       /Subtotal:/,

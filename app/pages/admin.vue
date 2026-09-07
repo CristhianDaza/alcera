@@ -76,7 +76,7 @@ async function restoreSession(user: User) {
     throw new Error("Esta cuenta no tiene permisos de administrador.");
   }
   token.value = claims.token;
-  catalog.value = await $fetch("/api/admin/products", {
+  catalog.value = await $fetch<Product[]>("/api/admin/products", {
     headers: await headers(),
   });
 }
@@ -257,7 +257,7 @@ async function save() {
     form.append("product", JSON.stringify(product));
     for (const image of editor.value.images)
       if (image.file) form.append("images", image.file);
-    const result = await $fetch("/api/admin/products", {
+    const result = await $fetch<Product>("/api/admin/products", {
       method: "POST",
       headers: await headers(),
       body: form,
@@ -276,7 +276,7 @@ async function save() {
 async function saveSettings() {
   busy.value = true;
   try {
-    useStore().value = await $fetch("/api/admin/settings", {
+    useStore().value = await $fetch<Settings>("/api/admin/settings", {
       method: "PUT",
       headers: await headers(),
       body: storeForm.value,
@@ -370,6 +370,7 @@ function move(index: number, direction: number) {
           </button>
         </form>
       </details>
+      <AdminOrders v-if="!editor && !demo" :get-headers="headers" />
       <template v-if="!editor"
         ><div class="section-heading">
           <h2>Perfumes · {{ catalog.length }}</h2>
@@ -398,7 +399,7 @@ function move(index: number, direction: number) {
         <div class="admin-fields">
           <label
             >Nombre<input
-              v-model="editor?.name"
+              v-model="editor.name"
               required
               maxlength="200" /></label
           ><label
@@ -408,18 +409,18 @@ function move(index: number, direction: number) {
               placeholder="Se genera con el nombre" /></label
           ><label
             >Marca<input
-              v-model="editor?.brand"
+              v-model="editor.brand"
               required
               maxlength="200" /></label
           ><label
-            >Categoría<select v-model="editor?.category">
+            >Categoría<select v-model="editor.category">
               <option>Mujer</option>
               <option>Hombre</option>
               <option>Unisex</option>
             </select></label
           ><label
             >Familia olfativa (opcional)<input
-              v-model="editor?.family"
+              v-model="editor.family"
               maxlength="200"
               list="families"
             /><datalist id="families">
@@ -430,7 +431,7 @@ function move(index: number, direction: number) {
             </datalist></label
           ><label
             >Concentración (opcional)<input
-              v-model="editor?.concentration"
+              v-model="editor.concentration"
               maxlength="500"
               placeholder="Eau de Parfum" /></label
           ><label
@@ -451,17 +452,17 @@ function move(index: number, direction: number) {
               placeholder="Cedro, Almizcle" /></label
           ><label
             >Duración (opcional)<input
-              v-model="editor?.duration"
+              v-model="editor.duration"
               maxlength="500"
               placeholder="Moderada" /></label
           ><label
             >Proyección (opcional)<input
-              v-model="editor?.projection"
+              v-model="editor.projection"
               maxlength="500"
               placeholder="Moderada" /></label
           ><label class="wide"
             >¿A qué huele? (opcional)<textarea
-              v-model="editor?.aromaDescription"
+              v-model="editor.aromaDescription"
               maxlength="5000"
               rows="3"
               placeholder="Describe la evolución y el carácter del aroma."
@@ -472,7 +473,7 @@ function move(index: number, direction: number) {
               placeholder="Uso diario, Todo el año, Climas frescos" /></label
           ><label class="wide"
             >Descripción<textarea
-              v-model="editor?.description"
+              v-model="editor.description"
               required
               maxlength="5000"
               rows="4"
@@ -565,12 +566,12 @@ function move(index: number, direction: number) {
         </div>
         <div class="publish-controls">
           <label
-            >Estado<select v-model="editor?.status">
+            >Estado<select v-model="editor.status">
               <option value="draft">Borrador</option>
               <option value="published">Publicado</option>
             </select></label
           ><label class="check"
-            ><input v-model="editor?.featured" type="checkbox" /> Destacar en
+            ><input v-model="editor.featured" type="checkbox" /> Destacar en
             inicio</label
           ><button class="button" :disabled="busy || demo">
             {{ busy ? "Guardando…" : "Guardar perfume" }}
