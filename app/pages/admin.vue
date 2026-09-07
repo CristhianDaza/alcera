@@ -451,17 +451,17 @@ function move(index: number, direction: number) {
               placeholder="Cedro, Almizcle" /></label
           ><label
             >Duración (opcional)<input
-              v-model="editor.duration"
+              v-model="editor?.duration"
               maxlength="500"
               placeholder="Moderada" /></label
           ><label
             >Proyección (opcional)<input
-              v-model="editor.projection"
+              v-model="editor?.projection"
               maxlength="500"
               placeholder="Moderada" /></label
           ><label class="wide"
             >¿A qué huele? (opcional)<textarea
-              v-model="editor.aromaDescription"
+              v-model="editor?.aromaDescription"
               maxlength="5000"
               rows="3"
               placeholder="Describe la evolución y el carácter del aroma."
@@ -472,7 +472,7 @@ function move(index: number, direction: number) {
               placeholder="Uso diario, Todo el año, Climas frescos" /></label
           ><label class="wide"
             >Descripción<textarea
-              v-model="editor.description"
+              v-model="editor?.description"
               required
               maxlength="5000"
               rows="4"
@@ -481,7 +481,7 @@ function move(index: number, direction: number) {
         </div>
         <h3>Presentaciones</h3>
         <div
-          v-for="(v, i) in editor.variants"
+          v-for="(v, i) in editor?.variants"
           :key="v.id"
           class="variant-editor"
         >
@@ -506,8 +506,8 @@ function move(index: number, direction: number) {
           ><button
             type="button"
             class="text-link"
-            :disabled="editor.variants.length === 1"
-            @click="editor.variants.splice(i, 1)"
+            :disabled="editor?.variants.length === 1"
+            @click="editor?.variants.splice(i, 1)"
           >
             Eliminar
           </button>
@@ -515,9 +515,9 @@ function move(index: number, direction: number) {
         <button
           type="button"
           class="text-link"
-          :disabled="editor.variants.length >= 20"
+          :disabled="editor?.variants.length >= 20"
           @click="
-            editor.variants.push({
+            editor?.variants.push({
               id: crypto.randomUUID(),
               size: '50',
               price: 0,
@@ -532,11 +532,11 @@ function move(index: number, direction: number) {
           >Elegir fotografía · JPEG, PNG o WebP · Máximo 10 MB<input
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            :disabled="busy || editor.images.length >= 10"
+            :disabled="busy || editor?.images.length >= 10"
             @change="selectImage"
         /></label>
         <div
-          v-for="(img, i) in editor.images"
+          v-for="(img, i) in editor?.images"
           :key="img.url"
           class="image-editor"
         >
@@ -554,23 +554,23 @@ function move(index: number, direction: number) {
             ↑</button
           ><button
             type="button"
-            :disabled="i === editor.images.length - 1"
+            :disabled="i === editor?.images.length - 1"
             aria-label="Mover imagen después"
             @click="move(i, 1)"
           >
             ↓</button
-          ><button type="button" @click="editor.images.splice(i, 1)">
+          ><button type="button" @click="editor?.images.splice(i, 1)">
             Retirar
           </button>
         </div>
         <div class="publish-controls">
           <label
-            >Estado<select v-model="editor.status">
+            >Estado<select v-model="editor?.status">
               <option value="draft">Borrador</option>
               <option value="published">Publicado</option>
             </select></label
           ><label class="check"
-            ><input v-model="editor.featured" type="checkbox" /> Destacar en
+            ><input v-model="editor?.featured" type="checkbox" /> Destacar en
             inicio</label
           ><button class="button" :disabled="busy || demo">
             {{ busy ? "Guardando…" : "Guardar perfume" }}
