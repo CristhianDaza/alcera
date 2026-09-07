@@ -49,27 +49,29 @@ const startingPrice = computed(() =>
       <span class="product-tag">{{ product.brand }}</span>
       <span class="product-arrow" aria-hidden="true">↗</span>
     </div>
-    <div class="product-meta">
-      <span>{{ product.category }}</span>
-      <span v-if="product.concentration">{{ product.concentration }}</span>
-    </div>
-    <h3>{{ product.name }}</h3>
-    <p
-      v-if="product.duration || product.projection"
-      class="product-performance"
-    >
-      <span v-if="product.duration">Duración: {{ product.duration }}</span>
-      <span v-if="product.projection"
-        >Proyección: {{ product.projection }}</span
+    <div class="product-card__details">
+      <div class="product-meta">
+        <span>{{ product.category }}</span>
+        <span v-if="product.concentration">{{ product.concentration }}</span>
+      </div>
+      <h3>{{ product.name }}</h3>
+      <p
+        v-if="product.duration || product.projection"
+        class="product-performance"
       >
-    </p>
-    <div class="product-bottom">
-      <span>Desde {{ money(startingPrice) }}</span>
-      <span>{{
-        product.variants.some((variant) => variant.available)
-          ? "Ver perfume ↗"
-          : "AGOTADO"
-      }}</span>
+        <span v-if="product.duration">Duración: {{ product.duration }}</span>
+        <span v-if="product.projection"
+          >Proyección: {{ product.projection }}</span
+        >
+      </p>
+      <div class="product-bottom">
+        <span>Desde {{ money(startingPrice) }}</span>
+        <span>{{
+          product.variants.some((variant) => variant.available)
+            ? "Ver perfume ↗"
+            : "AGOTADO"
+        }}</span>
+      </div>
     </div>
   </NuxtLink>
 </template>
