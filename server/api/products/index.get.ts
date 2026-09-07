@@ -1,1 +1,1 @@
-export default defineEventHandler(() => products())
+export default defineEventHandler(() => products());
