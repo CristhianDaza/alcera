@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { siteBase, serializeSchema } from '#shared/seo'
 import { money } from '#shared/commerce'
 import type { Product } from '#shared/types'
 
@@ -13,7 +14,7 @@ const photo = ref(0)
 const added = ref(false)
 const variant = computed(() => p.variants.find(item => item.id === selected.value)!)
 const { add } = useCart()
-usePageSeo(p.name + ' · ' + useStore().value.name, p.aromaDescription || p.description, p.images[0]?.url)
+usePageSeo(p.name + ' de ' + p.brand + ' · ' + useStore().value.name, p.aromaDescription || p.description, p.images[0]?.url)
 
 const relatedProducts = computed(() => [...(catalog.value ?? [])]
   .filter(item => item.id !== p.id)
@@ -43,13 +44,16 @@ const medellinDelivery = deliveryFormatter.format(firstDeliveryDate)
 const colombiaDeliveryStart = deliveryFormatter.format(firstDeliveryDate)
 const colombiaDeliveryEnd = deliveryFormatter.format(secondDeliveryDate)
 
-const base = useRuntimeConfig().public.siteUrl.replace(/\/$/, '')
+const base = siteBase(useRuntimeConfig().public.siteUrl)
 useHead({
   script: [{
     type: 'application/ld+json',
     innerHTML: JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'Product',
+      '@id': base + '/perfumes/' + p.slug + '#product',
+      url: base + '/perfumes/' + p.slug,
+      category: p.category,
       name: p.name,
       description: p.description,
       image: p.images.map(image => image.url),
@@ -62,6 +66,7 @@ useHead({
       offers: p.variants.map(item => ({
         '@type': 'Offer',
         name: p.name + ' ' + item.size,
+        seller: { '@id': base + '/#organization' },
         sku: p.id + '-' + item.id,
         price: item.price,
         priceCurrency: 'COP',
@@ -71,14 +76,22 @@ useHead({
     }).replace(/</g, '\\u003c')
   }]
 })
+useHead({ script: [{ key: 'breadcrumbs', type: 'application/ld+json', innerHTML: serializeSchema({
+  '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Inicio', item: base + '/' },
+    { '@type': 'ListItem', position: 2, name: 'Perfumes', item: base + '/catalogo' },
+    { '@type': 'ListItem', position: 3, name: p.name, item: base + '/perfumes/' + p.slug }
+  ]
+}) }] })
 </script>
 
 <template>
   <section class="shell section">
+    <nav aria-label="Ruta de navegación"><NuxtLink to="/">Inicio</NuxtLink> / <NuxtLink to="/catalogo">Perfumes</NuxtLink> / <span aria-current="page">{{ p.name }}</span></nav>
     <NuxtLink class="text-link" :to="{ path: '/catalogo', query: route.query }">← Volver a la colección</NuxtLink>
     <div class="detail">
       <div>
-        <div class="detail-photo"><img :src="p.images[photo]?.url" :alt="p.images[photo]?.alt" width="900" height="1100"></div>
+        <div class="detail-photo"><img :src="p.images[photo]?.url" :alt="p.images[photo]?.alt || p.name" :srcset="imageSources(p.images[photo]?.url || '')" sizes="(max-width: 700px) 100vw, 50vw" fetchpriority="high" width="900" height="1100"></div>
         <div v-if="p.images.length > 1" class="thumbnails">
           <button v-for="(image, index) in p.images" :key="image.url" :aria-label="'Ver imagen ' + (index + 1)" :aria-pressed="photo === index" @click="photo = index"><img :src="image.url" :alt="image.alt"></button>
         </div>

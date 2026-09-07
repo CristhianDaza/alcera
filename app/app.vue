@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import { canIndex, siteBase, serializeSchema } from '#shared/seo'
 const store = useStore()
 const { data } = await useFetch('/api/settings')
 if (data.value) store.value = data.value
 const { count } = useCart()
 const demo = String(useRuntimeConfig().public.demo) === 'true'
 const route = useRoute()
+const config = useRuntimeConfig().public
+const base = siteBase(config.siteUrl)
+useSeoMeta({ robots: () => !canIndex(config) || /^\/(admin|carrito)(\/|$)/.test(route.path) ? 'noindex, nofollow' : route.path === '/catalogo' && Object.keys(route.query).length ? 'noindex, follow' : 'index, follow, max-image-preview:large' })
+useHead(() => ({ script: [{ key: 'store-schema', type: 'application/ld+json', innerHTML: serializeSchema({ '@context': 'https://schema.org', '@graph': [
+  { '@type': 'Organization', '@id': base + '/#organization', name: store.value.name, url: base + '/', logo: base + '/brand/alcera-logo.png' },
+  { '@type': 'WebSite', '@id': base + '/#website', name: store.value.name, url: base + '/', inLanguage: 'es-CO', publisher: { '@id': base + '/#organization' } }
+] }) }] }))
 const navigation = [
   { label: 'Colección', category: '', to: '/catalogo' },
   { label: 'Mujer', category: 'Mujer', to: '/catalogo?category=Mujer' },

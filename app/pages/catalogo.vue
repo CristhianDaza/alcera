@@ -37,12 +37,12 @@ const filtered = computed(() => {
   const price = (p: typeof list[number]) => Math.min(...p.variants.filter(v => !available.value || v.available).map(v => v.price))
   return list.sort((a,b) => sort.value === 'asc' ? price(a)-price(b) : sort.value === 'desc' ? price(b)-price(a) : Number(b.featured)-Number(a.featured))
 })
-usePageSeo(`La colección · ${useStore().value.name}`, 'Explora perfumes por marca, familia olfativa y presentación. Precios en COP y pedidos por WhatsApp.')
+usePageSeo(`Perfumes para mujer, hombre y unisex · ${useStore().value.name}`, 'Explora perfumes por marca, familia olfativa y presentación. Precios en COP y pedidos por WhatsApp.')
 </script>
 
 <template>
   <section class="shell section catalog">
-    <div class="page-intro"><span class="eyebrow">ENCUENTRA TU PRÓXIMA HISTORIA</span><h1>La <em>colección.</em></h1><p>Un aroma para cada versión de ti. Explora, elige y consulta por WhatsApp.</p></div>
+    <div class="page-intro"><span class="eyebrow">ENCUENTRA TU PRÓXIMA HISTORIA</span><h1>Colección de <em>perfumes.</em></h1><p>Un aroma para cada versión de ti. Explora, elige y consulta por WhatsApp.</p></div>
     <div class="filters">
       <label class="search-label">Buscar perfume<input v-model="search" type="search" placeholder="Nombre o marca…"></label>
       <label>Categoría<select v-model="category"><option value="">Todas</option><option v-for="c in categories" :key="c">{{ c }}</option></select></label>
