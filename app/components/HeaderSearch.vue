@@ -141,7 +141,6 @@ const fmt = new Intl.NumberFormat("es-CO", {
         class="hs-input"
         placeholder="Buscar perfumes…"
         autocomplete="off"
-        autocorrect="off"
         autocapitalize="off"
         spellcheck="false"
         aria-label="Buscar perfumes"
