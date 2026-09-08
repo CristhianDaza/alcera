@@ -89,6 +89,7 @@ const activeCategory = computed(() =>
           >
         </NuxtLink>
       </nav>
+      <HeaderSearch />
       <div class="header-actions">
         <ThemeToggle /><NuxtLink
           to="/carrito"
