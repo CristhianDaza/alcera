@@ -20,7 +20,7 @@ const answers = ref<Partial<Answers>>({});
 
 const familyOptions = computed(() => {
   const families = [
-    ...new Set(props.products.map((product) => product.family).filter(Boolean)),
+    ...new Set(props.products.flatMap((product) => product.family ?? [])),
   ];
   return families.length
     ? families
@@ -87,13 +87,16 @@ function includesValue(value: string | undefined, terms: string[]) {
   return terms.some((term) => value?.toLocaleLowerCase().includes(term));
 }
 function score(product: Product) {
-  const family = product.family?.toLocaleLowerCase();
+  const families = (product.family ?? []).map((family) =>
+    family.toLocaleLowerCase(),
+  );
   const category = product.category.toLocaleLowerCase();
   const price = startingPrice(product);
   let value = Number(product.featured);
   if (category === answers.value.category?.toLocaleLowerCase()) value += 6;
   else if (category === "unisex") value += 2;
-  if (family === answers.value.family?.toLocaleLowerCase()) value += 7;
+  if (families.includes(answers.value.family?.toLocaleLowerCase() ?? ""))
+    value += 7;
 
   const budget = answers.value.budget;
   if (
@@ -108,46 +111,46 @@ function score(product: Product) {
   if (
     answers.value.intensity === "intense" &&
     (includesValue(projection, ["alta", "intensa", "larga"]) ||
-      ["oriental", "amaderada"].includes(family || ""))
+      families.some((family) => ["oriental", "amaderada"].includes(family)))
   )
     value += 3;
   if (
     answers.value.intensity === "soft" &&
     (includesValue(projection, ["suave", "baja", "media"]) ||
-      ["cítrica", "floral"].includes(family || ""))
+      families.some((family) => ["cítrica", "floral"].includes(family)))
   )
     value += 3;
   if (answers.value.intensity === "balanced") value += 2;
 
   if (
     answers.value.occasion === "day" &&
-    ["cítrica", "floral"].includes(family || "")
+    families.some((family) => ["cítrica", "floral"].includes(family))
   )
     value += 3;
   if (
     answers.value.occasion === "night" &&
-    ["oriental", "amaderada"].includes(family || "")
+    families.some((family) => ["oriental", "amaderada"].includes(family))
   )
     value += 3;
   if (answers.value.occasion === "all" && category === "unisex") value += 3;
   if (
     answers.value.style === "classic" &&
-    ["amaderada", "oriental"].includes(family || "")
+    families.some((family) => ["amaderada", "oriental"].includes(family))
   )
     value += 3;
   if (
     answers.value.style === "sweet" &&
-    ["floral", "oriental"].includes(family || "")
+    families.some((family) => ["floral", "oriental", "dulce"].includes(family))
   )
     value += 3;
   if (
     answers.value.style === "magnetic" &&
-    ["oriental", "amaderada"].includes(family || "")
+    families.some((family) => ["oriental", "amaderada"].includes(family))
   )
     value += 3;
   if (
     answers.value.style === "fresh" &&
-    ["cítrica", "floral"].includes(family || "")
+    families.some((family) => ["cítrica", "floral", "frutal"].includes(family))
   )
     value += 3;
   return value;
@@ -254,7 +257,7 @@ watch(step, (currentStep) => {
                 <span
                   ><small>{{ product.brand }}</small
                   ><strong>{{ product.name }}</strong
-                  ><em>{{ product.family || product.category }}</em></span
+                  ><em>{{ product.family?.join(" · ") || product.category }}</em></span
                 >
                 <b aria-hidden="true">↗</b>
               </NuxtLink>

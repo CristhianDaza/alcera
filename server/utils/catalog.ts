@@ -48,6 +48,17 @@ export function invalidateSettingsCache() {
 }
 
 export const isDemo = () => String(useRuntimeConfig().public.demo) === "true";
+function normalizeProduct(value: Record<string, unknown>, id: string): Product {
+  const rawFamily = value.family;
+  const family = Array.isArray(rawFamily)
+    ? rawFamily.filter(
+        (item): item is string => typeof item === "string" && Boolean(item.trim()),
+      )
+    : typeof rawFamily === "string" && rawFamily.trim()
+      ? [rawFamily.trim()]
+      : [];
+  return { ...value, id, family } as Product;
+}
 export async function products(all = false): Promise<Product[]> {
   if (isDemo()) return structuredClone(demoProducts);
   const collection = database().collection("products");
@@ -55,7 +66,9 @@ export async function products(all = false): Promise<Product[]> {
     const snapshot = await (
       all ? collection : collection.where("status", "==", "published")
     ).get();
-    return snapshot.docs.map((d) => ({ ...d.data(), id: d.id }) as Product);
+    return snapshot.docs.map((document) =>
+      normalizeProduct(document.data(), document.id),
+    );
   };
   return all ? load() : cached(publishedCatalogCache, CATALOG_CACHE_MS, load);
 }
@@ -77,7 +90,7 @@ export async function productBySlug(slug: string): Promise<Product | null> {
       .get();
     const document = snapshot.docs[0];
     return document
-      ? ({ ...document.data(), id: document.id } as Product)
+      ? normalizeProduct(document.data(), document.id)
       : null;
   });
 }

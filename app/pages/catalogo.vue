@@ -59,10 +59,19 @@ const normalize = (value: string) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase()
     .trim();
+const standardFamilies = [
+  "Floral",
+  "Amaderada",
+  "Cítrica",
+  "Oriental",
+  "Frutal",
+  "Dulce",
+];
 const families = computed(() => [
   ...new Set([
+    ...standardFamilies,
     ...(data.value ?? [])
-      .map((p) => p.family)
+      .flatMap((p) => p.family ?? [])
       .filter((item): item is string => Boolean(item)),
     ...(family.value ? [family.value] : []),
   ]),
@@ -121,7 +130,7 @@ const filtered = computed(() => {
     (p) =>
       normalize(`${p.name} ${p.brand}`).includes(normalize(search.value)) &&
       (!category.value || p.category === category.value) &&
-      (!family.value || p.family === family.value) &&
+      (!family.value || p.family?.includes(family.value)) &&
       (!brand.value || p.brand === brand.value) &&
       (!concentration.value || p.concentration === concentration.value) &&
       (!available.value || p.variants.some((v) => v.available)),

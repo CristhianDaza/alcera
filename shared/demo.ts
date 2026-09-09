@@ -68,7 +68,7 @@ export const demoProducts: Product[] = [
   name: String(row[1]),
   brand: String(row[2]),
   category: String(row[3]),
-  family: String(row[4]),
+  family: [String(row[4])],
   notes: String(row[5]).split(", "),
   description:
     "Una composición que se descubre despacio. Notas luminosas dan paso a un corazón envolvente y una estela cálida que permanece en la memoria. Un pequeño ritual para hacer tuyo cada día. Producto de demostración: nombre, imagen y precio ilustrativos.",

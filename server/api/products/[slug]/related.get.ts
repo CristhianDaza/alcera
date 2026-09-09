@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   const score = (item: Product) =>
     Number(item.featured) +
     (item.category === product.category ? 4 : 0) +
-    (product.family && item.family === product.family ? 2 : 0);
+    (item.family?.some((family) => product.family?.includes(family)) ? 2 : 0);
 
   return catalog
     .filter((item) => item.id !== product.id)

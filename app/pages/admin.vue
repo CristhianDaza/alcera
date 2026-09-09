@@ -12,6 +12,7 @@ type EditableProduct = Omit<
   | "duration"
   | "projection"
   | "concentration"
+  | "family"
 > & {
   images: EditableImage[];
   olfactoryPyramid: OlfactoryPyramid;
@@ -20,6 +21,7 @@ type EditableProduct = Omit<
   duration: string;
   projection: string;
   concentration: string;
+  family: string[];
 };
 const config = useRuntimeConfig(),
   demo = String(config.public.demo) === "true";
@@ -83,6 +85,14 @@ watch(adminTotalPages, (total) => {
   }
 });
 const notes = ref("");
+const olfactoryFamilies = [
+  "Floral",
+  "Amaderada",
+  "Cítrica",
+  "Oriental",
+  "Frutal",
+  "Dulce",
+];
 const topNotes = ref(""),
   heartNotes = ref(""),
   baseNotes = ref(""),
@@ -224,6 +234,7 @@ function edit(p?: Product) {
         duration: p.duration ?? "",
         projection: p.projection ?? "",
         concentration: p.concentration ?? "",
+        family: p.family ?? [],
       }
     : {
         id: "",
@@ -232,7 +243,7 @@ function edit(p?: Product) {
         brand: "",
         description: "",
         category: "Unisex",
-        family: "",
+        family: [],
         notes: [],
         olfactoryPyramid: { top: [], heart: [], base: [] },
         aromaDescription: "",
@@ -308,7 +319,9 @@ async function save() {
     editor.value.duration = editor.value.duration.trim();
     editor.value.projection = editor.value.projection.trim();
     editor.value.concentration = editor.value.concentration.trim();
-    editor.value.family = editor.value.family?.trim();
+    editor.value.family = editor.value.family
+      .map((item) => item.trim())
+      .filter(Boolean);
     const form = new FormData();
     const product = {
       ...editor.value,
@@ -333,7 +346,7 @@ async function save() {
     if (!product.projection) Reflect.deleteProperty(product, "projection");
     if (!product.concentration)
       Reflect.deleteProperty(product, "concentration");
-    if (!product.family) Reflect.deleteProperty(product, "family");
+    if (!product.family.length) Reflect.deleteProperty(product, "family");
     form.append("product", JSON.stringify(product));
     for (const image of editor.value.images)
       if (image.file) form.append("images", image.file);
@@ -634,17 +647,17 @@ function move(index: number, direction: number) {
               <option>Hombre</option>
               <option>Unisex</option>
             </select></label
-          ><label
-            >Familia olfativa (opcional)<input
-              v-model="editor.family"
-              maxlength="200"
-              list="families"
-            /><datalist id="families">
-              <option>Floral</option>
-              <option>Amaderada</option>
-              <option>Cítrica</option>
-              <option>Oriental</option>
-            </datalist></label
+          ><fieldset class="family-options">
+            <legend>Familias olfativas (opcional)</legend>
+            <label
+              v-for="olfactoryFamily in olfactoryFamilies"
+              :key="olfactoryFamily"
+              class="check"
+            >
+              <input v-model="editor.family" type="checkbox" :value="olfactoryFamily" />
+              {{ olfactoryFamily }}
+            </label>
+          </fieldset>
           ><label
             >Concentración (opcional)<input
               v-model="editor.concentration"
