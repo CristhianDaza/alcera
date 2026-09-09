@@ -92,6 +92,8 @@ const olfactoryFamilies = [
   "Oriental",
   "Frutal",
   "Dulce",
+  "Almizclado",
+  "Especiado",
 ];
 const topNotes = ref(""),
   heartNotes = ref(""),
