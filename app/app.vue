@@ -72,7 +72,7 @@ const activeCategory = computed(() =>
     />
     <a class="skip" href="#main">Saltar al contenido</a>
     <div class="announcement">
-      EL ARTE DE DEJAR HUELLA <span>·</span> UNA FRAGANCIA, MIL HISTORIAS
+      100% ORIGINALES <span>·</span> EL ARTE DE DEJAR HUELLA
     </div>
     <header class="header shell">
       <NuxtLink class="brand-link" to="/"
