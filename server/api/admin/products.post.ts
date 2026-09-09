@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { v2 as cloudinary } from "cloudinary";
+import { invalidateCatalogCache } from "../../utils/catalog";
 
 type PendingUpload = { data: Buffer; filename?: string; type?: string };
 
@@ -147,6 +148,7 @@ export default defineEventHandler(async (event) => {
       tx.set(slugRef, { productId: id });
       tx.set(ref, parsed.data);
     });
+    invalidateCatalogCache();
     return { id, ...parsed.data };
   } catch (error) {
     await Promise.allSettled(

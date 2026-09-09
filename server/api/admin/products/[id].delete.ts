@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import type { Product } from "#shared/types";
+import { invalidateCatalogCache } from "../../../utils/catalog";
 
 export default defineEventHandler(async (event) => {
   await requireAdmin(event);
@@ -47,5 +48,6 @@ export default defineEventHandler(async (event) => {
       ),
     );
   }
+  invalidateCatalogCache();
   return { id };
 });

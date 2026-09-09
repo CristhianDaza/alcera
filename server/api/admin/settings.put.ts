@@ -1,3 +1,5 @@
+import { invalidateSettingsCache } from "../../utils/catalog";
+
 export default defineEventHandler(async (event) => {
   await requireAdmin(event);
   if (isDemo())
@@ -12,5 +14,6 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Nombre o número de WhatsApp inválido",
     });
   await database().collection("settings").doc("store").set(result.data);
+  invalidateSettingsCache();
   return result.data;
 });
