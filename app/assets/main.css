@@ -846,7 +846,7 @@ p {
 
 .filters {
     display: grid;
-    grid-template-columns:2fr 1fr 1fr 1fr;
+    grid-template-columns:2fr repeat(5, 1fr);
     gap: 17px;
     padding: 25px 0;
     border-block: 1px solid var(--line)

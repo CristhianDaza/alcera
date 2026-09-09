@@ -14,6 +14,14 @@ const family = computed({
   get: () => queryText(route.query.family),
   set: (value) => updateQuery({ family: value }),
 });
+const brand = computed({
+  get: () => queryText(route.query.brand),
+  set: (value) => updateQuery({ brand: value }),
+});
+const concentration = computed({
+  get: () => queryText(route.query.concentration),
+  set: (value) => updateQuery({ concentration: value }),
+});
 const available = computed({
   get: () => route.query.available === "1",
   set: (value) => updateQuery({ available: value ? "1" : "" }),
@@ -68,14 +76,43 @@ const categories = computed(() => [
     ...(category.value ? [category.value] : []),
   ]),
 ]);
+const brands = computed(() => [
+  ...new Set([
+    ...(data.value ?? []).map((p) => p.brand).filter(Boolean),
+    ...(brand.value ? [brand.value] : []),
+  ]),
+].sort((a, b) => a.localeCompare(b, "es")));
+const concentrations = computed(() => [
+  ...new Set([
+    ...(data.value ?? [])
+      .map((p) => p.concentration)
+      .filter((item): item is string => Boolean(item)),
+    ...(concentration.value ? [concentration.value] : []),
+  ]),
+].sort((a, b) => a.localeCompare(b, "es")));
 const hasFilters = computed(() =>
-  Boolean(search.value || category.value || family.value || available.value),
+  Boolean(
+    search.value ||
+      category.value ||
+      family.value ||
+      brand.value ||
+      concentration.value ||
+      available.value,
+  ),
 );
 function clearFilters() {
   search.value = "";
   clearTimeout(searchTimer);
   updateQuery(
-    { q: "", category: "", family: "", available: "", page: "" },
+    {
+      q: "",
+      category: "",
+      family: "",
+      brand: "",
+      concentration: "",
+      available: "",
+      page: "",
+    },
     true,
   );
 }
@@ -85,6 +122,8 @@ const filtered = computed(() => {
       normalize(`${p.name} ${p.brand}`).includes(normalize(search.value)) &&
       (!category.value || p.category === category.value) &&
       (!family.value || p.family === family.value) &&
+      (!brand.value || p.brand === brand.value) &&
+      (!concentration.value || p.concentration === concentration.value) &&
       (!available.value || p.variants.some((v) => v.available)),
   );
   const price = (p: (typeof list)[number]) =>
@@ -262,6 +301,18 @@ useHead(() => ({
         </select></label
       >
       <label
+        >Marca<select v-model="brand">
+          <option value="">Todas</option>
+          <option v-for="b in brands" :key="b">{{ b }}</option>
+        </select></label
+      >
+      <label
+        >Concentración<select v-model="concentration">
+          <option value="">Todas</option>
+          <option v-for="c in concentrations" :key="c">{{ c }}</option>
+        </select></label
+      >
+      <label
         >Ordenar<select v-model="sort">
           <option value="featured">Destacados</option>
           <option value="asc">Menor precio</option>
@@ -284,7 +335,7 @@ useHead(() => ({
       </div>
     </div>
     <div
-      v-if="category || family"
+      v-if="category || family || brand || concentration"
       class="active-filters"
       aria-label="Filtros activos"
     >
@@ -301,6 +352,20 @@ useHead(() => ({
         :aria-label="`Quitar familia ${family}`"
       >
         {{ family }} <span aria-hidden="true">×</span>
+      </button>
+      <button
+        v-if="brand"
+        @click="brand = ''"
+        :aria-label="`Quitar marca ${brand}`"
+      >
+        {{ brand }} <span aria-hidden="true">×</span>
+      </button>
+      <button
+        v-if="concentration"
+        @click="concentration = ''"
+        :aria-label="`Quitar concentración ${concentration}`"
+      >
+        {{ concentration }} <span aria-hidden="true">×</span>
       </button>
     </div>
     <p v-if="status === 'pending'" role="status">Descubriendo la colección…</p>
