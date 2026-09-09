@@ -21,7 +21,7 @@ export interface Product {
   brand: string;
   description: string;
   category: string;
-  family?: string;
+  family?: string[];
   notes: string[];
   olfactoryPyramid?: OlfactoryPyramid;
   aromaDescription?: string;

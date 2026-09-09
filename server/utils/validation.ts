@@ -10,7 +10,7 @@ export const productSchema = z.object({
   brand: text,
   description: z.string().trim().min(1).max(5000),
   category: text,
-  family: text.optional(),
+  family: z.array(text).max(10).optional(),
   notes: z.array(text).max(20),
   olfactoryPyramid: z
     .object({

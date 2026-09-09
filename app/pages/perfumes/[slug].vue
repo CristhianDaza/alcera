@@ -210,7 +210,7 @@ useHead({
         <h1>{{ p.name }}</h1>
         <div class="pills">
           <span>{{ p.category }}</span>
-          <span v-if="p.family">{{ p.family }}</span>
+          <span v-for="family in p.family" :key="family">{{ family }}</span>
           <span v-if="p.concentration">{{ p.concentration }}</span>
         </div>
         <p class="description">{{ p.description }}</p>

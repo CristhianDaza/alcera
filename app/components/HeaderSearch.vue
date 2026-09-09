@@ -39,7 +39,7 @@ const results = computed(() => {
   if (!q || q.length < 2) return [];
   return (products.value ?? [])
     .filter((p) =>
-      normalize(`${p.name} ${p.brand} ${p.family ?? ""}`).includes(q),
+      normalize(`${p.name} ${p.brand} ${(p.family ?? []).join(" ")}`).includes(q),
     )
     .slice(0, 6);
 });
