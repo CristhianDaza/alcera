@@ -25,6 +25,21 @@ type EditableProduct = Omit<
 };
 const config = useRuntimeConfig(),
   demo = String(config.public.demo) === "true";
+const route = useRoute(),
+  router = useRouter();
+const queryText = (value: unknown) => (typeof value === "string" ? value : "");
+function updateAdminQuery(
+  values: Record<string, string>,
+  mode: "push" | "replace" = "push",
+) {
+  const query = { ...route.query };
+  for (const [key, value] of Object.entries(values)) {
+    if (value) query[key] = value;
+    else delete query[key];
+  }
+  const navigate = mode === "push" ? router.push : router.replace;
+  void navigate({ query });
+}
 const email = ref(""),
   password = ref(""),
   token = ref(""),
@@ -52,7 +67,13 @@ const visibleCatalog = computed(() =>
         normalize(product.name).includes(normalize(productSearch.value))),
   ),
 );
-const adminPage = ref(1);
+const adminPage = computed({
+  get: () => {
+    const page = Number.parseInt(queryText(route.query.page), 10);
+    return Number.isFinite(page) && page > 0 ? page : 1;
+  },
+  set: (value) => updateAdminQuery({ page: value > 1 ? String(value) : "" }),
+});
 const adminPageSize = 10;
 const adminTotalPages = computed(() =>
   Math.max(1, Math.ceil(visibleCatalog.value.length / adminPageSize)),
@@ -77,11 +98,11 @@ const displayedAdminPages = computed(() => {
   return pages;
 });
 watch([productFilter, productSearch], () => {
-  adminPage.value = 1;
+  updateAdminQuery({ page: "" }, "replace");
 });
 watch(adminTotalPages, (total) => {
-  if (adminPage.value > total) {
-    adminPage.value = total;
+  if (catalog.value.length && adminPage.value > total) {
+    updateAdminQuery({ page: total > 1 ? String(total) : "" }, "replace");
   }
 });
 const notes = ref("");
@@ -92,6 +113,8 @@ const olfactoryFamilies = [
   "Oriental",
   "Frutal",
   "Dulce",
+  "Almizclado",
+  "Especiado",
 ];
 const topNotes = ref(""),
   heartNotes = ref(""),
@@ -278,6 +301,32 @@ function edit(p?: Product) {
   baseNotes.value = editor.value.olfactoryPyramid.base.join(", ");
   idealFor.value = editor.value.idealFor.join(", ");
 }
+function openEditor(product?: Product) {
+  edit(product);
+  updateAdminQuery({ editor: product?.id ?? "new" });
+}
+function closeEditor(mode: "push" | "replace" = "replace") {
+  editor.value = null;
+  updateAdminQuery({ editor: "" }, mode);
+}
+watch(
+  [catalog, () => route.query.editor],
+  () => {
+    const editorId = queryText(route.query.editor);
+    if (!editorId) {
+      editor.value = null;
+      return;
+    }
+    if (editorId === "new") {
+      edit();
+      return;
+    }
+    const product = catalog.value.find((item) => item.id === editorId);
+    if (product) edit(product);
+    else editor.value = null;
+  },
+  { immediate: true },
+);
 function slugify(value: string) {
   return value
     .normalize("NFD")
@@ -372,13 +421,14 @@ async function save() {
     if (index >= 0) catalog.value[index] = result;
     else catalog.value.push(result);
     if (shouldAddAnother) {
+      updateAdminQuery({ editor: "new" }, "replace");
       edit();
       await nextTick();
       window.scrollTo({ top: 0, behavior: "smooth" });
       notice.value =
         "Perfume guardado. Agrega el siguiente cuando estés listo.";
     } else {
-      editor.value = null;
+      closeEditor();
       notice.value = "Perfume guardado.";
     }
   } catch (e) {
@@ -522,7 +572,7 @@ function move(index: number, direction: number) {
       <template v-else-if="tab === 'products' && !editor"
         ><div class="section-heading">
           <h2>Perfumes · {{ catalog.length }}</h2>
-          <button class="button" @click="edit()">Nuevo perfume ＋</button>
+          <button class="button" @click="openEditor()">Nuevo perfume ＋</button>
         </div>
         <div class="admin-filters">
           <label class="admin-search-label"
@@ -553,7 +603,7 @@ function move(index: number, direction: number) {
               :key="p.id"
               class="admin-product"
             >
-              <button type="button" class="edit-product" @click="edit(p)">
+              <button type="button" class="edit-product" @click="openEditor(p)">
                 <img :src="p.images[0]?.url" :alt="p.name" /><span
                   ><strong>{{ p.name }}</strong
                   ><small
@@ -634,7 +684,7 @@ function move(index: number, direction: number) {
       >
         <div class="section-heading">
           <h2>{{ editor.id ? "Editar perfume" : "Nuevo perfume" }}</h2>
-          <button type="button" class="text-link" @click="editor = null">
+          <button type="button" class="text-link" @click="closeEditor()">
             Cancelar
           </button>
         </div>
