@@ -2,7 +2,11 @@
 import type { Product } from "#shared/types";
 import { money } from "#shared/commerce";
 
-const props = defineProps<{ product: Product; index?: number }>();
+const props = defineProps<{
+  product: Product;
+  index?: number;
+  priority?: boolean;
+}>();
 const route = useRoute();
 const availableVariants = computed(() =>
   props.product.variants.filter((variant) => variant.available),
@@ -31,7 +35,9 @@ const startingPrice = computed(() =>
         :srcset="imageSources(product.images[0]?.url || '')"
         sizes="(max-width: 700px) 45vw, 23vw"
         :alt="product.images[0]?.alt || product.name"
-        loading="lazy"
+        :loading="priority ? 'eager' : 'lazy'"
+        :fetchpriority="priority ? 'high' : 'auto'"
+        decoding="async"
         width="650"
         height="800"
       />
@@ -43,6 +49,7 @@ const startingPrice = computed(() =>
         sizes="(max-width: 700px) 45vw, 23vw"
         :alt="product.images[1].alt || product.name"
         loading="lazy"
+        decoding="async"
         width="650"
         height="800"
       />

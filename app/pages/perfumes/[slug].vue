@@ -27,43 +27,13 @@ usePageSeo(
   p.name + " de " + p.brand + " · " + useStore().value.name,
   p.aromaDescription || p.description,
   p.images[0]?.url,
+  { imageAlt: p.images[0]?.alt || `${p.name} de ${p.brand}` },
 );
 
-const relatedProducts = ref<Product[]>([]);
-const relatedProductsTrigger = ref<HTMLElement | null>(null);
-let relatedProductsLoaded = false;
-let relatedProductsObserver: IntersectionObserver | undefined;
-
-async function loadRelatedProducts() {
-  if (relatedProductsLoaded) return;
-  relatedProductsLoaded = true;
-  try {
-    relatedProducts.value = await $fetch<Product[]>(
-      "/api/products/" + p.slug + "/related",
-    );
-  } catch {
-    relatedProductsLoaded = false;
-  }
-}
-
-onMounted(() => {
-  const trigger = relatedProductsTrigger.value;
-  if (!trigger || !window.IntersectionObserver) {
-    void loadRelatedProducts();
-    return;
-  }
-  relatedProductsObserver = new IntersectionObserver(
-    (entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
-      relatedProductsObserver?.disconnect();
-      void loadRelatedProducts();
-    },
-    { rootMargin: "240px 0px" },
-  );
-  relatedProductsObserver.observe(trigger);
-});
-
-onBeforeUnmount(() => relatedProductsObserver?.disconnect());
+const { data: relatedProducts } = await useFetch<Product[]>(
+  "/api/products/" + p.slug + "/related",
+  { default: () => [] },
+);
 
 function colombiaToday() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -99,12 +69,15 @@ const base = siteBase(useRuntimeConfig().public.siteUrl);
 useHead({
   script: [
     {
+      key: "product-schema",
       type: "application/ld+json",
-      innerHTML: JSON.stringify({
+      innerHTML: serializeSchema({
         "@context": "https://schema.org",
         "@type": "Product",
         "@id": base + "/perfumes/" + p.slug + "#product",
         url: base + "/perfumes/" + p.slug,
+        mainEntityOfPage: base + "/perfumes/" + p.slug,
+        sku: p.id,
         category: p.category,
         name: p.name,
         description: p.description,
@@ -150,7 +123,7 @@ useHead({
             "https://schema.org/" + (item.available ? "InStock" : "OutOfStock"),
           url: base + "/perfumes/" + p.slug,
         })),
-      }).replace(/</g, "\\u003c"),
+      }),
     },
   ],
 });
@@ -190,7 +163,7 @@ useHead({
 
 <template>
   <section class="shell section">
-    <nav aria-label="Ruta de navegación">
+    <nav class="breadcrumbs" aria-label="Ruta de navegación">
       <NuxtLink to="/">Inicio</NuxtLink> /
       <NuxtLink to="/catalogo">Perfumes</NuxtLink> /
       <span aria-current="page">{{ p.name }}</span>
@@ -198,7 +171,7 @@ useHead({
     <NuxtLink class="text-link" :to="{ path: '/catalogo', query: route.query }"
       >← Volver a la colección</NuxtLink
     >
-    <div class="detail">
+    <article class="detail">
       <div>
         <div class="detail-photo">
           <img
@@ -207,6 +180,7 @@ useHead({
             :srcset="imageSources(p.images[photo]?.url || '')"
             sizes="(max-width: 700px) 100vw, 50vw"
             fetchpriority="high"
+            decoding="async"
             width="900"
             height="1100"
           />
@@ -219,7 +193,14 @@ useHead({
             :aria-pressed="photo === index"
             @click="photo = index"
           >
-            <img :src="image.url" :alt="image.alt" />
+            <img
+              :src="image.url"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              width="90"
+              height="110"
+            />
           </button>
         </div>
       </div>
@@ -235,7 +216,7 @@ useHead({
         <p class="description">{{ p.description }}</p>
 
         <div class="purchase-panel">
-          <h3>Elige tu presentación</h3>
+          <h2>Elige tu presentación</h2>
           <div class="variants">
             <button
               v-for="item in p.variants"
@@ -280,12 +261,12 @@ useHead({
         </div>
 
         <section v-if="p.aromaDescription" class="aroma-description">
-          <span class="eyebrow">¿A QUÉ HUELE?</span>
+          <h2 class="eyebrow">¿A QUÉ HUELE?</h2>
           <p>{{ p.aromaDescription }}</p>
         </section>
 
         <section v-if="p.olfactoryPyramid || p.notes.length" class="notes">
-          <span class="eyebrow">SU UNIVERSO OLFATIVO</span>
+          <h2 class="eyebrow">SU UNIVERSO OLFATIVO</h2>
           <div v-if="p.olfactoryPyramid" class="olfactory-pyramid">
             <div v-if="p.olfactoryPyramid.top.length">
               <strong>Salida</strong
@@ -305,23 +286,23 @@ useHead({
           </div>
         </section>
 
-        <section v-if="p.duration || p.projection" class="performance">
+        <dl v-if="p.duration || p.projection" class="performance">
           <div v-if="p.duration">
-            <span>Duración</span><strong>{{ p.duration }}</strong>
+            <dt>Duración</dt><dd>{{ p.duration }}</dd>
           </div>
           <div v-if="p.projection">
-            <span>Proyección</span><strong>{{ p.projection }}</strong>
+            <dt>Proyección</dt><dd>{{ p.projection }}</dd>
           </div>
-        </section>
+        </dl>
 
         <section v-if="p.idealFor?.length" class="ideal-for">
-          <span class="eyebrow">IDEAL PARA</span>
+          <h2 class="eyebrow">IDEAL PARA</h2>
           <ul>
             <li v-for="item in p.idealFor" :key="item">{{ item }}</li>
           </ul>
         </section>
       </div>
-    </div>
+    </article>
 
     <section class="delivery-estimate" aria-labelledby="delivery-title">
       <span class="eyebrow">ENTREGA ESTIMADA</span>
@@ -333,8 +314,7 @@ useHead({
       </p>
     </section>
 
-    <div ref="relatedProductsTrigger" aria-hidden="true"></div>
-    <section
+    <aside
       v-if="relatedProducts.length"
       class="related-products"
       aria-labelledby="related-title"
@@ -353,7 +333,7 @@ useHead({
           :product="item"
         />
       </div>
-    </section>
+    </aside>
   </section>
 </template>
 
@@ -405,13 +385,14 @@ useHead({
   padding: 15px;
   background: var(--surface);
 }
-.performance span {
+.performance dt {
   color: var(--muted);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-.performance strong {
+.performance dd {
+  margin: 0;
   font-size: 13px;
   font-weight: 500;
 }

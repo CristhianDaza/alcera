@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { serializeSchema, siteBase } from "#shared/seo";
+
 const route = useRoute();
 const router = useRouter();
 const { data, error, status, refresh } = await useFetch("/api/products");
@@ -114,6 +116,16 @@ const page = computed({
   },
 });
 const pageSize = 12;
+const productPrice = (product: (NonNullable<typeof data.value>)[number]) => {
+  const availablePrices = product.variants
+    .filter((item) => item.available)
+    .map((item) => item.price);
+  return Math.min(
+    ...(availablePrices.length
+      ? availablePrices
+      : product.variants.map((item) => item.price)),
+  );
+};
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(filtered.value.length / pageSize)),
 );
@@ -145,10 +157,83 @@ usePageSeo(
   `Perfumes para mujer, hombre y unisex · ${useStore().value.name}`,
   "Explora perfumes por marca, familia olfativa y presentación. Precios en COP y pedidos por WhatsApp.",
 );
+const base = siteBase(useRuntimeConfig().public.siteUrl);
+useHead(() => ({
+  script: [
+    {
+      key: "catalog-schema",
+      type: "application/ld+json",
+      innerHTML: serializeSchema({
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "CollectionPage",
+            "@id": base + "/catalogo#page",
+            url: base + "/catalogo",
+            name: "Colección de perfumes",
+            description:
+              "Perfumes para mujer, hombre y unisex disponibles en Colombia.",
+            inLanguage: "es-CO",
+            isPartOf: { "@id": base + "/#website" },
+            mainEntity: { "@id": base + "/catalogo#products" },
+          },
+          {
+            "@type": "ItemList",
+            "@id": base + "/catalogo#products",
+            numberOfItems: filtered.value.length,
+            itemListElement: paginatedProducts.value.map((product, index) => ({
+              "@type": "ListItem",
+              position: (page.value - 1) * pageSize + index + 1,
+              item: {
+                "@type": "Product",
+                url: `${base}/perfumes/${product.slug}`,
+                name: `${product.name} de ${product.brand}`,
+                image: product.images[0]?.url,
+                offers: {
+                  "@type": "Offer",
+                  url: `${base}/perfumes/${product.slug}`,
+                  seller: { "@id": base + "/#organization" },
+                  priceCurrency: "COP",
+                  price: productPrice(product),
+                  availability:
+                    "https://schema.org/" +
+                    (product.variants.some((item) => item.available)
+                      ? "InStock"
+                      : "OutOfStock"),
+                },
+              },
+            })),
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Inicio",
+                item: base + "/",
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Catálogo",
+                item: base + "/catalogo",
+              },
+            ],
+          },
+        ],
+      }),
+    },
+  ],
+}));
 </script>
 
 <template>
   <section class="shell section catalog">
+    <nav class="breadcrumbs" aria-label="Ruta de navegación">
+      <NuxtLink to="/">Inicio</NuxtLink> /
+      <span aria-current="page">Catálogo</span>
+    </nav>
     <div class="page-intro">
       <span class="eyebrow">ENCUENTRA TU PRÓXIMA HISTORIA</span>
       <h1>Colección de <em>perfumes.</em></h1>
@@ -247,9 +332,10 @@ usePageSeo(
     <template v-else>
       <div class="product-grid">
         <ProductCard
-          v-for="product in paginatedProducts"
+          v-for="(product, index) in paginatedProducts"
           :key="product.id"
           :product="product"
+          :priority="index < 4"
         />
       </div>
       <nav

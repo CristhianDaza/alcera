@@ -27,7 +27,19 @@ export default defineNuxtConfig({
       script: [
         { src: "/theme-init.js", tagPosition: "head", tagPriority: "critical" },
       ],
-      link: [{ rel: "icon", href: "/favicon.svg" }],
+      link: [
+        { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+        { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        {
+          rel: "preconnect",
+          href: "https://fonts.gstatic.com",
+          crossorigin: "anonymous",
+        },
+        {
+          rel: "stylesheet",
+          href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;600;700&family=Libre+Caslon+Display&display=swap",
+        },
+      ],
     },
   },
   routeRules: {

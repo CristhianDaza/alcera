@@ -246,6 +246,10 @@ watch(step, (currentStep) => {
                 <img
                   :src="product.images[0]?.url"
                   :alt="product.images[0]?.alt || product.name"
+                  loading="lazy"
+                  decoding="async"
+                  width="58"
+                  height="62"
                 />
                 <span
                   ><small>{{ product.brand }}</small

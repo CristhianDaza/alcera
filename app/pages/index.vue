@@ -118,6 +118,7 @@ onMounted(() => {
         sizes="(max-width: 700px) 100vw, 50vw"
         alt="Composición de frascos de perfume en tonos cálidos"
         fetchpriority="high"
+        decoding="async"
         width="1000"
         height="1100"
       />
@@ -191,7 +192,9 @@ onMounted(() => {
     <div
       v-else
       class="product-grid selection-grid"
-      :style="{ '--selection-columns': Math.min(4, Math.max(1, selection.length)) }"
+      :style="{
+        '--selection-columns': Math.min(4, Math.max(1, selection.length)),
+      }"
     >
       <ProductCard
         v-for="(product, index) in selection"

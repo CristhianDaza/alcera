@@ -1,9 +1,10 @@
 import type { Product } from "#shared/types";
-import { productBySlug, products } from "../../../utils/catalog";
+import { products } from "../../../utils/catalog";
 
 export default defineEventHandler(async (event) => {
   const slug = getRouterParam(event, "slug") || "";
-  const product = await productBySlug(slug);
+  const catalog = await products();
+  const product = catalog.find((item) => item.slug === slug);
   if (!product)
     throw createError({
       statusCode: 404,
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event) => {
     (item.category === product.category ? 4 : 0) +
     (product.family && item.family === product.family ? 2 : 0);
 
-  return (await products())
+  return catalog
     .filter((item) => item.id !== product.id)
     .sort((left, right) => score(right) - score(left))
     .slice(0, 4);

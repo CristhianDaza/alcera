@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;600;700&family=Libre+Caslon+Display&display=swap');
-
 :root {
     color-scheme: light;
     --paper: #f8f2e9;
@@ -236,6 +234,20 @@ img {
     display: block;
     max-width: 100%;
     object-fit: cover
+}
+
+.breadcrumbs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 14px;
+    color: var(--muted);
+    font-size: 12px
+}
+
+.breadcrumbs a {
+    text-decoration: underline;
+    text-underline-offset: 3px
 }
 
 h1, h2, h3, p {
@@ -790,7 +802,7 @@ p {
     margin: 25px 0
 }
 
-.footer h3 {
+.footer h2 {
     font-size: 11px;
     margin-bottom: 20px
 }
@@ -2005,7 +2017,7 @@ body {
     font-size: 13px;
 }
 
-.muted, .footer p, .footer h3, .footer-grid > div > a:not(.brand-link), .footer-grid > div > a:not(.wordmark) {
+.muted, .footer p, .footer h2, .footer-grid > div > a:not(.brand-link), .footer-grid > div > a:not(.wordmark) {
     font-size: 13px;
 }
 
@@ -2109,7 +2121,7 @@ input, select, textarea {
     margin: 26px 0 30px;
 }
 
-.purchase-panel h3 {
+.purchase-panel h2 {
     margin-bottom: 14px;
     font-weight: 500;
 }
@@ -2490,6 +2502,8 @@ main:focus {
     background: transparent;
     text-align: left;
     cursor: pointer;
+    color: inherit;
+    text-decoration: none;
     transition: background .15s;
 }
 
@@ -2574,6 +2588,7 @@ main:focus {
     cursor: pointer;
     text-align: left;
     transition: background .15s;
+    text-decoration: none;
 }
 
 .hs-see-all:hover {
