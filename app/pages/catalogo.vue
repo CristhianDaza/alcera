@@ -75,6 +75,8 @@ const standardFamilies = [
   "Dulce",
   "Almizclado",
   "Especiado",
+  "Aromático",
+  "Acuático",
 ];
 const families = computed(() => [
   ...new Set([
