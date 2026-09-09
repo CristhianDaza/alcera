@@ -129,7 +129,14 @@ async function checkout() {
             :key="`${line.productId}-${line.variantId}`"
             class="cart-row"
           >
-            <img :src="line.image" :alt="line.name" width="120" height="140" />
+            <img
+              :src="line.image"
+              :alt="line.name"
+              loading="lazy"
+              decoding="async"
+              width="120"
+              height="140"
+            />
             <div>
               <h2>{{ line.name }}</h2>
               <p>{{ line.size }} · {{ money(line.price) }}</p>

@@ -38,6 +38,14 @@ useHead(() => ({
             url: base + "/",
             inLanguage: "es-CO",
             publisher: { "@id": base + "/#organization" },
+            potentialAction: {
+              "@type": "SearchAction",
+              target: {
+                "@type": "EntryPoint",
+                urlTemplate: base + "/catalogo?q={search_term_string}",
+              },
+              "query-input": "required name=search_term_string",
+            },
           },
         ],
       }),
@@ -127,19 +135,19 @@ const activeCategory = computed(() =>
           </p>
         </div>
         <div>
-          <h3>Explora</h3>
+          <h2>Explora</h2>
           <NuxtLink to="/catalogo">Todos los perfumes</NuxtLink
           ><NuxtLink to="/catalogo?category=Unisex"
             >La colección unisex</NuxtLink
           >
         </div>
         <div>
-          <h3>A tu ritmo</h3>
+          <h2>A tu ritmo</h2>
           <p>
             Elige tus favoritos y consulta tu pedido<br />por WhatsApp. Envío y
             pago a convenir.
           </p>
-          <NuxtLink to="/admin">Administración ↗</NuxtLink>
+          <NuxtLink to="/admin" rel="nofollow">Administración ↗</NuxtLink>
         </div>
       </div>
       <div class="shell footer-bottom">

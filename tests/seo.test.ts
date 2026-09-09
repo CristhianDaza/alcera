@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   canIndex,
   canonicalUrl,
+  metaDescription,
   serializeSchema,
   siteBase,
 } from "../shared/seo";
@@ -26,7 +27,16 @@ describe("Indexación y URLs públicas", () => {
       "https://alceraperfumes.com/catalogo",
     );
     expect(canonicalUrl(live.siteUrl, "/")).toBe("https://alceraperfumes.com/");
+    expect(canonicalUrl(live.siteUrl, "catalogo/")).toBe(
+      "https://alceraperfumes.com/catalogo",
+    );
     expect(() => siteBase("https://alceraperfumes.com/catalogo")).toThrow();
+  });
+  it("produce descripciones sociales compactas y legibles", () => {
+    const description = `  ${"fragancia ".repeat(30)} especial  `;
+    expect(metaDescription(description)).toMatch(/…$/);
+    expect(metaDescription(description).length).toBeLessThanOrEqual(160);
+    expect(metaDescription("  Aroma   floral. ")).toBe("Aroma floral.");
   });
   it("serializa contenido sin permitir cerrar el script JSON-LD", () => {
     const content = { name: "</script><script>alert(1)</script>" };

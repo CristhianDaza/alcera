@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Product } from "#shared/types";
+
 const router = useRouter();
 const route = useRoute();
 
@@ -6,8 +8,24 @@ const isOpen = ref(false);
 const query = ref("");
 const inputRef = ref<HTMLInputElement | null>(null);
 const rootRef = ref<HTMLElement | null>(null);
+const products = ref<Product[]>([]);
+const loading = ref(false);
+const loadFailed = ref(false);
+let loaded = false;
 
-const { data: products } = await useFetch("/api/products");
+async function loadProducts() {
+  if (loaded || loading.value) return;
+  loading.value = true;
+  loadFailed.value = false;
+  try {
+    products.value = await $fetch<Product[]>("/api/products");
+    loaded = true;
+  } catch {
+    loadFailed.value = true;
+  } finally {
+    loading.value = false;
+  }
+}
 
 const normalize = (v: string) =>
   v
@@ -32,6 +50,7 @@ const showDropdown = computed(() => isOpen.value && query.value.length >= 2);
 function open() {
   isOpen.value = true;
   nextTick(() => inputRef.value?.focus());
+  void loadProducts();
 }
 
 function close() {
@@ -43,11 +62,6 @@ function submit() {
   const q = query.value.trim();
   if (!q) return;
   router.push({ path: "/catalogo", query: { q } });
-  close();
-}
-
-function selectProduct(slug: string) {
-  router.push(`/perfumes/${slug}`);
   close();
 }
 
@@ -87,6 +101,10 @@ const fmt = new Intl.NumberFormat("es-CO", {
   currency: "COP",
   maximumFractionDigits: 0,
 });
+const catalogSearch = computed(() => ({
+  path: "/catalogo",
+  query: { q: query.value.trim() },
+}));
 </script>
 
 <template>
@@ -143,6 +161,10 @@ const fmt = new Intl.NumberFormat("es-CO", {
         autocomplete="off"
         autocapitalize="off"
         spellcheck="false"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="header-search-results"
+        :aria-expanded="showDropdown"
         aria-label="Buscar perfumes"
         @input="handleInput"
         @keydown="handleKeydown"
@@ -163,17 +185,19 @@ const fmt = new Intl.NumberFormat("es-CO", {
     <Transition name="hs-drop">
       <div
         v-if="showDropdown"
+        id="header-search-results"
         class="hs-dropdown"
         role="listbox"
         aria-label="Resultados de búsqueda"
       >
         <template v-if="hasResults">
-          <button
+          <NuxtLink
             v-for="p in results"
             :key="p.id"
             class="hs-item"
             role="option"
-            @click="selectProduct(p.slug)"
+            :to="`/perfumes/${p.slug}`"
+            @click="close"
           >
             <span class="hs-item-img">
               <img
@@ -181,6 +205,9 @@ const fmt = new Intl.NumberFormat("es-CO", {
                 :src="p.images[0].url"
                 :alt="p.images[0].alt || p.name"
                 loading="lazy"
+                decoding="async"
+                width="44"
+                height="44"
               />
               <svg
                 v-else
@@ -203,8 +230,8 @@ const fmt = new Intl.NumberFormat("es-CO", {
                 <span class="hs-item-price">{{ fmt.format(minPrice(p)) }}</span>
               </span>
             </span>
-          </button>
-          <button class="hs-see-all" @click="submit">
+          </NuxtLink>
+          <NuxtLink class="hs-see-all" :to="catalogSearch" @click="close">
             Ver todos para "{{ query }}"
             <svg
               viewBox="0 0 24 24"
@@ -219,9 +246,15 @@ const fmt = new Intl.NumberFormat("es-CO", {
                 stroke-linejoin="round"
               />
             </svg>
-          </button>
+          </NuxtLink>
         </template>
-        <div v-else class="hs-empty">Sin resultados para "{{ query }}"</div>
+        <div v-else class="hs-empty" role="status">
+          <template v-if="loading">Buscando perfumes…</template>
+          <template v-else-if="loadFailed"
+            >No pudimos cargar la búsqueda.</template
+          >
+          <template v-else>Sin resultados para “{{ query }}”</template>
+        </div>
       </div>
     </Transition>
   </div>
