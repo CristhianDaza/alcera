@@ -9,5 +9,11 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "catalogCache",
+      "fieldPath": "payload",
+      "indexes": []
+    }
+  ]
 }

@@ -2,6 +2,7 @@
 import { money, reconcileCart } from "#shared/commerce";
 const { lines, total } = useCart(),
   store = useStore();
+const catalog = useCatalogStore();
 const busy = ref(false),
   notice = ref(""),
   readyUrl = ref("");
@@ -35,7 +36,7 @@ async function checkout() {
   readyUrl.value = "";
   try {
     const [products, config] = await Promise.all([
-      $fetch("/api/products"),
+      catalog.ensureLoaded(true),
       $fetch("/api/settings"),
     ]);
     store.value = config;

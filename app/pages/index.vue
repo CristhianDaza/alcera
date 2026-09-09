@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
 
-const { data: products, error, refresh } = await useFetch("/api/products");
+const catalog = useCatalogStore();
+await catalog.ensureLoaded();
+const { products, error, refresh } = catalog;
 const selection = computed(() =>
   [...(products.value ?? [])]
     .sort((a, b) => Number(b.featured) - Number(a.featured))
@@ -77,8 +79,8 @@ onMounted(() => {
       <span class="eyebrow"><i /> ALTA PERFUMERÍA</span>
       <h1>Hay recuerdos<br />que se llevan<br /><em>en la piel.</em></h1>
       <p class="hero-desc">
-        Fragancias selectas para mujer, hombre y unisex en Colombia. Descubre tu
-        aroma personal con asesoría experta y pedido directo.
+        Perfumes 100% originales para mujer, hombre y unisex en Colombia.
+        Descubre tu aroma personal con asesoría experta y pedido directo.
       </p>
       <div class="hero-actions">
         <NuxtLink class="button hero-cta" to="/catalogo">
@@ -153,8 +155,8 @@ onMounted(() => {
     <div class="trust-item">
       <span class="trust-icon" aria-hidden="true">✦</span>
       <div class="trust-text">
-        <strong>Fijación & Carácter</strong>
-        <span>Esencias de larga duración seleccionadas</span>
+        <strong>100% Originales</strong>
+        <span>Perfumes auténticos, seleccionados para ti</span>
       </div>
     </div>
     <div class="trust-divider" aria-hidden="true"></div>

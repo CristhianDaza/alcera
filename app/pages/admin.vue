@@ -100,6 +100,8 @@ const topNotes = ref(""),
 const addAnother = ref(true);
 const crypto = globalThis.crypto;
 let stopAuthListener: (() => void) | undefined;
+let restoredUid = "";
+let restoringSession: Promise<void> | undefined;
 useSeoMeta({ title: "Administración · ALCÉRA", robots: "noindex, nofollow" });
 async function auth() {
   const { initializeApp, getApps } = await import("firebase/app");
@@ -141,6 +143,15 @@ async function restoreSession(user: User) {
   catalog.value = await $fetch<Product[]>("/api/admin/products", {
     headers: await headers(),
   });
+  restoredUid = user.uid;
+}
+async function ensureSession(user: User) {
+  if (restoredUid === user.uid) return;
+  if (restoringSession) return restoringSession;
+  restoringSession = restoreSession(user).finally(() => {
+    restoringSession = undefined;
+  });
+  return restoringSession;
 }
 onMounted(async () => {
   try {
@@ -149,13 +160,14 @@ onMounted(async () => {
     stopAuthListener = onIdTokenChanged(instance, async (user) => {
       if (!user) {
         token.value = "";
+        restoredUid = "";
         editor.value = null;
         catalog.value = [];
         checkingSession.value = false;
         return;
       }
       try {
-        await restoreSession(user);
+        await ensureSession(user);
         notice.value = "";
       } catch (e) {
         token.value = "";
@@ -177,7 +189,7 @@ async function login() {
     const { signInWithEmailAndPassword } = await import("firebase/auth");
     const a = await auth(),
       result = await signInWithEmailAndPassword(a, email.value, password.value);
-    await restoreSession(result.user);
+    await ensureSession(result.user);
     password.value = "";
   } catch (e) {
     token.value = "";
@@ -190,6 +202,7 @@ async function logout() {
   const { signOut } = await import("firebase/auth");
   await signOut(await auth());
   token.value = "";
+  restoredUid = "";
   editor.value = null;
   catalog.value = [];
 }
@@ -647,14 +660,19 @@ function move(index: number, direction: number) {
               <option>Hombre</option>
               <option>Unisex</option>
             </select></label
-          ><fieldset class="family-options">
+          >
+          <fieldset class="family-options">
             <legend>Familias olfativas (opcional)</legend>
             <label
               v-for="olfactoryFamily in olfactoryFamilies"
               :key="olfactoryFamily"
               class="check"
             >
-              <input v-model="editor.family" type="checkbox" :value="olfactoryFamily" />
+              <input
+                v-model="editor.family"
+                type="checkbox"
+                :value="olfactoryFamily"
+              />
               {{ olfactoryFamily }}
             </label>
           </fieldset>

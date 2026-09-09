@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { Product } from "#shared/types";
-
 const router = useRouter();
 const route = useRoute();
 
@@ -8,23 +6,13 @@ const isOpen = ref(false);
 const query = ref("");
 const inputRef = ref<HTMLInputElement | null>(null);
 const rootRef = ref<HTMLElement | null>(null);
-const products = ref<Product[]>([]);
-const loading = ref(false);
-const loadFailed = ref(false);
-let loaded = false;
+const catalog = useCatalogStore();
+const products = catalog.products;
+const loading = catalog.loading;
+const loadFailed = computed(() => Boolean(catalog.error.value));
 
 async function loadProducts() {
-  if (loaded || loading.value) return;
-  loading.value = true;
-  loadFailed.value = false;
-  try {
-    products.value = await $fetch<Product[]>("/api/products");
-    loaded = true;
-  } catch {
-    loadFailed.value = true;
-  } finally {
-    loading.value = false;
-  }
+  await catalog.ensureLoaded();
 }
 
 const normalize = (v: string) =>
@@ -39,7 +27,9 @@ const results = computed(() => {
   if (!q || q.length < 2) return [];
   return (products.value ?? [])
     .filter((p) =>
-      normalize(`${p.name} ${p.brand} ${(p.family ?? []).join(" ")}`).includes(q),
+      normalize(`${p.name} ${p.brand} ${(p.family ?? []).join(" ")}`).includes(
+        q,
+      ),
     )
     .slice(0, 6);
 });

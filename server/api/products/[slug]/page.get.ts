@@ -10,7 +10,6 @@ export default defineEventHandler(async (event) => {
       statusCode: 404,
       statusMessage: "Perfume no encontrado",
     });
-
   catalogDiagnostic("PRODUCT_SNAPSHOT_HIT", { found: true, slug });
-  return selectRelatedProducts(catalog, product);
+  return { product, related: selectRelatedProducts(catalog, product) };
 });

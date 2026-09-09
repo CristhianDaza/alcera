@@ -1,6 +1,9 @@
 import { v2 as cloudinary } from "cloudinary";
 import type { Product } from "#shared/types";
-import { invalidateCatalogCache } from "../../../utils/catalog";
+import {
+  clearPersistentCatalogSnapshots,
+  removeFromCatalogSnapshots,
+} from "../../../utils/catalog";
 
 export default defineEventHandler(async (event) => {
   await requireAdmin(event);
@@ -48,6 +51,13 @@ export default defineEventHandler(async (event) => {
       ),
     );
   }
-  invalidateCatalogCache();
+  try {
+    await removeFromCatalogSnapshots(id);
+  } catch (snapshotError) {
+    console.error("Could not update catalog snapshots", snapshotError);
+    await clearPersistentCatalogSnapshots().catch((clearError) =>
+      console.error("Could not clear catalog snapshots", clearError),
+    );
+  }
   return { id };
 });
