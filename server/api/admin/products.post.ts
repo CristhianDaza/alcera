@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { v2 as cloudinary } from "cloudinary";
-import { invalidateCatalogCache } from "../../utils/catalog";
+import {
+  clearPersistentCatalogSnapshots,
+  upsertCatalogSnapshots,
+} from "../../utils/catalog";
 
 type PendingUpload = { data: Buffer; filename?: string; type?: string };
 
@@ -148,8 +151,16 @@ export default defineEventHandler(async (event) => {
       tx.set(slugRef, { productId: id });
       tx.set(ref, parsed.data);
     });
-    invalidateCatalogCache();
-    return { id, ...parsed.data };
+    const saved = { id, ...parsed.data };
+    try {
+      await upsertCatalogSnapshots(saved);
+    } catch (snapshotError) {
+      console.error("Could not update catalog snapshots", snapshotError);
+      await clearPersistentCatalogSnapshots().catch((clearError) =>
+        console.error("Could not clear catalog snapshots", clearError),
+      );
+    }
+    return saved;
   } catch (error) {
     await Promise.allSettled(
       uploaded.map((publicId) => cloudinary.uploader.destroy(publicId)),

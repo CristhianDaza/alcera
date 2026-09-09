@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
 
-const { data: products, error, refresh } = await useFetch("/api/products");
+const catalog = useCatalogStore();
+await catalog.ensureLoaded();
+const { products, error, refresh } = catalog;
 const selection = computed(() =>
   [...(products.value ?? [])]
     .sort((a, b) => Number(b.featured) - Number(a.featured))

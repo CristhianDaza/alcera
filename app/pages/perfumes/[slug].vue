@@ -1,19 +1,38 @@
 <script setup lang="ts">
 import { siteBase, serializeSchema } from "#shared/seo";
 import { money } from "#shared/commerce";
+import { selectRelatedProducts } from "#shared/catalog";
 import type { Product } from "#shared/types";
 
 const route = useRoute();
-const { data: product, error } = await useFetch<Product>(
-  "/api/products/" + route.params.slug,
-);
-if (error.value || !product.value)
+const catalog = useCatalogStore();
+const slug = String(route.params.slug || "");
+const cachedProduct = catalog.loaded.value
+  ? catalog.products.value.find((item) => item.slug === slug)
+  : undefined;
+if (cachedProduct) catalog.diagnostic("PRODUCT_STORE_HIT", { slug });
+type ProductPage = { product: Product; related: Product[] };
+let fetchedPage: ProductPage | null = null;
+let fetchError: { statusCode?: number } | null = null;
+if (!cachedProduct) {
+  const { data, error } = await useFetch<ProductPage>(
+    `/api/products/${slug}/page`,
+  );
+  fetchedPage = data.value ?? null;
+  fetchError = error.value ?? null;
+}
+const p = cachedProduct ?? fetchedPage?.product;
+if (!p)
   throw createError({
-    statusCode: error.value?.statusCode || 404,
+    statusCode: fetchError?.statusCode || 404,
     statusMessage: "No encontramos este perfume",
   });
 
-const p = product.value;
+const relatedProducts = computed(() =>
+  catalog.loaded.value
+    ? selectRelatedProducts(catalog.products.value, p)
+    : (fetchedPage?.related ?? []),
+);
 const selected = ref(
   p.variants.find((variant) => variant.available)?.id || p.variants[0]!.id,
 );
@@ -28,11 +47,6 @@ usePageSeo(
   p.aromaDescription || p.description,
   p.images[0]?.url,
   { imageAlt: p.images[0]?.alt || `${p.name} de ${p.brand}` },
-);
-
-const { data: relatedProducts } = await useFetch<Product[]>(
-  "/api/products/" + p.slug + "/related",
-  { default: () => [] },
 );
 
 function colombiaToday() {
@@ -288,10 +302,12 @@ useHead({
 
         <dl v-if="p.duration || p.projection" class="performance">
           <div v-if="p.duration">
-            <dt>Duración</dt><dd>{{ p.duration }}</dd>
+            <dt>Duración</dt>
+            <dd>{{ p.duration }}</dd>
           </div>
           <div v-if="p.projection">
-            <dt>Proyección</dt><dd>{{ p.projection }}</dd>
+            <dt>Proyección</dt>
+            <dd>{{ p.projection }}</dd>
           </div>
         </dl>
 

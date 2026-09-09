@@ -3,7 +3,14 @@ import { serializeSchema, siteBase } from "#shared/seo";
 
 const route = useRoute();
 const router = useRouter();
-const { data, error, status, refresh } = await useFetch("/api/products");
+const catalog = useCatalogStore();
+await catalog.ensureLoaded();
+const data = catalog.products;
+const error = catalog.error;
+const status = computed(() =>
+  catalog.loading.value ? "pending" : catalog.error.value ? "error" : "success",
+);
+const refresh = catalog.refresh;
 const queryText = (value: unknown) => (typeof value === "string" ? value : "");
 const search = ref(queryText(route.query.q));
 const category = computed({
@@ -85,28 +92,32 @@ const categories = computed(() => [
     ...(category.value ? [category.value] : []),
   ]),
 ]);
-const brands = computed(() => [
-  ...new Set([
-    ...(data.value ?? []).map((p) => p.brand).filter(Boolean),
-    ...(brand.value ? [brand.value] : []),
-  ]),
-].sort((a, b) => a.localeCompare(b, "es")));
-const concentrations = computed(() => [
-  ...new Set([
-    ...(data.value ?? [])
-      .map((p) => p.concentration)
-      .filter((item): item is string => Boolean(item)),
-    ...(concentration.value ? [concentration.value] : []),
-  ]),
-].sort((a, b) => a.localeCompare(b, "es")));
+const brands = computed(() =>
+  [
+    ...new Set([
+      ...(data.value ?? []).map((p) => p.brand).filter(Boolean),
+      ...(brand.value ? [brand.value] : []),
+    ]),
+  ].sort((a, b) => a.localeCompare(b, "es")),
+);
+const concentrations = computed(() =>
+  [
+    ...new Set([
+      ...(data.value ?? [])
+        .map((p) => p.concentration)
+        .filter((item): item is string => Boolean(item)),
+      ...(concentration.value ? [concentration.value] : []),
+    ]),
+  ].sort((a, b) => a.localeCompare(b, "es")),
+);
 const hasFilters = computed(() =>
   Boolean(
     search.value ||
-      category.value ||
-      family.value ||
-      brand.value ||
-      concentration.value ||
-      available.value,
+    category.value ||
+    family.value ||
+    brand.value ||
+    concentration.value ||
+    available.value,
   ),
 );
 function clearFilters() {
@@ -164,7 +175,7 @@ const page = computed({
   },
 });
 const pageSize = 12;
-const productPrice = (product: (NonNullable<typeof data.value>)[number]) => {
+const productPrice = (product: NonNullable<typeof data.value>[number]) => {
   const availablePrices = product.variants
     .filter((item) => item.available)
     .map((item) => item.price);

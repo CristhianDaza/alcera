@@ -13,6 +13,7 @@ export default defineNuxtConfig({
     public: {
       demo: true,
       indexable: false,
+      catalogDebug: false,
       siteUrl: "http://localhost:3000",
       firebaseApiKey: "",
       firebaseAuthDomain: "",
