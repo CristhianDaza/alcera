@@ -244,7 +244,7 @@ function edit(p?: Product) {
         variants: [
           { id: crypto.randomUUID(), size: "", price: 0, available: true },
         ],
-        status: "draft",
+        status: "published",
         featured: false,
       };
   notes.value = editor.value.notes.join(", ");
@@ -347,7 +347,10 @@ async function save() {
     else catalog.value.push(result);
     if (shouldAddAnother) {
       edit();
-      notice.value = "Perfume guardado. Agrega el siguiente cuando estés listo.";
+      await nextTick();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      notice.value =
+        "Perfume guardado. Agrega el siguiente cuando estés listo.";
     } else {
       editor.value = null;
       notice.value = "Perfume guardado.";
@@ -780,11 +783,14 @@ function move(index: number, direction: number) {
           </button>
         </div>
         <div class="publish-controls">
-          <label
-            >Estado<select v-model="editor.status">
-              <option value="draft">Borrador</option>
-              <option value="published">Publicado</option>
-            </select></label
+          <label class="check"
+            ><input
+              v-model="editor.status"
+              type="checkbox"
+              true-value="published"
+              false-value="draft"
+            />
+            Publicado</label
           ><label class="check"
             ><input v-model="editor.featured" type="checkbox" /> Destacar en
             inicio</label
