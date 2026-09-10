@@ -117,6 +117,7 @@ const olfactoryFamilies = [
   "Especiado",
   "Aromático",
   "Acuático",
+  "Cuero",
 ];
 const topNotes = ref(""),
   heartNotes = ref(""),
