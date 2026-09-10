@@ -21,6 +21,11 @@ const families = [
       "Cedro, sándalo, vetiver y pachulí. Aportan calidez, profundidad y una sensación elegante.",
   },
   {
+    name: "Cuero",
+    description:
+      "Acordes de cuero, gamuza, abedul o tabaco. Aportan una sensación seca, intensa y con carácter.",
+  },
+  {
     name: "Cítrica",
     description:
       "Bergamota, limón, mandarina y toronja. Fresca, chispeante y especialmente fácil de llevar de día.",
