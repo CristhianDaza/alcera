@@ -1229,10 +1229,18 @@ select {
     margin-bottom: 27px
 }
 
-.pills span {
+.pills a {
     border: 1px solid var(--line);
     padding: 4px 12px;
-    font-size: 10px
+    color: inherit;
+    font-size: 10px;
+    text-decoration: none;
+    transition: background .2s, border-color .2s
+}
+
+.pills a:hover, .pills a:focus-visible {
+    background: var(--surface);
+    border-color: var(--accent);
 }
 
 .description {
@@ -2419,7 +2427,7 @@ input, select, textarea {
     flex-wrap: wrap;
 }
 
-.pills span {
+.pills a {
     font-size: 12px;
 }
 

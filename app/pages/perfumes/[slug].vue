@@ -223,9 +223,27 @@ useHead({
         <span class="eyebrow">{{ p.brand }}</span>
         <h1>{{ p.name }}</h1>
         <div class="pills">
-          <span>{{ p.category }}</span>
-          <span v-for="family in p.family" :key="family">{{ family }}</span>
-          <span v-if="p.concentration">{{ p.concentration }}</span>
+          <NuxtLink
+            :to="{ path: '/catalogo', query: { category: p.category } }"
+          >
+            {{ p.category }}
+          </NuxtLink>
+          <NuxtLink
+            v-for="family in p.family"
+            :key="family"
+            :to="{ path: '/catalogo', query: { family } }"
+          >
+            {{ family }}
+          </NuxtLink>
+          <NuxtLink
+            v-if="p.concentration"
+            :to="{
+              path: '/catalogo',
+              query: { concentration: p.concentration },
+            }"
+          >
+            {{ p.concentration }}
+          </NuxtLink>
         </div>
         <p class="description">{{ p.description }}</p>
 
