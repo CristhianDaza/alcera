@@ -530,19 +530,22 @@ p {
     z-index: 1;
 }
 
-.hero-image-label {
+.hero-image-brand {
     position: absolute;
     z-index: 2;
-    top: 34px;
-    right: 34px;
-    display: grid;
-    gap: 3px;
-    color: #fffaf2;
-    font-family: "Libre Caslon Display", serif;
-    font-size: 15px;
-    line-height: 1.1;
-    text-align: right;
-    text-shadow: 0 1px 14px rgb(41 20 12 / .35);
+    top: 46px;
+    left: 38px;
+    width: min(62%, 290px);
+    height: 128px;
+    overflow: hidden;
+}
+
+.hero-image-brand img {
+    display: block;
+    width: 250%;
+    max-width: none;
+    height: auto;
+    transform: translateX(-4%);
 }
 
 .trust-banner {
@@ -3100,9 +3103,10 @@ main:focus {
         inset: 10px;
     }
 
-    .hero-image-label {
-        top: 25px;
-        right: 25px;
-        font-size: 14px;
+    .hero-image-brand {
+        top: 28px;
+        left: 28px;
+        width: min(62%, 230px);
+        height: 104px;
     }
 }

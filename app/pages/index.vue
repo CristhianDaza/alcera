@@ -130,9 +130,13 @@ watch(finderOpen, (isOpen) => {
       </div>
     </div>
     <div class="hero-image">
-      <div class="hero-image-label" aria-hidden="true">
-        <span>Una firma</span>
-        <span>para recordar</span>
+      <div class="hero-image-brand">
+        <img
+          src="/brand/alcera-logo.png"
+          alt="Alcéra Perfumes"
+          width="3200"
+          height="1200"
+        />
       </div>
       <img
         src="/images/hero-perfumes-editorial-v2.png"
