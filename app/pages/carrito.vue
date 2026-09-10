@@ -222,13 +222,11 @@ async function checkout() {
           <p v-if="orderId" class="order-reference">
             Referencia: <strong>{{ orderId }}</strong>
           </p>
-          <a
+          <ProtectedWhatsAppLink
             v-if="readyUrl"
-            :href="readyUrl"
-            target="_blank"
-            rel="noopener noreferrer"
+            :url="readyUrl"
             class="button full"
-            >Abrir WhatsApp ↗</a
+            >Abrir WhatsApp ↗</ProtectedWhatsAppLink
           >
         </form>
       </div>

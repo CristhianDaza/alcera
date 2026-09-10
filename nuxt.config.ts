@@ -10,6 +10,8 @@ export default defineNuxtConfig({
     cloudinaryCloudName: "",
     cloudinaryApiKey: "",
     cloudinaryApiSecret: "",
+    recaptchaEnterpriseProjectId: "",
+    recaptchaEnterpriseApiKey: "",
     public: {
       demo: true,
       indexable: false,
@@ -18,6 +20,7 @@ export default defineNuxtConfig({
       firebaseApiKey: "",
       firebaseAuthDomain: "",
       firebaseProjectId: "",
+      recaptchaEnterpriseSiteKey: "6LditrQtAAAAAJi5hbB9hIlsHDZMednvxW8Bau_Z",
     },
   },
   app: {
