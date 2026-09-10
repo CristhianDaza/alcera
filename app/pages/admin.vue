@@ -105,7 +105,6 @@ watch(adminTotalPages, (total) => {
     updateAdminQuery({ page: total > 1 ? String(total) : "" }, "replace");
   }
 });
-const notes = ref("");
 const olfactoryFamilies = [
   "Floral",
   "Amaderada",
@@ -297,7 +296,6 @@ function edit(p?: Product) {
         status: "published",
         featured: false,
       };
-  notes.value = editor.value.notes.join(", ");
   notice.value = "";
   topNotes.value = editor.value.olfactoryPyramid.top.join(", ");
   heartNotes.value = editor.value.olfactoryPyramid.heart.join(", ");
@@ -370,10 +368,6 @@ async function save() {
   busy.value = true;
   notice.value = "";
   try {
-    editor.value.notes = notes.value
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
     editor.value.olfactoryPyramid = {
       top: values(topNotes.value),
       heart: values(heartNotes.value),
@@ -729,15 +723,11 @@ function move(index: number, direction: number) {
               {{ olfactoryFamily }}
             </label>
           </fieldset>
-          ><label
+          <label
             >Concentración (opcional)<input
               v-model="editor.concentration"
               maxlength="500"
               placeholder="Eau de Parfum" /></label
-          ><label
-            >Notas generales (opcional)<input
-              v-model="notes"
-              placeholder="Bergamota, Sándalo, Ámbar" /></label
           ><label
             >Notas de salida (opcional)<input
               v-model="topNotes"
