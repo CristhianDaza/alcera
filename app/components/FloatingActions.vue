@@ -43,10 +43,12 @@ onBeforeUnmount(() => window.removeEventListener("scroll", updateScrollState));
         <span>Subir</span>
       </button>
     </Transition>
-    <ProtectedWhatsAppLink
+    <a
       v-if="whatsappUrl"
       class="floating-button floating-button--whatsapp"
-      :url="whatsappUrl"
+      :href="whatsappUrl"
+      target="_blank"
+      rel="noopener noreferrer"
       aria-label="Escríbenos por WhatsApp"
       title="Escríbenos por WhatsApp"
     >
@@ -56,6 +58,6 @@ onBeforeUnmount(() => window.removeEventListener("scroll", updateScrollState));
         />
       </svg>
       <span>WhatsApp</span>
-    </ProtectedWhatsAppLink>
+    </a>
   </div>
 </template>

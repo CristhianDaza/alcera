@@ -285,13 +285,15 @@ watch(finderOpen, (isOpen) => {
         <NuxtLink class="button" to="/perfumes"
           >Ver catálogo completo <span>↗</span></NuxtLink
         >
-        <ProtectedWhatsAppLink
+        <a
           v-if="whatsappUrl"
-          :url="whatsappUrl"
+          :href="whatsappUrl"
+          target="_blank"
+          rel="noopener noreferrer"
           class="button button--outline"
         >
           Consultar por WhatsApp ↗
-        </ProtectedWhatsAppLink>
+        </a>
       </div>
     </div>
   </section>
