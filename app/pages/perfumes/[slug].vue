@@ -279,7 +279,7 @@ useHead({
           <p>{{ p.aromaDescription }}</p>
         </section>
 
-        <section v-if="p.olfactoryPyramid || p.notes.length" class="notes">
+        <section v-if="p.olfactoryPyramid" class="notes">
           <h2 class="eyebrow">SU UNIVERSO OLFATIVO</h2>
           <div v-if="p.olfactoryPyramid" class="olfactory-pyramid">
             <div v-if="p.olfactoryPyramid.top.length">
@@ -294,9 +294,6 @@ useHead({
               <strong>Fondo</strong
               ><span>{{ p.olfactoryPyramid.base.join(", ") }}</span>
             </div>
-          </div>
-          <div v-else class="note-list">
-            <span v-for="note in p.notes" :key="note">{{ note }}</span>
           </div>
         </section>
 

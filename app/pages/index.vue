@@ -4,6 +4,8 @@ import type { Product } from "#shared/types";
 const catalog = useCatalogStore();
 await catalog.ensureLoaded();
 const { products, error, refresh } = catalog;
+const route = useRoute();
+const router = useRouter();
 const selection = computed(() =>
   [...(products.value ?? [])]
     .sort((a, b) => Number(b.featured) - Number(a.featured))
@@ -45,7 +47,7 @@ const familyList = [
   },
 ];
 
-const finderOpen = ref(false);
+const finderOpen = ref(route.query.finder === "1");
 const savedFinderIds = ref<string[]>([]);
 const savedFinderProducts = computed(() =>
   savedFinderIds.value
@@ -71,6 +73,21 @@ onMounted(() => {
     localStorage.removeItem("alcera-perfume-finder");
   }
 });
+
+watch(
+  () => route.query.finder,
+  (value) => {
+    if (value === "1") finderOpen.value = true;
+  },
+);
+
+watch(finderOpen, (isOpen) => {
+  if (!isOpen && route.query.finder === "1") {
+    const query = { ...route.query };
+    delete query.finder;
+    void router.replace({ query });
+  }
+});
 </script>
 
 <template>
@@ -93,6 +110,9 @@ onMounted(() => {
         >
           Encuentra tu perfume ideal <span>✦</span>
         </button>
+        <NuxtLink class="button button--outline hero-cta" to="/guia-de-perfumes">
+          Aprende sobre perfumes <span>↗</span>
+        </NuxtLink>
         <div class="hero-shortcuts">
           <span class="hero-shortcuts-label">Explora por:</span>
           <div class="hero-chips">
@@ -110,19 +130,22 @@ onMounted(() => {
       </div>
     </div>
     <div class="hero-image">
+      <div class="hero-image-brand">
+        <img
+          src="/brand/alcera-logo.png"
+          alt="Alcéra Perfumes"
+          width="3200"
+          height="1200"
+        />
+      </div>
       <img
-        src="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1400&q=90"
-        :srcset="
-          imageSources(
-            'https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&q=85',
-          )
-        "
-        sizes="(max-width: 700px) 100vw, 50vw"
-        alt="Composición de frascos de perfume en tonos cálidos"
+        src="/images/hero-perfumes-editorial-v2.png"
+        sizes="(max-width: 700px) 100vw, (max-width: 1050px) 43vw, 40vw"
+        alt="Frascos de perfume sin marca sobre una base escultórica con cinta color vino"
         fetchpriority="high"
         decoding="async"
-        width="1000"
-        height="1100"
+        width="1122"
+        height="1402"
       />
     </div>
   </section>
@@ -234,6 +257,20 @@ onMounted(() => {
         <span class="family-link-label">Explorar notas ↗</span>
       </NuxtLink>
     </div>
+  </section>
+
+  <section class="shell guide-teaser">
+    <div>
+      <span class="eyebrow">GUÍA DE PERFUMES</span>
+      <h2>Aprende a leer lo que <em>hueles.</em></h2>
+      <p>
+        Familias olfativas, concentraciones, notas, proyección y duración: todo
+        lo que necesitas para elegir con confianza.
+      </p>
+    </div>
+    <NuxtLink class="button button--outline" to="/guia-de-perfumes"
+      >Conocer la guía <span>↗</span></NuxtLink
+    >
   </section>
 
   <section class="shell concierge-card">
