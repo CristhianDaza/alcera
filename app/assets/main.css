@@ -365,13 +365,13 @@ p {
 
 .hero {
     display: grid;
-    grid-template-columns: minmax(0, 1.22fr) minmax(300px, .78fr);
-    min-height: 560px;
+    grid-template-columns: minmax(0, 1.12fr) minmax(340px, .88fr);
+    min-height: 640px;
     background: var(--hero)
 }
 
 .hero-copy {
-    padding: 55px 52px 42px 53px
+    padding: 64px 52px 54px 62px
 }
 
 .eyebrow {
@@ -500,16 +500,49 @@ p {
 .hero-image {
     position: relative;
     overflow: hidden;
-    min-height: 560px;
-    background: var(--surface);
+    min-height: 640px;
+    margin: 24px 24px 24px 0;
+    background: #d9c2ad;
+    isolation: isolate;
 }
 
 .hero-image > img {
     height: 100%;
     width: 100%;
     position: absolute;
-    object-position: center;
-    filter: saturate(.82) contrast(.96);
+    object-fit: cover;
+    object-position: 61% center;
+    filter: saturate(.86) contrast(.96);
+    transform: scale(1.015);
+    transition: transform .7s ease;
+}
+
+.hero-image:hover > img {
+    transform: scale(1.045);
+}
+
+.hero-image::after {
+    content: "";
+    position: absolute;
+    inset: 14px;
+    border: 1px solid rgb(255 248 239 / .58);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.hero-image-label {
+    position: absolute;
+    z-index: 2;
+    top: 34px;
+    right: 34px;
+    display: grid;
+    gap: 3px;
+    color: #fffaf2;
+    font-family: "Libre Caslon Display", serif;
+    font-size: 15px;
+    line-height: 1.1;
+    text-align: right;
+    text-shadow: 0 1px 14px rgb(41 20 12 / .35);
 }
 
 .trust-banner {
@@ -3025,5 +3058,51 @@ main:focus {
         border-top: 1px solid var(--line);
         max-height: 60vh;
         overflow-y: auto;
+    }
+}
+
+/* Hero editorial: la fotografía queda como una pieza independiente, no como un fondo. */
+@media (min-width: 1051px) {
+    .hero-image {
+        min-height: 0;
+        height: auto;
+    }
+}
+
+@media (min-width: 1500px) {
+    .hero-image {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 1050px) and (min-width: 701px) {
+    .hero {
+        grid-template-columns: minmax(0, 1.14fr) minmax(280px, .86fr);
+    }
+
+    .hero-image {
+        margin: 20px 20px 20px 0;
+        min-height: 495px;
+    }
+}
+
+@media (max-width: 700px) {
+    .hero-image {
+        margin: 0 18px 18px;
+        min-height: 360px;
+    }
+
+    .hero-image > img {
+        object-position: 57% 72%;
+    }
+
+    .hero-image::after {
+        inset: 10px;
+    }
+
+    .hero-image-label {
+        top: 25px;
+        right: 25px;
+        font-size: 14px;
     }
 }

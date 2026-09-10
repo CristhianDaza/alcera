@@ -130,19 +130,18 @@ watch(finderOpen, (isOpen) => {
       </div>
     </div>
     <div class="hero-image">
+      <div class="hero-image-label" aria-hidden="true">
+        <span>Una firma</span>
+        <span>para recordar</span>
+      </div>
       <img
-        src="https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&w=1400&q=90"
-        :srcset="
-          imageSources(
-            'https://images.unsplash.com/photo-1615634260167-c8cdede054de?auto=format&fit=crop&q=85',
-          )
-        "
-        sizes="(max-width: 700px) 100vw, 50vw"
-        alt="Composición de frascos de perfume en tonos cálidos"
+        src="/images/hero-perfumes-editorial-v2.png"
+        sizes="(max-width: 700px) 100vw, (max-width: 1050px) 43vw, 40vw"
+        alt="Frascos de perfume sin marca sobre una base escultórica con cinta color vino"
         fetchpriority="high"
         decoding="async"
-        width="1000"
-        height="1100"
+        width="1122"
+        height="1402"
       />
     </div>
   </section>
