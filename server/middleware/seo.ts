@@ -11,6 +11,6 @@ export default defineEventHandler((event) => {
     /^\/(admin|carrito|api)(\/|$)/.test(path)
   )
     setHeader(event, "X-Robots-Tag", "noindex, nofollow");
-  else if (/^\/catalogo\/?$/.test(path) && url.search)
+  else if (/^\/perfumes\/?$/.test(path) && url.search)
     setHeader(event, "X-Robots-Tag", "noindex, follow");
 });

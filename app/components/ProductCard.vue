@@ -7,7 +7,6 @@ const props = defineProps<{
   index?: number;
   priority?: boolean;
 }>();
-const route = useRoute();
 const availableVariants = computed(() =>
   props.product.variants.filter((variant) => variant.available),
 );
@@ -23,10 +22,7 @@ const startingPrice = computed(() =>
 
 <template>
   <NuxtLink
-    :to="{
-      path: '/perfumes/' + product.slug,
-      query: route.path === '/catalogo' ? route.query : {},
-    }"
+    :to="`/perfumes/${product.slug}`"
     class="product-card"
   >
     <div class="product-photo">

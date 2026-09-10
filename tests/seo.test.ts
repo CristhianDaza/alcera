@@ -23,14 +23,14 @@ describe("Indexación y URLs públicas", () => {
       expect(canIndex(config)).toBe(false);
   });
   it("normaliza URLs y elimina parámetros de filtros", () => {
-    expect(canonicalUrl(live.siteUrl, "/catalogo/?q=rosa#top")).toBe(
-      "https://alceraperfumes.com/catalogo",
+    expect(canonicalUrl(live.siteUrl, "/perfumes/?q=rosa#top")).toBe(
+      "https://alceraperfumes.com/perfumes",
     );
     expect(canonicalUrl(live.siteUrl, "/")).toBe("https://alceraperfumes.com/");
-    expect(canonicalUrl(live.siteUrl, "catalogo/")).toBe(
-      "https://alceraperfumes.com/catalogo",
+    expect(canonicalUrl(live.siteUrl, "perfumes/")).toBe(
+      "https://alceraperfumes.com/perfumes",
     );
-    expect(() => siteBase("https://alceraperfumes.com/catalogo")).toThrow();
+    expect(() => siteBase("https://alceraperfumes.com/perfumes")).toThrow();
   });
   it("produce descripciones sociales compactas y legibles", () => {
     const description = `  ${"fragancia ".repeat(30)} especial  `;

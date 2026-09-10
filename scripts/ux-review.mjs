@@ -26,7 +26,7 @@ try {
       `home overflow ${width}`,
     );
     await page.screenshot({ path: `${out}/home-${width}.png`, fullPage: true });
-    await page.goto(base + "/catalogo?category=Hombre");
+    await page.goto(base + "/perfumes?category=Hombre");
     await expect(
       page.getByRole("combobox", { name: "Categoría", exact: true }),
     ).toHaveValue("Hombre");

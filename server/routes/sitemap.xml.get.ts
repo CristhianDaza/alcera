@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   const paths = canIndex(config)
     ? [
         "/",
-        "/catalogo",
+        "/perfumes",
         ...(await products())
           .filter((p) => p.status === "published")
           .map((p) => `/perfumes/${p.slug}`),

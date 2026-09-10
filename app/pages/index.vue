@@ -100,7 +100,7 @@ watch(finderOpen, (isOpen) => {
         Descubre tu aroma personal con asesoría experta y pedido directo.
       </p>
       <div class="hero-actions">
-        <NuxtLink class="button hero-cta" to="/catalogo">
+        <NuxtLink class="button hero-cta" to="/perfumes">
           Explorar la colección <span>↗</span>
         </NuxtLink>
         <button
@@ -116,13 +116,13 @@ watch(finderOpen, (isOpen) => {
         <div class="hero-shortcuts">
           <span class="hero-shortcuts-label">Explora por:</span>
           <div class="hero-chips">
-            <NuxtLink to="/catalogo?category=Mujer" class="hero-chip"
+            <NuxtLink to="/perfumes?category=Mujer" class="hero-chip"
               >Mujer</NuxtLink
             >
-            <NuxtLink to="/catalogo?category=Hombre" class="hero-chip"
+            <NuxtLink to="/perfumes?category=Hombre" class="hero-chip"
               >Hombre</NuxtLink
             >
-            <NuxtLink to="/catalogo?category=Unisex" class="hero-chip"
+            <NuxtLink to="/perfumes?category=Unisex" class="hero-chip"
               >Unisex</NuxtLink
             >
           </div>
@@ -206,7 +206,7 @@ watch(finderOpen, (isOpen) => {
         <span class="eyebrow">SELECCIÓN DESTACADA</span>
         <h2>Fragancias que <em>dejan huella.</em></h2>
       </div>
-      <NuxtLink class="text-link" to="/catalogo"
+      <NuxtLink class="text-link" to="/perfumes"
         >Ver toda la colección ↗</NuxtLink
       >
     </div>
@@ -245,7 +245,7 @@ watch(finderOpen, (isOpen) => {
       <NuxtLink
         v-for="item in familyList"
         :key="item.name"
-        :to="`/catalogo?family=${item.name}`"
+        :to="`/perfumes?family=${item.name}`"
         class="family-card"
       >
         <div class="family-card-head">
@@ -282,7 +282,7 @@ watch(finderOpen, (isOpen) => {
         asesoramos en tiempo real y coordinamos tu entrega fácilmente.
       </p>
       <div class="concierge-actions">
-        <NuxtLink class="button" to="/catalogo"
+        <NuxtLink class="button" to="/perfumes"
           >Ver catálogo completo <span>↗</span></NuxtLink
         >
         <a

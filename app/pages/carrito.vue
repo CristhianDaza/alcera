@@ -122,7 +122,7 @@ async function checkout() {
     <ClientOnly
       ><div v-if="lines.length" class="cart-layout">
         <div>
-          <NuxtLink class="text-link" to="/catalogo"
+          <NuxtLink class="text-link" to="/perfumes"
             >← Seguir explorando</NuxtLink
           >
           <article
@@ -235,7 +235,7 @@ async function checkout() {
       <div v-else class="empty">
         <h2>Tu próxima esencia te espera.</h2>
         <p>Aún no has añadido perfumes a tu bolsa.</p>
-        <NuxtLink class="button" to="/catalogo"
+        <NuxtLink class="button" to="/perfumes"
           >Explorar la colección ↗</NuxtLink
         >
       </div>
