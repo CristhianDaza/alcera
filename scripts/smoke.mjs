@@ -5,7 +5,7 @@ mkdirSync("test-results", { recursive: true });
 const base = process.env.BASE_URL || "http://127.0.0.1:3000";
 for (const path of [
   "/",
-  "/catalogo",
+  "/perfumes",
   "/perfumes/bruma-dorada",
   "/sitemap.xml",
   "/robots.txt",
@@ -56,7 +56,7 @@ try {
       path: `test-results/home-${viewport.width}.png`,
       fullPage: true,
     });
-    await page.goto(base + "/catalogo");
+    await page.goto(base + "/perfumes");
     await page.waitForLoadState("networkidle");
     await page.getByPlaceholder("Nombre o marca…").fill("Bruma");
     await expect(page.locator(".product-card")).toHaveCount(1);

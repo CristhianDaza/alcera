@@ -232,18 +232,18 @@ useHead(() => ({
         "@graph": [
           {
             "@type": "CollectionPage",
-            "@id": base + "/catalogo#page",
-            url: base + "/catalogo",
+            "@id": base + "/perfumes#page",
+            url: base + "/perfumes",
             name: "Colección de perfumes",
             description:
               "Perfumes para mujer, hombre y unisex disponibles en Colombia.",
             inLanguage: "es-CO",
             isPartOf: { "@id": base + "/#website" },
-            mainEntity: { "@id": base + "/catalogo#products" },
+            mainEntity: { "@id": base + "/perfumes#products" },
           },
           {
             "@type": "ItemList",
-            "@id": base + "/catalogo#products",
+            "@id": base + "/perfumes#products",
             numberOfItems: filtered.value.length,
             itemListElement: paginatedProducts.value.map((product, index) => ({
               "@type": "ListItem",
@@ -280,8 +280,8 @@ useHead(() => ({
               {
                 "@type": "ListItem",
                 position: 2,
-                name: "Catálogo",
-                item: base + "/catalogo",
+                name: "Perfumes",
+                item: base + "/perfumes",
               },
             ],
           },

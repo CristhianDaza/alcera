@@ -160,7 +160,7 @@ useHead({
             "@type": "ListItem",
             position: 2,
             name: "Perfumes",
-            item: base + "/catalogo",
+            item: base + "/perfumes",
           },
           {
             "@type": "ListItem",
@@ -179,10 +179,10 @@ useHead({
   <section class="shell section">
     <nav class="breadcrumbs" aria-label="Ruta de navegación">
       <NuxtLink to="/">Inicio</NuxtLink> /
-      <NuxtLink to="/catalogo">Perfumes</NuxtLink> /
+      <NuxtLink to="/perfumes">Perfumes</NuxtLink> /
       <span aria-current="page">{{ p.name }}</span>
     </nav>
-    <NuxtLink class="text-link" :to="{ path: '/catalogo', query: route.query }"
+    <NuxtLink class="text-link" to="/perfumes"
       >← Volver a la colección</NuxtLink
     >
     <article class="detail">
@@ -223,9 +223,27 @@ useHead({
         <span class="eyebrow">{{ p.brand }}</span>
         <h1>{{ p.name }}</h1>
         <div class="pills">
-          <span>{{ p.category }}</span>
-          <span v-for="family in p.family" :key="family">{{ family }}</span>
-          <span v-if="p.concentration">{{ p.concentration }}</span>
+          <NuxtLink
+            :to="{ path: '/perfumes', query: { category: p.category } }"
+          >
+            {{ p.category }}
+          </NuxtLink>
+          <NuxtLink
+            v-for="family in p.family"
+            :key="family"
+            :to="{ path: '/perfumes', query: { family } }"
+          >
+            {{ family }}
+          </NuxtLink>
+          <NuxtLink
+            v-if="p.concentration"
+            :to="{
+              path: '/perfumes',
+              query: { concentration: p.concentration },
+            }"
+          >
+            {{ p.concentration }}
+          </NuxtLink>
         </div>
         <p class="description">{{ p.description }}</p>
 
@@ -337,7 +355,7 @@ useHead({
           <span class="eyebrow">SIGUE DESCUBRIENDO</span>
           <h2 id="related-title">También te pueden <em>interesar.</em></h2>
         </div>
-        <NuxtLink class="text-link" to="/catalogo">Ver colección ↗</NuxtLink>
+        <NuxtLink class="text-link" to="/perfumes">Ver colección ↗</NuxtLink>
       </div>
       <div class="product-grid">
         <ProductCard

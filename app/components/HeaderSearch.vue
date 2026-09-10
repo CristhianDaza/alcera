@@ -51,7 +51,7 @@ function close() {
 function submit() {
   const q = query.value.trim();
   if (!q) return;
-  router.push({ path: "/catalogo", query: { q } });
+  router.push({ path: "/perfumes", query: { q } });
   close();
 }
 
@@ -92,7 +92,7 @@ const fmt = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
 });
 const catalogSearch = computed(() => ({
-  path: "/catalogo",
+  path: "/perfumes",
   query: { q: query.value.trim() },
 }));
 </script>

@@ -16,7 +16,7 @@ defineProps<{ error: { statusCode: number; statusMessage?: string } }>();
       }}
     </h1>
     <p>{{ error.statusMessage }}</p>
-    <button class="button" @click="clearError({ redirect: '/catalogo' })">
+    <button class="button" @click="clearError({ redirect: '/perfumes' })">
       Volver a la colección ↗
     </button>
   </div>

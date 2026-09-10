@@ -21,6 +21,11 @@ const families = [
       "Cedro, sándalo, vetiver y pachulí. Aportan calidez, profundidad y una sensación elegante.",
   },
   {
+    name: "Cuero",
+    description:
+      "Acordes de cuero, gamuza, abedul o tabaco. Aportan una sensación seca, intensa y con carácter.",
+  },
+  {
     name: "Cítrica",
     description:
       "Bergamota, limón, mandarina y toronja. Fresca, chispeante y especialmente fácil de llevar de día.",
@@ -159,7 +164,7 @@ useHead(() => ({
         Una guía sencilla para reconocer qué te gusta, leer una pirámide
         olfativa y elegir una fragancia con más seguridad.
       </p>
-      <NuxtLink class="button" to="/catalogo"
+      <NuxtLink class="button" to="/perfumes"
         >Explorar perfumes <span>↗</span></NuxtLink
       >
     </header>
@@ -178,7 +183,7 @@ useHead(() => ({
           v-for="family in families"
           :key="family.name"
           class="guide-family"
-          :to="`/catalogo?family=${family.name}`"
+          :to="`/perfumes?family=${family.name}`"
         >
           <h3>{{ family.name }}</h3>
           <p>{{ family.description }}</p>
@@ -329,7 +334,7 @@ useHead(() => ({
         ocasión.
       </p>
       <div>
-        <NuxtLink class="button" to="/catalogo"
+        <NuxtLink class="button" to="/perfumes"
           >Ver la colección <span>↗</span></NuxtLink
         ><NuxtLink class="button button--outline" to="/?finder=1"
           >Usar el buscador de perfume ✦</NuxtLink

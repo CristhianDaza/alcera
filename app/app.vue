@@ -12,7 +12,7 @@ useSeoMeta({
   robots: () =>
     !canIndex(config) || /^\/(admin|carrito)(\/|$)/.test(route.path)
       ? "noindex, nofollow"
-      : route.path === "/catalogo" && Object.keys(route.query).length
+      : route.path === "/perfumes" && Object.keys(route.query).length
         ? "noindex, follow"
         : "index, follow, max-image-preview:large",
 });
@@ -42,7 +42,7 @@ useHead(() => ({
               "@type": "SearchAction",
               target: {
                 "@type": "EntryPoint",
-                urlTemplate: base + "/catalogo?q={search_term_string}",
+                urlTemplate: base + "/perfumes?q={search_term_string}",
               },
               "query-input": "required name=search_term_string",
             },
@@ -53,13 +53,13 @@ useHead(() => ({
   ],
 }));
 const navigation = [
-  { label: "Colección", category: "", to: "/catalogo" },
-  { label: "Mujer", category: "Mujer", to: "/catalogo?category=Mujer" },
-  { label: "Hombre", category: "Hombre", to: "/catalogo?category=Hombre" },
-  { label: "Unisex", category: "Unisex", to: "/catalogo?category=Unisex" },
+  { label: "Colección", category: "", to: "/perfumes" },
+  { label: "Mujer", category: "Mujer", to: "/perfumes?category=Mujer" },
+  { label: "Hombre", category: "Hombre", to: "/perfumes?category=Hombre" },
+  { label: "Unisex", category: "Unisex", to: "/perfumes?category=Unisex" },
 ];
 const activeCategory = computed(() =>
-  /^\/catalogo\/?$/.test(route.path) ? route.query.category || "" : null,
+  /^\/perfumes\/?$/.test(route.path) ? route.query.category || "" : null,
 );
 </script>
 <template>
@@ -136,8 +136,8 @@ const activeCategory = computed(() =>
         </div>
         <div>
           <h2>Explora</h2>
-          <NuxtLink to="/catalogo">Todos los perfumes</NuxtLink
-          ><NuxtLink to="/catalogo?category=Unisex"
+          <NuxtLink to="/perfumes">Todos los perfumes</NuxtLink
+          ><NuxtLink to="/perfumes?category=Unisex"
             >La colección unisex</NuxtLink
           >
           <NuxtLink to="/guia-de-perfumes">Guía de perfumes</NuxtLink>
