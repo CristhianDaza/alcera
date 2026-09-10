@@ -4,6 +4,8 @@ import type { Product } from "#shared/types";
 const catalog = useCatalogStore();
 await catalog.ensureLoaded();
 const { products, error, refresh } = catalog;
+const route = useRoute();
+const router = useRouter();
 const selection = computed(() =>
   [...(products.value ?? [])]
     .sort((a, b) => Number(b.featured) - Number(a.featured))
@@ -45,7 +47,7 @@ const familyList = [
   },
 ];
 
-const finderOpen = ref(false);
+const finderOpen = ref(route.query.finder === "1");
 const savedFinderIds = ref<string[]>([]);
 const savedFinderProducts = computed(() =>
   savedFinderIds.value
@@ -71,6 +73,21 @@ onMounted(() => {
     localStorage.removeItem("alcera-perfume-finder");
   }
 });
+
+watch(
+  () => route.query.finder,
+  (value) => {
+    if (value === "1") finderOpen.value = true;
+  },
+);
+
+watch(finderOpen, (isOpen) => {
+  if (!isOpen && route.query.finder === "1") {
+    const query = { ...route.query };
+    delete query.finder;
+    void router.replace({ query });
+  }
+});
 </script>
 
 <template>
@@ -93,6 +110,9 @@ onMounted(() => {
         >
           Encuentra tu perfume ideal <span>✦</span>
         </button>
+        <NuxtLink class="button button--outline hero-cta" to="/guia-de-perfumes">
+          Aprende sobre perfumes <span>↗</span>
+        </NuxtLink>
         <div class="hero-shortcuts">
           <span class="hero-shortcuts-label">Explora por:</span>
           <div class="hero-chips">
@@ -234,6 +254,20 @@ onMounted(() => {
         <span class="family-link-label">Explorar notas ↗</span>
       </NuxtLink>
     </div>
+  </section>
+
+  <section class="shell guide-teaser">
+    <div>
+      <span class="eyebrow">GUÍA DE PERFUMES</span>
+      <h2>Aprende a leer lo que <em>hueles.</em></h2>
+      <p>
+        Familias olfativas, concentraciones, notas, proyección y duración: todo
+        lo que necesitas para elegir con confianza.
+      </p>
+    </div>
+    <NuxtLink class="button button--outline" to="/guia-de-perfumes"
+      >Conocer la guía <span>↗</span></NuxtLink
+    >
   </section>
 
   <section class="shell concierge-card">
