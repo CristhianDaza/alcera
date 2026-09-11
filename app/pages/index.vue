@@ -2,8 +2,16 @@
 import type { Product } from "#shared/types";
 
 const catalog = useCatalogStore();
-await catalog.ensureLoaded();
-const { products, error, refresh } = catalog;
+const {
+  data: featuredProducts,
+  error,
+  refresh,
+} = await useFetch<Product[]>("/api/products/featured");
+const products = computed(() =>
+  catalog.loaded.value
+    ? catalog.products.value
+    : (featuredProducts.value ?? []),
+);
 const route = useRoute();
 const router = useRouter();
 const selection = computed(() =>
@@ -15,6 +23,10 @@ const store = useStore();
 usePageSeo(
   `Perfumes en Colombia · ${store.value.name}`,
   "Descubre fragancias florales, amaderadas y cítricas. Encuentra un perfume que deje huella y consulta tu pedido por WhatsApp en Colombia.",
+  "/images/hero-perfumes-editorial-v2.png",
+  {
+    imageAlt: "Selección de perfumes de ALCÉRA sobre una composición editorial",
+  },
 );
 
 const whatsappUrl = computed(() => {
@@ -69,6 +81,7 @@ onMounted(() => {
       stored.productIds.every((id) => typeof id === "string")
     )
       savedFinderIds.value = stored.productIds;
+    if (savedFinderIds.value.length) void catalog.ensureLoaded();
   } catch {
     localStorage.removeItem("alcera-perfume-finder");
   }
@@ -82,6 +95,7 @@ watch(
 );
 
 watch(finderOpen, (isOpen) => {
+  if (isOpen) void catalog.ensureLoaded();
   if (!isOpen && route.query.finder === "1") {
     const query = { ...route.query };
     delete query.finder;
@@ -110,7 +124,10 @@ watch(finderOpen, (isOpen) => {
         >
           Encuentra tu perfume ideal <span>✦</span>
         </button>
-        <NuxtLink class="button button--outline hero-cta" to="/guia-de-perfumes">
+        <NuxtLink
+          class="button button--outline hero-cta"
+          to="/guia-de-perfumes"
+        >
           Aprende sobre perfumes <span>↗</span>
         </NuxtLink>
         <div class="hero-shortcuts">

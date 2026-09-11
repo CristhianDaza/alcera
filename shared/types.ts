@@ -19,6 +19,9 @@ export interface Product {
   slug: string;
   name: string;
   brand: string;
+  sku?: string;
+  gtin?: string;
+  mpn?: string;
   description: string;
   category: string;
   family?: string[];

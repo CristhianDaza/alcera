@@ -13,6 +13,9 @@ type EditableProduct = Omit<
   | "projection"
   | "concentration"
   | "family"
+  | "sku"
+  | "gtin"
+  | "mpn"
 > & {
   images: EditableImage[];
   olfactoryPyramid: OlfactoryPyramid;
@@ -22,6 +25,9 @@ type EditableProduct = Omit<
   projection: string;
   concentration: string;
   family: string[];
+  sku: string;
+  gtin: string;
+  mpn: string;
 };
 const config = useRuntimeConfig(),
   demo = String(config.public.demo) === "true";
@@ -273,12 +279,18 @@ function edit(p?: Product) {
         projection: p.projection ?? "",
         concentration: p.concentration ?? "",
         family: p.family ?? [],
+        sku: p.sku ?? "",
+        gtin: p.gtin ?? "",
+        mpn: p.mpn ?? "",
       }
     : {
         id: "",
         slug: "",
         name: "",
         brand: "",
+        sku: "",
+        gtin: "",
+        mpn: "",
         description: "",
         category: "Unisex",
         family: [],
@@ -378,6 +390,9 @@ async function save() {
     editor.value.duration = editor.value.duration.trim();
     editor.value.projection = editor.value.projection.trim();
     editor.value.concentration = editor.value.concentration.trim();
+    editor.value.sku = editor.value.sku.trim();
+    editor.value.gtin = editor.value.gtin.trim();
+    editor.value.mpn = editor.value.mpn.trim();
     editor.value.family = editor.value.family
       .map((item) => item.trim())
       .filter(Boolean);
@@ -405,6 +420,9 @@ async function save() {
     if (!product.projection) Reflect.deleteProperty(product, "projection");
     if (!product.concentration)
       Reflect.deleteProperty(product, "concentration");
+    if (!product.sku) Reflect.deleteProperty(product, "sku");
+    if (!product.gtin) Reflect.deleteProperty(product, "gtin");
+    if (!product.mpn) Reflect.deleteProperty(product, "mpn");
     if (!product.family.length) Reflect.deleteProperty(product, "family");
     form.append("product", JSON.stringify(product));
     for (const image of editor.value.images)
@@ -707,7 +725,24 @@ function move(index: number, direction: number) {
               <option>Hombre</option>
               <option>Unisex</option>
             </select></label
-          >
+          ><label
+            >SKU comercial (opcional)<input
+              v-model="editor.sku"
+              maxlength="100"
+              pattern="[!-~]+"
+              placeholder="Referencia sin espacios" /></label
+          ><label
+            >GTIN (opcional)<input
+              v-model="editor.gtin"
+              inputmode="numeric"
+              pattern="(?:[0-9]{8}|[0-9]{12}|[0-9]{13}|[0-9]{14})"
+              maxlength="14"
+              placeholder="8, 12, 13 o 14 dígitos" /></label
+          ><label
+            >MPN del fabricante (opcional)<input
+              v-model="editor.mpn"
+              maxlength="200"
+          /></label>
           <fieldset class="family-options">
             <legend>Familias olfativas (opcional)</legend>
             <label

@@ -7,6 +7,8 @@ const base = siteBase(useRuntimeConfig().public.siteUrl);
 usePageSeo(
   `Guía de perfumes y familias olfativas · ${store.value.name}`,
   "Aprende a elegir un perfume: familias olfativas, concentraciones, notas, proyección y duración.",
+  "/images/hero-perfumes-editorial-v2.png",
+  { imageAlt: "Guía para elegir perfumes y familias olfativas" },
 );
 
 const families = [

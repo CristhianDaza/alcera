@@ -1725,7 +1725,8 @@ select {
     padding: 4px 0;
 }
 
-.pagination-btn:disabled {
+.pagination-btn:disabled,
+.pagination-btn.is-disabled {
     opacity: .35;
     cursor: not-allowed;
     border-bottom-color: transparent;

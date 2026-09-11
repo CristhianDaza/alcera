@@ -180,16 +180,6 @@ const page = computed({
   },
 });
 const pageSize = 12;
-const productPrice = (product: NonNullable<typeof data.value>[number]) => {
-  const availablePrices = product.variants
-    .filter((item) => item.available)
-    .map((item) => item.price);
-  return Math.min(
-    ...(availablePrices.length
-      ? availablePrices
-      : product.variants.map((item) => item.price)),
-  );
-};
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(filtered.value.length / pageSize)),
 );
@@ -212,6 +202,12 @@ const displayedPages = computed(() => {
   pages.push(total);
   return pages;
 });
+function pageLocation(pageNumber: number) {
+  const query = { ...route.query };
+  if (pageNumber > 1) query.page = String(pageNumber);
+  else delete query.page;
+  return { path: "/perfumes", query };
+}
 watch(totalPages, (total) => {
   if (page.value > total && total > 0) {
     page.value = total;
@@ -220,6 +216,8 @@ watch(totalPages, (total) => {
 usePageSeo(
   `Perfumes para mujer, hombre y unisex · ${useStore().value.name}`,
   "Explora perfumes por marca, familia olfativa y presentación. Precios en COP y pedidos por WhatsApp.",
+  "/images/hero-perfumes-editorial-v2.png",
+  { imageAlt: "Colección de perfumes disponibles en Colombia" },
 );
 const base = siteBase(useRuntimeConfig().public.siteUrl);
 useHead(() => ({
@@ -248,24 +246,9 @@ useHead(() => ({
             itemListElement: paginatedProducts.value.map((product, index) => ({
               "@type": "ListItem",
               position: (page.value - 1) * pageSize + index + 1,
-              item: {
-                "@type": "Product",
-                url: `${base}/perfumes/${product.slug}`,
-                name: `${product.name} de ${product.brand}`,
-                image: product.images[0]?.url,
-                offers: {
-                  "@type": "Offer",
-                  url: `${base}/perfumes/${product.slug}`,
-                  seller: { "@id": base + "/#organization" },
-                  priceCurrency: "COP",
-                  price: productPrice(product),
-                  availability:
-                    "https://schema.org/" +
-                    (product.variants.some((item) => item.available)
-                      ? "InStock"
-                      : "OutOfStock"),
-                },
-              },
+              name: `${product.name} de ${product.brand}`,
+              url: `${base}/perfumes/${product.slug}`,
+              image: product.images[0]?.url,
             })),
           },
           {
@@ -296,7 +279,7 @@ useHead(() => ({
   <section class="shell section catalog">
     <nav class="breadcrumbs" aria-label="Ruta de navegación">
       <NuxtLink to="/">Inicio</NuxtLink> /
-      <span aria-current="page">Catálogo</span>
+      <span aria-current="page">Perfumes</span>
     </nav>
     <div class="page-intro">
       <span class="eyebrow">ENCUENTRA TU PRÓXIMA HISTORIA</span>
@@ -441,39 +424,42 @@ useHead(() => ({
           de {{ filtered.length }} perfumes
         </span>
         <div class="pagination-controls">
-          <button
-            type="button"
+          <NuxtLink
+            v-if="page > 1"
             class="text-link pagination-btn"
-            :disabled="page <= 1"
-            @click="page--"
+            :to="pageLocation(page - 1)"
           >
             ← Anterior
-          </button>
+          </NuxtLink>
+          <span v-else class="text-link pagination-btn is-disabled">
+            ← Anterior
+          </span>
           <div class="pagination-pages">
             <template v-for="(p, idx) in displayedPages" :key="idx">
               <span v-if="typeof p === 'string'" class="pagination-ellipsis">{{
                 p
               }}</span>
-              <button
+              <NuxtLink
                 v-else
-                type="button"
                 class="pagination-page-btn"
                 :class="{ active: p === page }"
                 :aria-current="p === page ? 'page' : undefined"
-                @click="page = p"
+                :to="pageLocation(p)"
               >
                 {{ p }}
-              </button>
+              </NuxtLink>
             </template>
           </div>
-          <button
-            type="button"
+          <NuxtLink
+            v-if="page < totalPages"
             class="text-link pagination-btn"
-            :disabled="page >= totalPages"
-            @click="page++"
+            :to="pageLocation(page + 1)"
           >
             Siguiente →
-          </button>
+          </NuxtLink>
+          <span v-else class="text-link pagination-btn is-disabled">
+            Siguiente →
+          </span>
         </div>
       </nav>
     </template>

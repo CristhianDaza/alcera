@@ -24,6 +24,7 @@ export default defineEventHandler(async (event) => {
     ? [
         "/",
         "/perfumes",
+        "/guia-de-perfumes",
         ...(await products())
           .filter((p) => p.status === "published")
           .map((p) => `/perfumes/${p.slug}`),

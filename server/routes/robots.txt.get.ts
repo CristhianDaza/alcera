@@ -7,8 +7,6 @@ export default defineEventHandler((event) => {
   return [
     "User-agent: *",
     "Allow: /",
-    "Disallow: /admin",
-    "Disallow: /carrito",
     "Disallow: /api/",
     `Sitemap: ${siteBase(config.siteUrl)}/sitemap.xml`,
     "",
