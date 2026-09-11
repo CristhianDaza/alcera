@@ -4,7 +4,7 @@ const product = demoProducts[0]!,
   variant = product.variants[0]!;
 const input = {
   requestId: "5a6ebbec-338f-46cb-9262-49304c281352",
-  customer: { name: "Cliente", phone: "573001234567", city: "Bogotá" },
+  customer: { name: "Cliente", phone: "3001234567", city: "Bogotá" },
   contactConsent: true,
   items: [
     {

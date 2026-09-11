@@ -38,7 +38,8 @@ export const orderRequestSchema = z.object({
     phone: z
       .string()
       .trim()
-      .regex(/^[1-9]\d{7,14}$/, "Incluye el código de país, sin espacios ni +"),
+      .regex(/^3\d{9}$/, "Ingresa los 10 dígitos de tu celular colombiano.")
+      .transform((phone) => `57${phone}`),
     city: z.string().trim().min(2).max(120),
   }),
   contactConsent: z.literal(true),

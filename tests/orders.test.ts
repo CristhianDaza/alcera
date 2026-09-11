@@ -13,7 +13,7 @@ const input = {
   requestId: "5a6ebbec-338f-46cb-9262-49304c281352",
   customer: {
     name: "Cliente de prueba",
-    phone: "573001234567",
+    phone: "3001234567",
     city: "Medellín",
   },
   contactConsent: true as const,
@@ -93,6 +93,7 @@ describe("Solicitudes de pedido", () => {
   });
   it("rechaza datos incompletos, cantidades inválidas, duplicados y ausencia de autorización", () => {
     expect(orderRequestSchema.safeParse(input).success).toBe(true);
+    expect(orderRequestSchema.parse(input).customer.phone).toBe("573001234567");
     for (const change of [
       { contactConsent: false },
       { customer: { ...input.customer, phone: "+57 abc" } },

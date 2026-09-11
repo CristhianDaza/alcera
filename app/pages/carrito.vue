@@ -185,15 +185,16 @@ async function checkout() {
                 required
             /></label>
             <label
-              >WhatsApp con código de país<input
+              >Número de WhatsApp<input
                 v-model="customer.phone"
                 type="tel"
                 autocomplete="tel"
-                placeholder="573001234567"
-                pattern="[1-9][0-9]{7,14}"
-                maxlength="15"
+                inputmode="numeric"
+                placeholder="3001234567"
+                pattern="3[0-9]{9}"
+                maxlength="10"
                 required
-              /><small>Sin + ni espacios.</small></label
+              /><small>Ingresa los 10 dígitos de tu celular.</small></label
             >
             <label
               >Ciudad y departamento<input
