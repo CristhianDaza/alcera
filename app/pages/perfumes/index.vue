@@ -173,10 +173,6 @@ const page = computed({
   },
   set: (value: number) => {
     updateQuery({ page: value > 1 ? String(value) : "" }, true);
-    if (import.meta.client) {
-      const el = document.querySelector(".catalog");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    }
   },
 });
 const pageSize = 12;
@@ -207,6 +203,10 @@ function pageLocation(pageNumber: number) {
   if (pageNumber > 1) query.page = String(pageNumber);
   else delete query.page;
   return { path: "/perfumes", query };
+}
+const productGrid = ref<HTMLElement | null>(null);
+function scrollToProducts() {
+  productGrid.value?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 watch(totalPages, (total) => {
   if (page.value > total && total > 0) {
@@ -403,7 +403,7 @@ useHead(() => ({
       </button>
     </div>
     <template v-else>
-      <div class="product-grid">
+      <div ref="productGrid" class="product-grid">
         <ProductCard
           v-for="(product, index) in paginatedProducts"
           :key="product.id"
@@ -428,6 +428,7 @@ useHead(() => ({
             v-if="page > 1"
             class="text-link pagination-btn"
             :to="pageLocation(page - 1)"
+            @click="scrollToProducts"
           >
             ← Anterior
           </NuxtLink>
@@ -445,6 +446,7 @@ useHead(() => ({
                 :class="{ active: p === page }"
                 :aria-current="p === page ? 'page' : undefined"
                 :to="pageLocation(p)"
+                @click="scrollToProducts"
               >
                 {{ p }}
               </NuxtLink>
@@ -454,6 +456,7 @@ useHead(() => ({
             v-if="page < totalPages"
             class="text-link pagination-btn"
             :to="pageLocation(page + 1)"
+            @click="scrollToProducts"
           >
             Siguiente →
           </NuxtLink>
