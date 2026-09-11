@@ -12,7 +12,7 @@ useSeoMeta({
   robots: () =>
     !canIndex(config) || /^\/(admin|carrito)(\/|$)/.test(route.path)
       ? "noindex, nofollow"
-      : route.path === "/perfumes" && Object.keys(route.query).length
+      : /^\/perfumes\/?$/.test(route.path) && Object.keys(route.query).length
         ? "noindex, follow"
         : "index, follow, max-image-preview:large",
 });
@@ -38,14 +38,6 @@ useHead(() => ({
             url: base + "/",
             inLanguage: "es-CO",
             publisher: { "@id": base + "/#organization" },
-            potentialAction: {
-              "@type": "SearchAction",
-              target: {
-                "@type": "EntryPoint",
-                urlTemplate: base + "/perfumes?q={search_term_string}",
-              },
-              "query-input": "required name=search_term_string",
-            },
           },
         ],
       }),

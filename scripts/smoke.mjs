@@ -69,7 +69,7 @@ try {
     await page.locator(".cart-row").waitFor();
     assert.equal(await page.locator(".cart-row").count(), 1);
     await page.getByLabel("Nombre", { exact: true }).fill("Cliente de prueba");
-    await page.getByLabel("WhatsApp con código de país").fill("573001234567");
+    await page.getByLabel("Número de WhatsApp").fill("3001234567");
     await page.getByLabel("Ciudad y departamento").fill("Medellín, Antioquia");
     await page.getByRole("checkbox", { name: /Autorizo/ }).check();
     await page.getByRole("button", { name: "Registrar solicitud" }).click();

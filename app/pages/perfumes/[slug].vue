@@ -46,25 +46,35 @@ usePageSeo(
   p.name + " de " + p.brand + " · " + useStore().value.name,
   p.aromaDescription || p.description,
   p.images[0]?.url,
-  { imageAlt: p.images[0]?.alt || `${p.name} de ${p.brand}` },
+  {
+    imageAlt: p.images[0]?.alt || `${p.name} de ${p.brand}`,
+  },
 );
 
-function colombiaToday() {
+function colombiaNow() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Bogota",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
   }).formatToParts();
   const value = (type: string) =>
     Number(parts.find((part) => part.type === type)?.value);
-  return new Date(Date.UTC(value("year"), value("month") - 1, value("day")));
+  return {
+    date: new Date(Date.UTC(value("year"), value("month") - 1, value("day"))),
+    hour: value("hour"),
+  };
 }
 
-function nextBusinessDay(date: Date) {
+function addBusinessDays(date: Date, days: number) {
   const next = new Date(date);
-  do next.setUTCDate(next.getUTCDate() + 1);
-  while (next.getUTCDay() === 0 || next.getUTCDay() === 6);
+  let remaining = days;
+  while (remaining > 0) {
+    next.setUTCDate(next.getUTCDate() + 1);
+    if (next.getUTCDay() !== 0 && next.getUTCDay() !== 6) remaining--;
+  }
   return next;
 }
 
@@ -73,13 +83,26 @@ const deliveryFormatter = new Intl.DateTimeFormat("es-CO", {
   day: "numeric",
   month: "long",
 });
-const firstDeliveryDate = nextBusinessDay(colombiaToday());
-const secondDeliveryDate = nextBusinessDay(firstDeliveryDate);
-const medellinDelivery = deliveryFormatter.format(firstDeliveryDate);
-const colombiaDeliveryStart = deliveryFormatter.format(firstDeliveryDate);
-const colombiaDeliveryEnd = deliveryFormatter.format(secondDeliveryDate);
+const current = colombiaNow();
+const isWeekday =
+  current.date.getUTCDay() >= 1 && current.date.getUTCDay() <= 5;
+const dispatchDate =
+  isWeekday && current.hour < 16
+    ? current.date
+    : addBusinessDays(current.date, 1);
+const medellinDelivery = deliveryFormatter.format(
+  addBusinessDays(dispatchDate, 1),
+);
+const colombiaDeliveryStart = deliveryFormatter.format(
+  addBusinessDays(dispatchDate, 3),
+);
+const colombiaDeliveryEnd = deliveryFormatter.format(
+  addBusinessDays(dispatchDate, 4),
+);
 
 const base = siteBase(useRuntimeConfig().public.siteUrl);
+const productUrl = base + "/perfumes/" + p.slug;
+const gtinProperty = p.gtin ? `gtin${p.gtin.length}` : "";
 useHead({
   script: [
     {
@@ -88,10 +111,12 @@ useHead({
       innerHTML: serializeSchema({
         "@context": "https://schema.org",
         "@type": "Product",
-        "@id": base + "/perfumes/" + p.slug + "#product",
-        url: base + "/perfumes/" + p.slug,
-        mainEntityOfPage: base + "/perfumes/" + p.slug,
-        sku: p.id,
+        "@id": productUrl + "#product",
+        url: productUrl,
+        mainEntityOfPage: productUrl,
+        sku: p.sku || p.id,
+        ...(p.mpn ? { mpn: p.mpn } : {}),
+        ...(gtinProperty ? { [gtinProperty]: p.gtin } : {}),
         category: p.category,
         name: p.name,
         description: p.description,
@@ -130,12 +155,12 @@ useHead({
           "@type": "Offer",
           name: p.name + " " + item.size,
           seller: { "@id": base + "/#organization" },
-          sku: p.id + "-" + item.id,
+          sku: (p.sku || p.id) + "-" + item.id,
           price: item.price,
           priceCurrency: "COP",
           availability:
             "https://schema.org/" + (item.available ? "InStock" : "OutOfStock"),
-          url: base + "/perfumes/" + p.slug,
+          url: productUrl,
         })),
       }),
     },
@@ -166,7 +191,7 @@ useHead({
             "@type": "ListItem",
             position: 3,
             name: p.name,
-            item: base + "/perfumes/" + p.slug,
+            item: productUrl,
           },
         ],
       }),
@@ -338,10 +363,18 @@ useHead({
     <section class="delivery-estimate" aria-labelledby="delivery-title">
       <span class="eyebrow">ENTREGA ESTIMADA</span>
       <h2 id="delivery-title">Tu perfume, más cerca.</h2>
-      <p><strong>Medellín:</strong> recíbelo el {{ medellinDelivery }}.</p>
       <p>
-        <strong>Colombia:</strong> entrega estimada entre el
-        {{ colombiaDeliveryStart }} y el {{ colombiaDeliveryEnd }}.
+        Los pedidos realizados antes de las 4:00 p. m. se preparan el mismo día
+        hábil. El costo se confirma según la ubicación.
+      </p>
+      <p>
+        <strong>Medellín:</strong> entrega en un día hábil, estimada para el
+        {{ medellinDelivery }}.
+      </p>
+      <p>
+        <strong>Resto de Colombia:</strong> entrega de 3 a 4 días hábiles,
+        estimada entre el {{ colombiaDeliveryStart }} y el
+        {{ colombiaDeliveryEnd }}.
       </p>
     </section>
 
