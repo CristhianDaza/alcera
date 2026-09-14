@@ -9,10 +9,13 @@ import { seoLandings } from "#shared/seo-landings";
 
 const route = useRoute();
 const router = useRouter();
-const landingLinks = seoLandings.map((landing) => ({
-  label: landing.name,
-  to: `/${landing.kind}/${landing.slug}`,
-}));
+const landingLinks = seoLandings.map((landing) => {
+  const label = landing.name.replace(/^Perfumes\s+/i, "");
+  return {
+    label: label.charAt(0).toLocaleUpperCase("es") + label.slice(1),
+    to: `/${landing.kind}/${landing.slug}`,
+  };
+});
 const catalog = useCatalogStore();
 await catalog.ensureLoaded();
 if (import.meta.server && catalog.error.value)
