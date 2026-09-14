@@ -11,6 +11,14 @@ const landingPaths = [
   "/categorias/unisex",
   "/marcas/lattafa",
   "/marcas/armaf",
+  "/marcas/rasasi",
+  "/marcas/bharara",
+  "/marcas/maison-alhambra",
+  "/marcas/al-haramain",
+  "/familias/dulces",
+  "/familias/amaderados",
+  "/familias/citricos",
+  "/colecciones/perfumes-arabes",
 ];
 await mkdir("test-results/seo-browser", { recursive: true });
 try {

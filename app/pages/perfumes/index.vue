@@ -5,9 +5,14 @@ import {
   serializeSchema,
   siteBase,
 } from "#shared/seo";
+import { seoLandings } from "#shared/seo-landings";
 
 const route = useRoute();
 const router = useRouter();
+const landingLinks = seoLandings.map((landing) => ({
+  label: landing.name,
+  to: `/${landing.kind}/${landing.slug}`,
+}));
 const catalog = useCatalogStore();
 await catalog.ensureLoaded();
 if (import.meta.server && catalog.error.value)
@@ -313,6 +318,17 @@ useHead(() => ({
         pesos colombianos y consulta tu pedido por WhatsApp.
       </p>
     </div>
+    <nav class="catalog-landings" aria-label="Colecciones destacadas">
+      <strong>Explora por categoría, marca o familia</strong>
+      <div>
+        <NuxtLink
+          v-for="landing in landingLinks"
+          :key="landing.to"
+          :to="landing.to"
+          >{{ landing.label }}</NuxtLink
+        >
+      </div>
+    </nav>
     <div class="filters">
       <label class="search-label"
         >Buscar perfume<input

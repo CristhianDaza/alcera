@@ -44,21 +44,25 @@ const whatsappUrl = computed(() => {
 const familyList = [
   {
     name: "Floral",
+    to: "/perfumes?family=Floral",
     tag: "Luminosa",
     desc: "Delicada, radiante y envolvente. Notas de rosa, jazmín silvestre y azahar.",
   },
   {
     name: "Amaderada",
+    to: "/familias/amaderados",
     tag: "Profunda",
     desc: "Cálida, señorial y terrosa. Cedro noble, sándalo cremoso y vetiver.",
   },
   {
     name: "Cítrica",
+    to: "/familias/citricos",
     tag: "Vibrante",
     desc: "Fresca, espontánea y luminosa. Bergamota viva, neroli y mandarina.",
   },
   {
     name: "Oriental",
+    to: "/perfumes?family=Oriental",
     tag: "Seductora",
     desc: "Intensa, especiada y magnética. Ámbar cálido, vainilla noble y benjuí.",
   },
@@ -144,6 +148,9 @@ watch(finderOpen, (isOpen) => {
             >
             <NuxtLink to="/categorias/unisex" class="hero-chip"
               >Unisex</NuxtLink
+            >
+            <NuxtLink to="/colecciones/perfumes-arabes" class="hero-chip"
+              >Árabes</NuxtLink
             >
           </div>
         </div>
@@ -270,7 +277,7 @@ watch(finderOpen, (isOpen) => {
       <NuxtLink
         v-for="item in familyList"
         :key="item.name"
-        :to="`/perfumes?family=${item.name}`"
+        :to="item.to"
         class="family-card"
       >
         <div class="family-card-head">

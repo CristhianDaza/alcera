@@ -98,13 +98,21 @@ describe("Indexación y URLs públicas", () => {
     const paths = seoLandings.map(
       (landing) => `/${landing.kind}/${landing.slug}`,
     );
-    expect(new Set(paths).size).toBe(5);
+    expect(new Set(paths).size).toBe(13);
     expect(paths).toEqual([
       "/categorias/mujer",
       "/categorias/hombre",
       "/categorias/unisex",
       "/marcas/lattafa",
       "/marcas/armaf",
+      "/marcas/rasasi",
+      "/marcas/bharara",
+      "/marcas/maison-alhambra",
+      "/marcas/al-haramain",
+      "/familias/dulces",
+      "/familias/amaderados",
+      "/familias/citricos",
+      "/colecciones/perfumes-arabes",
     ]);
     for (const landing of seoLandings)
       expect(seoLanding(landing.kind, landing.slug)).toEqual(landing);

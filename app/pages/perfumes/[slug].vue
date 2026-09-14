@@ -3,7 +3,7 @@ import { productSearchName, siteBase, serializeSchema } from "#shared/seo";
 import { money } from "#shared/commerce";
 import { selectRelatedProducts } from "#shared/catalog";
 import type { Product } from "#shared/types";
-import { seoLanding } from "#shared/seo-landings";
+import { seoLanding, seoLandings } from "#shared/seo-landings";
 
 const route = useRoute();
 const catalog = useCatalogStore();
@@ -34,6 +34,14 @@ const categoryLanding = seoLanding(
   p.category.toLocaleLowerCase("es"),
 );
 const brandLanding = seoLanding("marcas", p.brand.toLocaleLowerCase("es"));
+function familyLocation(family: string) {
+  const landing = seoLandings.find(
+    (item) => item.kind === "familias" && item.filterValue === family,
+  );
+  return landing
+    ? `/familias/${landing.slug}`
+    : { path: "/perfumes", query: { family } };
+}
 
 const relatedProducts = computed(() =>
   catalog.loaded.value
@@ -273,7 +281,7 @@ useHead({
           <NuxtLink
             v-for="family in p.family"
             :key="family"
-            :to="{ path: '/perfumes', query: { family } }"
+            :to="familyLocation(family)"
           >
             {{ family }}
           </NuxtLink>

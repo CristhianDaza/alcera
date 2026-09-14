@@ -1146,6 +1146,38 @@ p {
     font-weight: 400
 }
 
+.catalog-landings {
+    margin: -12px 0 36px;
+    padding: 22px 0;
+    border-block: 1px solid var(--line)
+}
+
+.catalog-landings strong {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 13px;
+    letter-spacing: .04em;
+    text-transform: uppercase
+}
+
+.catalog-landings div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px
+}
+
+.catalog-landings a {
+    padding: 8px 12px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12px
+}
+
+.catalog-landings a:hover {
+    border-color: var(--ink);
+    color: var(--ink)
+}
+
 .seo-collection__heading {
     margin-top: 46px
 }

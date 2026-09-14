@@ -23,9 +23,18 @@ export default defineEventHandler(async (event) => {
     .filter((product) =>
       landing.kind === "categorias"
         ? product.category === landing.filterValue
-        : product.brand.localeCompare(landing.filterValue, "es", {
-            sensitivity: "base",
-          }) === 0,
+        : landing.kind === "familias"
+          ? product.family?.includes(landing.filterValue)
+          : landing.kind === "colecciones"
+            ? landing.filterValues?.some(
+                (brand) =>
+                  product.brand.localeCompare(brand, "es", {
+                    sensitivity: "base",
+                  }) === 0,
+              )
+            : product.brand.localeCompare(landing.filterValue, "es", {
+                sensitivity: "base",
+              }) === 0,
     )
     .sort((a, b) => Number(b.featured) - Number(a.featured));
   const pageSize = 12;

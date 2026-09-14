@@ -17,7 +17,7 @@ export default defineEventHandler((event) => {
     setHeader(event, "X-Robots-Tag", "noindex, nofollow");
   else if (
     (/^\/perfumes\/?$/.test(path) && catalogHasParameters(getQuery(event))) ||
-    (/^\/(categorias|marcas)\/[^/]+\/?$/.test(path) &&
+    (/^\/(categorias|marcas|familias|colecciones)\/[^/]+\/?$/.test(path) &&
       paginationHasParameters(getQuery(event)))
   )
     setHeader(event, "X-Robots-Tag", "noindex, follow");

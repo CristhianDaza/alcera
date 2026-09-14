@@ -15,7 +15,7 @@ const route = useRoute();
 const config = useRuntimeConfig().public;
 const base = siteBase(config.siteUrl);
 const isSeoCollection = computed(() =>
-  /^\/(categorias|marcas)\/[^/]+\/?$/.test(route.path),
+  /^\/(categorias|marcas|familias|colecciones)\/[^/]+\/?$/.test(route.path),
 );
 useSeoMeta({
   robots: () =>
@@ -153,6 +153,7 @@ const activeCategory = computed(() =>
           ><NuxtLink to="/categorias/unisex">La colección unisex</NuxtLink>
           <NuxtLink to="/marcas/lattafa">Perfumes Lattafa</NuxtLink>
           <NuxtLink to="/marcas/armaf">Perfumes Armaf</NuxtLink>
+          <NuxtLink to="/colecciones/perfumes-arabes">Perfumes árabes</NuxtLink>
           <NuxtLink to="/guia-de-perfumes">Guía de perfumes</NuxtLink>
         </div>
         <div>
