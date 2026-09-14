@@ -3,6 +3,7 @@ import { productSearchName, siteBase, serializeSchema } from "#shared/seo";
 import { money } from "#shared/commerce";
 import { selectRelatedProducts } from "#shared/catalog";
 import type { Product } from "#shared/types";
+import { seoLanding, seoLandingForFilter } from "#shared/seo-landings";
 
 const route = useRoute();
 const catalog = useCatalogStore();
@@ -27,6 +28,18 @@ if (!p)
     statusCode: fetchError?.statusCode || 404,
     statusMessage: "No encontramos este perfume",
   });
+
+const categoryLanding = seoLanding(
+  "categorias",
+  p.category.toLocaleLowerCase("es"),
+);
+const brandLanding = seoLanding("marcas", p.brand.toLocaleLowerCase("es"));
+function familyLocation(family: string) {
+  const landing = seoLandingForFilter("familias", family);
+  return landing
+    ? `/familias/${landing.slug}`
+    : { path: "/perfumes", query: { family } };
+}
 
 const relatedProducts = computed(() =>
   catalog.loaded.value
@@ -245,18 +258,37 @@ useHead({
       </div>
 
       <div class="detail-copy">
-        <span class="eyebrow">{{ p.brand }}</span>
+        <NuxtLink
+          v-if="brandLanding"
+          class="eyebrow"
+          :to="`/marcas/${brandLanding.slug}`"
+          >{{ p.brand }}</NuxtLink
+        >
+        <span v-else class="eyebrow">{{ p.brand }}</span>
         <h1>{{ p.name }}</h1>
         <div class="pills">
           <NuxtLink
-            :to="{ path: '/perfumes', query: { category: p.category } }"
+            :to="
+              brandLanding
+                ? `/marcas/${brandLanding.slug}`
+                : { path: '/perfumes', query: { brand: p.brand } }
+            "
+          >
+            {{ p.brand }}
+          </NuxtLink>
+          <NuxtLink
+            :to="
+              categoryLanding
+                ? `/categorias/${categoryLanding.slug}`
+                : { path: '/perfumes', query: { category: p.category } }
+            "
           >
             {{ p.category }}
           </NuxtLink>
           <NuxtLink
             v-for="family in p.family"
             :key="family"
-            :to="{ path: '/perfumes', query: { family } }"
+            :to="familyLocation(family)"
           >
             {{ family }}
           </NuxtLink>
@@ -309,7 +341,7 @@ useHead({
           </button>
           <p v-if="added" class="added-notice" role="status">
             Añadido a tu bolsa.
-            <NuxtLink class="text-link" to="/carrito">Ver bolsa ↗</NuxtLink>
+            <NuxtLink class="text-link" to="/carrito">Ver bolsa</NuxtLink>
           </p>
           <p class="muted">
             Finaliza tu consulta por WhatsApp.<br />Envío y forma de pago a
@@ -388,7 +420,7 @@ useHead({
           <span class="eyebrow">SIGUE DESCUBRIENDO</span>
           <h2 id="related-title">También te pueden <em>interesar.</em></h2>
         </div>
-        <NuxtLink class="text-link" to="/perfumes">Ver colección ↗</NuxtLink>
+        <NuxtLink class="text-link" to="/perfumes">Ver colección</NuxtLink>
       </div>
       <div class="product-grid">
         <ProductCard

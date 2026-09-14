@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { serializeSchema, siteBase } from "#shared/seo";
+import { seoLandingForFilter } from "#shared/seo-landings";
 
 const store = useStore();
 const base = siteBase(useRuntimeConfig().public.siteUrl);
@@ -7,7 +8,7 @@ const base = siteBase(useRuntimeConfig().public.siteUrl);
 usePageSeo(
   `Guía de perfumes y familias olfativas · ${store.value.name}`,
   "Aprende a elegir un perfume: familias olfativas, concentraciones, notas, proyección y duración.",
-  "/images/hero-perfumes-editorial-v2.png",
+  "/images/hero-perfumes-editorial-v2.webp",
   { imageAlt: "Guía para elegir perfumes y familias olfativas" },
 );
 
@@ -69,6 +70,13 @@ const families = [
   },
 ];
 
+function familyLocation(family: string) {
+  const landing = seoLandingForFilter("familias", family);
+  return landing
+    ? `/familias/${landing.slug}`
+    : { path: "/perfumes", query: { family } };
+}
+
 const faqs = [
   {
     question: "¿Cómo sé qué familia olfativa elegir?",
@@ -118,6 +126,7 @@ useHead(() => ({
               "Familias olfativas, concentraciones, notas, proyección y duración.",
             inLanguage: "es-CO",
             mainEntityOfPage: base + "/guia-de-perfumes",
+            image: base + "/images/hero-perfumes-editorial-v2.webp",
             publisher: { "@id": base + "/#organization" },
           },
           {
@@ -161,15 +170,22 @@ useHead(() => ({
 
     <header class="guide-hero">
       <span class="eyebrow">APRENDE A ELEGIR TU AROMA</span>
-      <h1>El perfume se entiende <em>en la piel.</em></h1>
+      <h1>Guía para elegir un perfume y entender <em>cómo evoluciona.</em></h1>
       <p>
         Una guía sencilla para reconocer qué te gusta, leer una pirámide
         olfativa y elegir una fragancia con más seguridad.
       </p>
-      <NuxtLink class="button" to="/perfumes"
-        >Explorar perfumes <span>↗</span></NuxtLink
-      >
+      <NuxtLink class="button" to="/perfumes">Explorar perfumes</NuxtLink>
     </header>
+
+    <nav class="guide-index" aria-label="Contenido de la guía">
+      <strong>En esta guía</strong>
+      <a href="#familias-title">Familias olfativas</a>
+      <a href="#notas-title">Pirámide olfativa</a>
+      <a href="#concentraciones-title">Concentraciones</a>
+      <a href="#rendimiento-title">Rendimiento</a>
+      <a href="#faq-title">Preguntas frecuentes</a>
+    </nav>
 
     <section class="guide-section" aria-labelledby="familias-title">
       <div class="guide-heading">
@@ -185,11 +201,11 @@ useHead(() => ({
           v-for="family in families"
           :key="family.name"
           class="guide-family"
-          :to="`/perfumes?family=${family.name}`"
+          :to="familyLocation(family.name)"
         >
           <h3>{{ family.name }}</h3>
           <p>{{ family.description }}</p>
-          <span>Ver perfumes ↗</span>
+          <span>Ver perfumes</span>
         </NuxtLink>
       </div>
     </section>
@@ -347,8 +363,7 @@ useHead(() => ({
         ocasión.
       </p>
       <div>
-        <NuxtLink class="button" to="/perfumes"
-          >Ver la colección <span>↗</span></NuxtLink
+        <NuxtLink class="button" to="/perfumes">Ver la colección</NuxtLink
         ><NuxtLink class="button button--outline" to="/?finder=1"
           >Usar el buscador de perfume ✦</NuxtLink
         >

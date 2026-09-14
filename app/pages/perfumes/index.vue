@@ -5,9 +5,17 @@ import {
   serializeSchema,
   siteBase,
 } from "#shared/seo";
+import { seoLandings } from "#shared/seo-landings";
 
 const route = useRoute();
 const router = useRouter();
+const landingLinks = seoLandings.map((landing) => {
+  const label = landing.name.replace(/^Perfumes\s+/i, "");
+  return {
+    label: label.charAt(0).toLocaleUpperCase("es") + label.slice(1),
+    to: `/${landing.kind}/${landing.slug}`,
+  };
+});
 const catalog = useCatalogStore();
 await catalog.ensureLoaded();
 if (import.meta.server && catalog.error.value)
@@ -236,7 +244,7 @@ usePageSeo(
   () =>
     `Perfumes para mujer, hombre y unisex${page.value > 1 ? ` · Página ${page.value}` : ""} · ${store.value.name}`,
   "Explora perfumes por marca, familia olfativa y presentación. Precios en COP y pedidos por WhatsApp.",
-  "/images/hero-perfumes-editorial-v2.png",
+  "/images/hero-perfumes-editorial-v2.webp",
   { imageAlt: "Colección de perfumes disponibles en Colombia" },
 );
 const base = siteBase(useRuntimeConfig().public.siteUrl);
@@ -313,6 +321,17 @@ useHead(() => ({
         pesos colombianos y consulta tu pedido por WhatsApp.
       </p>
     </div>
+    <nav class="catalog-landings" aria-label="Colecciones destacadas">
+      <strong>Explora por categoría, marca o familia</strong>
+      <div>
+        <NuxtLink
+          v-for="landing in landingLinks"
+          :key="landing.to"
+          :to="landing.to"
+          >{{ landing.label }}</NuxtLink
+        >
+      </div>
+    </nav>
     <div class="filters">
       <label class="search-label"
         >Buscar perfume<input
@@ -423,10 +442,13 @@ useHead(() => ({
         }}
       </p>
       <button v-if="hasFilters" class="button" @click="clearFilters">
-        Ver toda la colección ↗
+        Ver toda la colección
       </button>
     </div>
     <template v-else>
+      <h2 class="catalog-list-title">
+        {{ hasFilters ? "Resultados de tu búsqueda" : "Perfumes disponibles" }}
+      </h2>
       <div ref="productGrid" class="product-grid">
         <ProductCard
           v-for="(product, index) in paginatedProducts"

@@ -217,7 +217,7 @@ async function checkout() {
             type="submit"
             :disabled="busy"
           >
-            {{ busy ? "Registrando…" : "Registrar solicitud" }} ↗
+            {{ busy ? "Registrando…" : "Registrar solicitud" }}
           </button>
           <p v-if="notice" role="status">{{ notice }}</p>
           <p v-if="orderId" class="order-reference">
@@ -236,9 +236,7 @@ async function checkout() {
       <div v-else class="empty">
         <h2>Tu próxima esencia te espera.</h2>
         <p>Aún no has añadido perfumes a tu bolsa.</p>
-        <NuxtLink class="button" to="/perfumes"
-          >Explorar la colección ↗</NuxtLink
-        >
+        <NuxtLink class="button" to="/perfumes">Explorar la colección</NuxtLink>
       </div>
       <template #fallback><p>Cargando tu bolsa…</p></template></ClientOnly
     >

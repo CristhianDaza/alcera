@@ -1,4 +1,5 @@
 import { canIndex, siteBase } from "../../shared/seo";
+import { seoLandings } from "../../shared/seo-landings";
 const xml = (s: string) =>
   s.replace(
     /[<>&"']/g,
@@ -25,6 +26,7 @@ export default defineEventHandler(async (event) => {
         "/",
         "/perfumes",
         "/guia-de-perfumes",
+        ...seoLandings.map((landing) => `/${landing.kind}/${landing.slug}`),
         ...(await products())
           .filter((p) => p.status === "published")
           .map((p) => `/perfumes/${p.slug}`),

@@ -8,9 +8,16 @@ import {
   catalogPage,
   catalogHasParameters,
   pageCanonical,
+  paginatedCanonical,
+  paginationHasParameters,
   productSearchName,
 } from "../shared/seo";
 import { productSchema } from "../server/utils/validation";
+import {
+  seoLanding,
+  seoLandingForFilter,
+  seoLandings,
+} from "../shared/seo-landings";
 describe("Indexación y URLs públicas", () => {
   const live = {
     siteUrl: "https://alceraperfumes.com",
@@ -90,6 +97,60 @@ describe("Indexación y URLs públicas", () => {
     const content = { name: "</script><script>alert(1)</script>" };
     expect(serializeSchema(content)).not.toContain("<");
     expect(JSON.parse(serializeSchema(content))).toEqual(content);
+  });
+  it("mantiene únicas y resolubles las landings editoriales prioritarias", () => {
+    const paths = seoLandings.map(
+      (landing) => `/${landing.kind}/${landing.slug}`,
+    );
+    expect(new Set(paths).size).toBe(24);
+    expect(paths).toEqual([
+      "/categorias/mujer",
+      "/categorias/hombre",
+      "/categorias/unisex",
+      "/marcas/lattafa",
+      "/marcas/armaf",
+      "/marcas/rasasi",
+      "/marcas/bharara",
+      "/marcas/maison-alhambra",
+      "/marcas/al-haramain",
+      "/marcas/game-of-spades",
+      "/marcas/ariana-grande",
+      "/marcas/paco-rabanne",
+      "/marcas/carolina-herrera",
+      "/marcas/dolce-gabbana",
+      "/familias/dulces",
+      "/familias/amaderados",
+      "/familias/citricos",
+      "/familias/florales",
+      "/familias/frutales",
+      "/familias/orientales",
+      "/familias/especiados",
+      "/familias/aromaticos",
+      "/familias/acuaticos",
+      "/colecciones/perfumes-arabes",
+    ]);
+    for (const landing of seoLandings)
+      expect(seoLanding(landing.kind, landing.slug)).toEqual(landing);
+    expect(seoLanding("marcas", "desconocida")).toBeUndefined();
+    for (const family of [
+      "Dulce",
+      "Amaderada",
+      "Cítrica",
+      "Floral",
+      "Frutal",
+      "Oriental",
+      "Especiado",
+      "Aromático",
+      "Acuático",
+    ])
+      expect(seoLandingForFilter("familias", family)?.slug).toBeTruthy();
+    expect(seoLandingForFilter("familias", "Cuero")).toBeUndefined();
+    expect(seoLandingForFilter("familias", "Almizclado")).toBeUndefined();
+    expect(
+      paginatedCanonical(live.siteUrl, "/marcas/lattafa", { page: "2" }),
+    ).toBe(`${live.siteUrl}/marcas/lattafa?page=2`);
+    expect(paginationHasParameters({ page: "2" })).toBe(false);
+    expect(paginationHasParameters({ page: "2", q: "x" })).toBe(true);
   });
   it("acepta solo identificadores comerciales y GTIN con checksum válido", () => {
     const product = {

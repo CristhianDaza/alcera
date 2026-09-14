@@ -28,7 +28,7 @@ const store = useStore();
 usePageSeo(
   `Perfumes en Colombia · ${store.value.name}`,
   "Descubre fragancias florales, amaderadas y cítricas. Encuentra un perfume que deje huella y consulta tu pedido por WhatsApp en Colombia.",
-  "/images/hero-perfumes-editorial-v2.png",
+  "/images/hero-perfumes-editorial-v2.webp",
   {
     imageAlt: "Selección de perfumes de ALCÉRA sobre una composición editorial",
   },
@@ -44,21 +44,25 @@ const whatsappUrl = computed(() => {
 const familyList = [
   {
     name: "Floral",
+    to: "/familias/florales",
     tag: "Luminosa",
     desc: "Delicada, radiante y envolvente. Notas de rosa, jazmín silvestre y azahar.",
   },
   {
     name: "Amaderada",
+    to: "/familias/amaderados",
     tag: "Profunda",
     desc: "Cálida, señorial y terrosa. Cedro noble, sándalo cremoso y vetiver.",
   },
   {
     name: "Cítrica",
+    to: "/familias/citricos",
     tag: "Vibrante",
     desc: "Fresca, espontánea y luminosa. Bergamota viva, neroli y mandarina.",
   },
   {
     name: "Oriental",
+    to: "/familias/orientales",
     tag: "Seductora",
     desc: "Intensa, especiada y magnética. Ámbar cálido, vainilla noble y benjuí.",
   },
@@ -113,14 +117,14 @@ watch(finderOpen, (isOpen) => {
   <section class="hero shell">
     <div class="hero-copy">
       <span class="eyebrow"><i /> ALTA PERFUMERÍA</span>
-      <h1>Hay recuerdos<br />que se llevan<br /><em>en la piel.</em></h1>
+      <h1>Perfumes originales en Colombia, <em>una huella en la piel.</em></h1>
       <p class="hero-desc">
         Perfumes 100% originales para mujer, hombre y unisex en Colombia.
         Descubre tu aroma personal con asesoría experta y pedido directo.
       </p>
       <div class="hero-actions">
         <NuxtLink class="button hero-cta" to="/perfumes">
-          Explorar la colección <span>↗</span>
+          Explorar la colección
         </NuxtLink>
         <button
           class="button button--outline hero-cta"
@@ -133,19 +137,20 @@ watch(finderOpen, (isOpen) => {
           class="button button--outline hero-cta"
           to="/guia-de-perfumes"
         >
-          Aprende sobre perfumes <span>↗</span>
+          Aprende sobre perfumes
         </NuxtLink>
         <div class="hero-shortcuts">
           <span class="hero-shortcuts-label">Explora por:</span>
           <div class="hero-chips">
-            <NuxtLink to="/perfumes?category=Mujer" class="hero-chip"
-              >Mujer</NuxtLink
-            >
-            <NuxtLink to="/perfumes?category=Hombre" class="hero-chip"
+            <NuxtLink to="/categorias/mujer" class="hero-chip">Mujer</NuxtLink>
+            <NuxtLink to="/categorias/hombre" class="hero-chip"
               >Hombre</NuxtLink
             >
-            <NuxtLink to="/perfumes?category=Unisex" class="hero-chip"
+            <NuxtLink to="/categorias/unisex" class="hero-chip"
               >Unisex</NuxtLink
+            >
+            <NuxtLink to="/colecciones/perfumes-arabes" class="hero-chip"
+              >Árabes</NuxtLink
             >
           </div>
         </div>
@@ -161,7 +166,12 @@ watch(finderOpen, (isOpen) => {
         />
       </div>
       <img
-        src="/images/hero-perfumes-editorial-v2.png"
+        src="/images/hero-perfumes-editorial-v2.webp"
+        srcset="
+          /images/hero-perfumes-editorial-v2-480.webp  480w,
+          /images/hero-perfumes-editorial-v2-768.webp  768w,
+          /images/hero-perfumes-editorial-v2.webp     1122w
+        "
         sizes="(max-width: 700px) 100vw, (max-width: 1050px) 43vw, 40vw"
         alt="Frascos de perfume sin marca sobre una base escultórica con cinta color vino"
         fetchpriority="high"
@@ -179,7 +189,7 @@ watch(finderOpen, (isOpen) => {
         <h2>Perfumes elegidos para <em>ti.</em></h2>
       </div>
       <button class="text-link" type="button" @click="finderOpen = true">
-        Actualizar mi selección ↗
+        Actualizar mi selección
       </button>
     </div>
     <div
@@ -214,7 +224,6 @@ watch(finderOpen, (isOpen) => {
     </div>
     <div class="trust-divider" aria-hidden="true"></div>
     <div class="trust-item">
-      <span class="trust-icon" aria-hidden="true">↗</span>
       <div class="trust-text">
         <strong>Envíos a toda Colombia</strong>
         <span>Entrega segura y empaque protegido</span>
@@ -229,7 +238,7 @@ watch(finderOpen, (isOpen) => {
         <h2>Fragancias que <em>dejan huella.</em></h2>
       </div>
       <NuxtLink class="text-link" to="/perfumes"
-        >Ver toda la colección ↗</NuxtLink
+        >Ver toda la colección</NuxtLink
       >
     </div>
     <div v-if="error" class="notice" role="alert">
@@ -267,16 +276,15 @@ watch(finderOpen, (isOpen) => {
       <NuxtLink
         v-for="item in familyList"
         :key="item.name"
-        :to="`/perfumes?family=${item.name}`"
+        :to="item.to"
         class="family-card"
       >
         <div class="family-card-head">
           <span class="family-badge">{{ item.tag }}</span>
-          <span class="family-arrow" aria-hidden="true">↗</span>
         </div>
         <h3>{{ item.name }}</h3>
         <p>{{ item.desc }}</p>
-        <span class="family-link-label">Explorar notas ↗</span>
+        <span class="family-link-label">Explorar notas</span>
       </NuxtLink>
     </div>
   </section>
@@ -291,7 +299,7 @@ watch(finderOpen, (isOpen) => {
       </p>
     </div>
     <NuxtLink class="button button--outline" to="/guia-de-perfumes"
-      >Conocer la guía <span>↗</span></NuxtLink
+      >Conocer la guía</NuxtLink
     >
   </section>
 
@@ -304,9 +312,7 @@ watch(finderOpen, (isOpen) => {
         asesoramos en tiempo real y coordinamos tu entrega fácilmente.
       </p>
       <div class="concierge-actions">
-        <NuxtLink class="button" to="/perfumes"
-          >Ver catálogo completo <span>↗</span></NuxtLink
-        >
+        <NuxtLink class="button" to="/perfumes">Ver catálogo completo</NuxtLink>
         <a
           v-if="whatsappUrl"
           :href="whatsappUrl"
