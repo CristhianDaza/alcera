@@ -27,9 +27,7 @@ export function canIndex(config: {
   );
 }
 export function canonicalUrl(base: string, path: string): string {
-  const normalizedPath = path
-    .split(/[?#]/)[0]!
-    .replace(/^\/+|\/+$/g, "");
+  const normalizedPath = path.split(/[?#]/)[0]!.replace(/^\/+|\/+$/g, "");
   return siteBase(base) + (normalizedPath ? `/${normalizedPath}` : "/");
 }
 export function metaDescription(value: string, maxLength = 160): string {
@@ -40,5 +38,44 @@ export function metaDescription(value: string, maxLength = 160): string {
   const end = lastSpace > maxLength * 0.7 ? lastSpace : shortened.length;
   return `${shortened.slice(0, end).trimEnd()}…`;
 }
+export function productSearchName(name: string, brand: string): string {
+  const normalize = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  return normalize(name).includes(normalize(brand))
+    ? name
+    : `${name} de ${brand}`;
+}
 export const serializeSchema = (value: unknown) =>
   JSON.stringify(value).replace(/</g, "\\u003c");
+
+export function catalogPage(value: unknown): number | null {
+  if (value === undefined) return 1;
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) return null;
+  const page = Number(value);
+  return Number.isSafeInteger(page) ? page : null;
+}
+
+export function catalogHasParameters(query: Record<string, unknown>): boolean {
+  return (
+    Object.keys(query).some((key) => key !== "page") ||
+    catalogPage(query.page) === null
+  );
+}
+
+export function pageCanonical(
+  base: string,
+  path: string,
+  query: Record<string, unknown>,
+): string {
+  const url = canonicalUrl(base, path);
+  const page = catalogPage(query.page);
+  return /^\/perfumes\/?$/.test(path) &&
+    !catalogHasParameters(query) &&
+    page &&
+    page > 1
+    ? `${url}?page=${page}`
+    : url;
+}

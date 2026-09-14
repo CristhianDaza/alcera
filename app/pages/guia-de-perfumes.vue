@@ -250,24 +250,35 @@ useHead(() => ({
           ><span role="columnheader">Cómo suele sentirse</span>
         </div>
         <div class="concentration-row" role="row">
-          <strong>Eau Fraîche / Agua fresca</strong><span>1–3%</span
-          ><span>Muy ligera y refrescante; ideal para reaplicar.</span>
+          <strong role="cell">Eau Fraîche / Agua fresca</strong
+          ><span role="cell">1–3%</span
+          ><span role="cell"
+            >Muy ligera y refrescante; ideal para reaplicar.</span
+          >
         </div>
         <div class="concentration-row" role="row">
-          <strong>Eau de Cologne</strong><span>2–5%</span
-          ><span>Fresca, cítrica y de corta duración.</span>
+          <strong role="cell">Eau de Cologne</strong
+          ><span role="cell">2–5%</span
+          ><span role="cell">Fresca, cítrica y de corta duración.</span>
         </div>
         <div class="concentration-row" role="row">
-          <strong>Eau de Toilette</strong><span>5–15%</span
-          ><span>Equilibrada, versátil y habitual para el día.</span>
+          <strong role="cell">Eau de Toilette</strong
+          ><span role="cell">5–15%</span
+          ><span role="cell"
+            >Equilibrada, versátil y habitual para el día.</span
+          >
         </div>
         <div class="concentration-row" role="row">
-          <strong>Eau de Parfum</strong><span>15–20%</span
-          ><span>Más rica y presente; suele acompañar durante más tiempo.</span>
+          <strong role="cell">Eau de Parfum</strong
+          ><span role="cell">15–20%</span
+          ><span role="cell"
+            >Más rica y presente; suele acompañar durante más tiempo.</span
+          >
         </div>
         <div class="concentration-row" role="row">
-          <strong>Parfum / Extrait de Parfum</strong><span>20–40%</span
-          ><span
+          <strong role="cell">Parfum / Extrait de Parfum</strong
+          ><span role="cell">20–40%</span
+          ><span role="cell"
             >Más concentrada y cercana a la piel; unas pocas atomizaciones
             suelen bastar.</span
           >

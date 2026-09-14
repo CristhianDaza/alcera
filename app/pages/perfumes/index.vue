@@ -1,10 +1,20 @@
 <script setup lang="ts">
-import { serializeSchema, siteBase } from "#shared/seo";
+import {
+  catalogPage,
+  pageCanonical,
+  serializeSchema,
+  siteBase,
+} from "#shared/seo";
 
 const route = useRoute();
 const router = useRouter();
 const catalog = useCatalogStore();
 await catalog.ensureLoaded();
+if (import.meta.server && catalog.error.value)
+  throw createError({
+    statusCode: 503,
+    statusMessage: "La colección no está disponible temporalmente",
+  });
 const data = catalog.products;
 const error = catalog.error;
 const status = computed(() =>
@@ -167,9 +177,7 @@ const filtered = computed(() => {
 });
 const page = computed({
   get: () => {
-    const raw = queryText(route.query.page);
-    const parsed = parseInt(raw, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    return catalogPage(route.query.page) ?? 1;
   },
   set: (value: number) => {
     updateQuery({ page: value > 1 ? String(value) : "" }, true);
@@ -179,6 +187,16 @@ const pageSize = 12;
 const totalPages = computed(() =>
   Math.max(1, Math.ceil(filtered.value.length / pageSize)),
 );
+if (
+  import.meta.server &&
+  (catalogPage(route.query.page) === null || page.value > totalPages.value)
+)
+  throw createError({
+    statusCode: 404,
+    statusMessage: "Esta página de la colección no existe",
+  });
+if (import.meta.server && hasFilters.value && !filtered.value.length)
+  setResponseStatus(404);
 const paginatedProducts = computed(() => {
   const start = (page.value - 1) * pageSize;
   return filtered.value.slice(start, start + pageSize);
@@ -213,13 +231,18 @@ watch(totalPages, (total) => {
     page.value = total;
   }
 });
+const store = useStore();
 usePageSeo(
-  `Perfumes para mujer, hombre y unisex · ${useStore().value.name}`,
+  () =>
+    `Perfumes para mujer, hombre y unisex${page.value > 1 ? ` · Página ${page.value}` : ""} · ${store.value.name}`,
   "Explora perfumes por marca, familia olfativa y presentación. Precios en COP y pedidos por WhatsApp.",
   "/images/hero-perfumes-editorial-v2.png",
   { imageAlt: "Colección de perfumes disponibles en Colombia" },
 );
 const base = siteBase(useRuntimeConfig().public.siteUrl);
+const collectionUrl = computed(() =>
+  pageCanonical(base, route.path, route.query),
+);
 useHead(() => ({
   script: [
     {
@@ -230,18 +253,18 @@ useHead(() => ({
         "@graph": [
           {
             "@type": "CollectionPage",
-            "@id": base + "/perfumes#page",
-            url: base + "/perfumes",
+            "@id": collectionUrl.value + "#page",
+            url: collectionUrl.value,
             name: "Colección de perfumes",
             description:
               "Perfumes para mujer, hombre y unisex disponibles en Colombia.",
             inLanguage: "es-CO",
             isPartOf: { "@id": base + "/#website" },
-            mainEntity: { "@id": base + "/perfumes#products" },
+            mainEntity: { "@id": collectionUrl.value + "#products" },
           },
           {
             "@type": "ItemList",
-            "@id": base + "/perfumes#products",
+            "@id": collectionUrl.value + "#products",
             numberOfItems: filtered.value.length,
             itemListElement: paginatedProducts.value.map((product, index) => ({
               "@type": "ListItem",
@@ -285,8 +308,9 @@ useHead(() => ({
       <span class="eyebrow">ENCUENTRA TU PRÓXIMA HISTORIA</span>
       <h1>Colección de <em>perfumes.</em></h1>
       <p>
-        Un aroma para cada versión de ti. Explora, elige y consulta por
-        WhatsApp.
+        Encuentra perfumes para mujer, hombre y unisex en Colombia. Compara
+        marcas, familias olfativas y concentraciones, revisa los precios en
+        pesos colombianos y consulta tu pedido por WhatsApp.
       </p>
     </div>
     <div class="filters">
