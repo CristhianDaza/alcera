@@ -44,7 +44,7 @@ const whatsappUrl = computed(() => {
 const familyList = [
   {
     name: "Floral",
-    to: "/perfumes?family=Floral",
+    to: "/familias/florales",
     tag: "Luminosa",
     desc: "Delicada, radiante y envolvente. Notas de rosa, jazmín silvestre y azahar.",
   },
@@ -62,7 +62,7 @@ const familyList = [
   },
   {
     name: "Oriental",
-    to: "/perfumes?family=Oriental",
+    to: "/familias/orientales",
     tag: "Seductora",
     desc: "Intensa, especiada y magnética. Ámbar cálido, vainilla noble y benjuí.",
   },

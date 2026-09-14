@@ -123,6 +123,66 @@ export const seoLandings: SeoLanding[] = [
     filterValue: "Al Haramain",
   },
   {
+    kind: "marcas",
+    slug: "game-of-spades",
+    name: "Perfumes Game of Spades",
+    eyebrow: "COLECCIÓN GAME OF SPADES",
+    title: "Perfumes Game of Spades en Colombia",
+    description:
+      "Consulta perfumes Game of Spades disponibles en Colombia y compara notas, concentraciones, presentaciones, disponibilidad y precios en COP.",
+    introduction:
+      "Explora las referencias Game of Spades publicadas en nuestro catálogo. Consulta cada ficha para comparar su perfil olfativo, concentración, tamaños, disponibilidad y precio actual.",
+    filterValue: "Game of Spades",
+  },
+  {
+    kind: "marcas",
+    slug: "ariana-grande",
+    name: "Perfumes Ariana Grande",
+    eyebrow: "COLECCIÓN ARIANA GRANDE",
+    title: "Perfumes Ariana Grande en Colombia",
+    description:
+      "Consulta perfumes Ariana Grande disponibles en Colombia y compara notas, concentraciones, presentaciones, disponibilidad y precios en COP.",
+    introduction:
+      "Encuentra las referencias Ariana Grande publicadas en nuestra colección. Compara sus notas, perfil olfativo, concentración, presentaciones, disponibilidad y precio actual antes de elegir.",
+    filterValue: "Ariana Grande",
+  },
+  {
+    kind: "marcas",
+    slug: "paco-rabanne",
+    name: "Perfumes Paco Rabanne",
+    eyebrow: "COLECCIÓN PACO RABANNE",
+    title: "Perfumes Paco Rabanne en Colombia",
+    description:
+      "Consulta perfumes Paco Rabanne disponibles en Colombia y compara notas, concentraciones, presentaciones, disponibilidad y precios en COP.",
+    introduction:
+      "Revisa las referencias Paco Rabanne publicadas en nuestro catálogo. Cada ficha permite comparar notas, familia olfativa, concentración, tamaños, disponibilidad y precio actual.",
+    filterValue: "Paco Rabanne",
+  },
+  {
+    kind: "marcas",
+    slug: "carolina-herrera",
+    name: "Perfumes Carolina Herrera",
+    eyebrow: "COLECCIÓN CAROLINA HERRERA",
+    title: "Perfumes Carolina Herrera en Colombia",
+    description:
+      "Consulta perfumes Carolina Herrera disponibles en Colombia y compara notas, concentraciones, presentaciones, disponibilidad y precios en COP.",
+    introduction:
+      "Descubre las referencias Carolina Herrera disponibles en nuestra colección. Abre cada ficha para conocer sus notas, concentración, presentaciones, disponibilidad y precio actual.",
+    filterValue: "Carolina Herrera",
+  },
+  {
+    kind: "marcas",
+    slug: "dolce-gabbana",
+    name: "Perfumes Dolce & Gabbana",
+    eyebrow: "COLECCIÓN DOLCE & GABBANA",
+    title: "Perfumes Dolce & Gabbana en Colombia",
+    description:
+      "Consulta perfumes Dolce & Gabbana disponibles en Colombia y compara notas, concentraciones, presentaciones, disponibilidad y precios en COP.",
+    introduction:
+      "Consulta las referencias Dolce & Gabbana publicadas en nuestro catálogo. Compara su perfil olfativo, concentración, tamaños disponibles y precio actual desde cada ficha.",
+    filterValue: "Dolce & Gabbana",
+  },
+  {
     kind: "familias",
     slug: "dulces",
     name: "Perfumes dulces",
@@ -159,6 +219,78 @@ export const seoLandings: SeoLanding[] = [
     filterValue: "Cítrica",
   },
   {
+    kind: "familias",
+    slug: "florales",
+    name: "Perfumes florales",
+    eyebrow: "FAMILIA OLFATIVA FLORAL",
+    title: "Perfumes florales en Colombia",
+    description:
+      "Explora perfumes florales disponibles en Colombia con rosa, jazmín, azahar, peonía y otros acordes. Compara tamaños y precios en COP.",
+    introduction:
+      "Las fragancias florales pueden sentirse luminosas, cremosas, frescas o intensas según la combinación de rosa, jazmín, azahar, peonía y otras flores. Compara sus notas y evolución antes de elegir.",
+    filterValue: "Floral",
+  },
+  {
+    kind: "familias",
+    slug: "frutales",
+    name: "Perfumes frutales",
+    eyebrow: "FAMILIA OLFATIVA FRUTAL",
+    title: "Perfumes frutales en Colombia",
+    description:
+      "Explora perfumes frutales disponibles en Colombia con pera, manzana, durazno, frutos rojos y otros acordes. Compara tamaños y precios en COP.",
+    introduction:
+      "Los perfiles frutales pueden ir de frescos y jugosos a dulces y envolventes. Revisa las notas, la concentración y la evolución de cada referencia para distinguir sus diferentes estilos.",
+    filterValue: "Frutal",
+  },
+  {
+    kind: "familias",
+    slug: "orientales",
+    name: "Perfumes orientales y ambarados",
+    eyebrow: "FAMILIA OLFATIVA ORIENTAL Y AMBARADA",
+    title: "Perfumes orientales y ambarados en Colombia",
+    description:
+      "Explora perfumes orientales y ambarados disponibles en Colombia con ámbar, resinas, vainilla, especias e incienso. Compara tamaños y precios.",
+    introduction:
+      "Las composiciones orientales, también descritas como ambaradas, suelen combinar ámbar, resinas, vainilla, especias o incienso. Compara las notas y la concentración porque su intensidad y evolución pueden variar.",
+    filterValue: "Oriental",
+  },
+  {
+    kind: "familias",
+    slug: "especiados",
+    name: "Perfumes especiados",
+    eyebrow: "FAMILIA OLFATIVA ESPECIADA",
+    title: "Perfumes especiados en Colombia",
+    description:
+      "Explora perfumes especiados disponibles en Colombia con pimienta, canela, cardamomo, clavo y otros acordes. Compara tamaños y precios en COP.",
+    introduction:
+      "Las notas de pimienta, canela, cardamomo, clavo y otras especias pueden aportar frescura, contraste o calidez. Consulta cada ficha para comparar cómo se integran con maderas, flores, frutas y ámbar.",
+    filterValue: "Especiado",
+  },
+  {
+    kind: "familias",
+    slug: "aromaticos",
+    name: "Perfumes aromáticos",
+    eyebrow: "FAMILIA OLFATIVA AROMÁTICA",
+    title: "Perfumes aromáticos en Colombia",
+    description:
+      "Explora perfumes aromáticos disponibles en Colombia con lavanda, romero, salvia, hierbas y acordes frescos. Compara tamaños y precios en COP.",
+    introduction:
+      "Las fragancias aromáticas combinan con frecuencia lavanda, salvia, romero y otras notas herbales. Pueden sentirse verdes, frescas o clásicas según las notas cítricas, especiadas y amaderadas que las acompañen.",
+    filterValue: "Aromático",
+  },
+  {
+    kind: "familias",
+    slug: "acuaticos",
+    name: "Perfumes acuáticos",
+    eyebrow: "FAMILIA OLFATIVA ACUÁTICA",
+    title: "Perfumes acuáticos en Colombia",
+    description:
+      "Explora perfumes acuáticos disponibles en Colombia con acordes marinos, ozónicos, minerales y frescos. Compara presentaciones y precios en COP.",
+    introduction:
+      "Los acordes acuáticos, marinos y ozónicos buscan una sensación fresca y aireada. Compara las notas complementarias, la concentración y la presentación de cada perfume para encontrar el perfil que prefieres.",
+    filterValue: "Acuático",
+  },
+  {
     kind: "colecciones",
     slug: "perfumes-arabes",
     name: "Perfumes árabes",
@@ -182,5 +314,11 @@ export const seoLandings: SeoLanding[] = [
 export function seoLanding(kind: unknown, slug: unknown) {
   return seoLandings.find(
     (landing) => landing.kind === kind && landing.slug === slug,
+  );
+}
+
+export function seoLandingForFilter(kind: SeoLandingKind, filterValue: string) {
+  return seoLandings.find(
+    (landing) => landing.kind === kind && landing.filterValue === filterValue,
   );
 }

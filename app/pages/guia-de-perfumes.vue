@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { serializeSchema, siteBase } from "#shared/seo";
+import { seoLandingForFilter } from "#shared/seo-landings";
 
 const store = useStore();
 const base = siteBase(useRuntimeConfig().public.siteUrl);
@@ -68,6 +69,13 @@ const families = [
       "Acordes marinos, ozónicos o de lluvia. Transmiten una frescura limpia y aireada.",
   },
 ];
+
+function familyLocation(family: string) {
+  const landing = seoLandingForFilter("familias", family);
+  return landing
+    ? `/familias/${landing.slug}`
+    : { path: "/perfumes", query: { family } };
+}
 
 const faqs = [
   {
@@ -193,7 +201,7 @@ useHead(() => ({
           v-for="family in families"
           :key="family.name"
           class="guide-family"
-          :to="`/perfumes?family=${family.name}`"
+          :to="familyLocation(family.name)"
         >
           <h3>{{ family.name }}</h3>
           <p>{{ family.description }}</p>
