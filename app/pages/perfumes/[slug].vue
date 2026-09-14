@@ -3,6 +3,7 @@ import { productSearchName, siteBase, serializeSchema } from "#shared/seo";
 import { money } from "#shared/commerce";
 import { selectRelatedProducts } from "#shared/catalog";
 import type { Product } from "#shared/types";
+import { seoLanding } from "#shared/seo-landings";
 
 const route = useRoute();
 const catalog = useCatalogStore();
@@ -27,6 +28,12 @@ if (!p)
     statusCode: fetchError?.statusCode || 404,
     statusMessage: "No encontramos este perfume",
   });
+
+const categoryLanding = seoLanding(
+  "categorias",
+  p.category.toLocaleLowerCase("es"),
+);
+const brandLanding = seoLanding("marcas", p.brand.toLocaleLowerCase("es"));
 
 const relatedProducts = computed(() =>
   catalog.loaded.value
@@ -245,11 +252,21 @@ useHead({
       </div>
 
       <div class="detail-copy">
-        <span class="eyebrow">{{ p.brand }}</span>
+        <NuxtLink
+          v-if="brandLanding"
+          class="eyebrow"
+          :to="`/marcas/${brandLanding.slug}`"
+          >{{ p.brand }}</NuxtLink
+        >
+        <span v-else class="eyebrow">{{ p.brand }}</span>
         <h1>{{ p.name }}</h1>
         <div class="pills">
           <NuxtLink
-            :to="{ path: '/perfumes', query: { category: p.category } }"
+            :to="
+              categoryLanding
+                ? `/categorias/${categoryLanding.slug}`
+                : { path: '/perfumes', query: { category: p.category } }
+            "
           >
             {{ p.category }}
           </NuxtLink>

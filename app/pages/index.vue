@@ -28,7 +28,7 @@ const store = useStore();
 usePageSeo(
   `Perfumes en Colombia · ${store.value.name}`,
   "Descubre fragancias florales, amaderadas y cítricas. Encuentra un perfume que deje huella y consulta tu pedido por WhatsApp en Colombia.",
-  "/images/hero-perfumes-editorial-v2.png",
+  "/images/hero-perfumes-editorial-v2.webp",
   {
     imageAlt: "Selección de perfumes de ALCÉRA sobre una composición editorial",
   },
@@ -113,7 +113,7 @@ watch(finderOpen, (isOpen) => {
   <section class="hero shell">
     <div class="hero-copy">
       <span class="eyebrow"><i /> ALTA PERFUMERÍA</span>
-      <h1>Hay recuerdos<br />que se llevan<br /><em>en la piel.</em></h1>
+      <h1>Perfumes originales en Colombia, <em>una huella en la piel.</em></h1>
       <p class="hero-desc">
         Perfumes 100% originales para mujer, hombre y unisex en Colombia.
         Descubre tu aroma personal con asesoría experta y pedido directo.
@@ -138,13 +138,11 @@ watch(finderOpen, (isOpen) => {
         <div class="hero-shortcuts">
           <span class="hero-shortcuts-label">Explora por:</span>
           <div class="hero-chips">
-            <NuxtLink to="/perfumes?category=Mujer" class="hero-chip"
-              >Mujer</NuxtLink
-            >
-            <NuxtLink to="/perfumes?category=Hombre" class="hero-chip"
+            <NuxtLink to="/categorias/mujer" class="hero-chip">Mujer</NuxtLink>
+            <NuxtLink to="/categorias/hombre" class="hero-chip"
               >Hombre</NuxtLink
             >
-            <NuxtLink to="/perfumes?category=Unisex" class="hero-chip"
+            <NuxtLink to="/categorias/unisex" class="hero-chip"
               >Unisex</NuxtLink
             >
           </div>
@@ -161,7 +159,12 @@ watch(finderOpen, (isOpen) => {
         />
       </div>
       <img
-        src="/images/hero-perfumes-editorial-v2.png"
+        src="/images/hero-perfumes-editorial-v2.webp"
+        srcset="
+          /images/hero-perfumes-editorial-v2-480.webp  480w,
+          /images/hero-perfumes-editorial-v2-768.webp  768w,
+          /images/hero-perfumes-editorial-v2.webp     1122w
+        "
         sizes="(max-width: 700px) 100vw, (max-width: 1050px) 43vw, 40vw"
         alt="Frascos de perfume sin marca sobre una base escultórica con cinta color vino"
         fetchpriority="high"

@@ -6,13 +6,15 @@ export function usePageSeo(
   title: MaybeRefOrGetter<string>,
   description: string,
   image?: string,
-  options: { imageAlt?: string } = {},
+  options: { imageAlt?: string; canonical?: MaybeRefOrGetter<string> } = {},
 ) {
   const route = useRoute(),
     config = useRuntimeConfig();
   const base = siteBase(config.public.siteUrl);
   const canonical = computed(() =>
-    pageCanonical(base, route.path, route.query),
+    options.canonical
+      ? toValue(options.canonical)
+      : pageCanonical(base, route.path, route.query),
   );
   const summary = metaDescription(description);
   const socialImage = new URL(image || "/brand/alcera-logo.png", base).href;

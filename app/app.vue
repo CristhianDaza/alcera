@@ -2,6 +2,7 @@
 import {
   canIndex,
   catalogHasParameters,
+  paginationHasParameters,
   siteBase,
   serializeSchema,
 } from "#shared/seo";
@@ -13,13 +14,18 @@ const demo = String(useRuntimeConfig().public.demo) === "true";
 const route = useRoute();
 const config = useRuntimeConfig().public;
 const base = siteBase(config.siteUrl);
+const isSeoCollection = computed(() =>
+  /^\/(categorias|marcas)\/[^/]+\/?$/.test(route.path),
+);
 useSeoMeta({
   robots: () =>
     !canIndex(config) || /^\/(admin|carrito)(\/|$)/.test(route.path)
       ? "noindex, nofollow"
       : /^\/perfumes\/?$/.test(route.path) && catalogHasParameters(route.query)
         ? "noindex, follow"
-        : "index, follow, max-image-preview:large",
+        : isSeoCollection.value && paginationHasParameters(route.query)
+          ? "noindex, follow"
+          : "index, follow, max-image-preview:large",
 });
 useHead(() => ({
   script: [
@@ -51,12 +57,20 @@ useHead(() => ({
 }));
 const navigation = [
   { label: "Colección", category: "", to: "/perfumes" },
-  { label: "Mujer", category: "Mujer", to: "/perfumes?category=Mujer" },
-  { label: "Hombre", category: "Hombre", to: "/perfumes?category=Hombre" },
-  { label: "Unisex", category: "Unisex", to: "/perfumes?category=Unisex" },
+  { label: "Mujer", category: "Mujer", to: "/categorias/mujer" },
+  { label: "Hombre", category: "Hombre", to: "/categorias/hombre" },
+  { label: "Unisex", category: "Unisex", to: "/categorias/unisex" },
 ];
 const activeCategory = computed(() =>
-  /^\/perfumes\/?$/.test(route.path) ? route.query.category || "" : null,
+  /^\/perfumes\/?$/.test(route.path)
+    ? route.query.category || ""
+    : route.path === "/categorias/mujer"
+      ? "Mujer"
+      : route.path === "/categorias/hombre"
+        ? "Hombre"
+        : route.path === "/categorias/unisex"
+          ? "Unisex"
+          : null,
 );
 </script>
 <template>
@@ -134,9 +148,11 @@ const activeCategory = computed(() =>
         <div>
           <h2>Explora</h2>
           <NuxtLink to="/perfumes">Todos los perfumes</NuxtLink
-          ><NuxtLink to="/perfumes?category=Unisex"
-            >La colección unisex</NuxtLink
-          >
+          ><NuxtLink to="/categorias/mujer">Perfumes para mujer</NuxtLink
+          ><NuxtLink to="/categorias/hombre">Perfumes para hombre</NuxtLink
+          ><NuxtLink to="/categorias/unisex">La colección unisex</NuxtLink>
+          <NuxtLink to="/marcas/lattafa">Perfumes Lattafa</NuxtLink>
+          <NuxtLink to="/marcas/armaf">Perfumes Armaf</NuxtLink>
           <NuxtLink to="/guia-de-perfumes">Guía de perfumes</NuxtLink>
         </div>
         <div>

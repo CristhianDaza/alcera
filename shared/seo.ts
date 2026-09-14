@@ -59,10 +59,28 @@ export function catalogPage(value: unknown): number | null {
 }
 
 export function catalogHasParameters(query: Record<string, unknown>): boolean {
+  return paginationHasParameters(query);
+}
+
+export function paginationHasParameters(
+  query: Record<string, unknown>,
+): boolean {
   return (
     Object.keys(query).some((key) => key !== "page") ||
     catalogPage(query.page) === null
   );
+}
+
+export function paginatedCanonical(
+  base: string,
+  path: string,
+  query: Record<string, unknown>,
+): string {
+  const url = canonicalUrl(base, path);
+  const page = catalogPage(query.page);
+  return !paginationHasParameters(query) && page && page > 1
+    ? `${url}?page=${page}`
+    : url;
 }
 
 export function pageCanonical(
@@ -70,12 +88,7 @@ export function pageCanonical(
   path: string,
   query: Record<string, unknown>,
 ): string {
-  const url = canonicalUrl(base, path);
-  const page = catalogPage(query.page);
-  return /^\/perfumes\/?$/.test(path) &&
-    !catalogHasParameters(query) &&
-    page &&
-    page > 1
-    ? `${url}?page=${page}`
-    : url;
+  return /^\/perfumes\/?$/.test(path)
+    ? paginatedCanonical(base, path, query)
+    : canonicalUrl(base, path);
 }

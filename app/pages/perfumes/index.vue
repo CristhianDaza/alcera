@@ -236,7 +236,7 @@ usePageSeo(
   () =>
     `Perfumes para mujer, hombre y unisex${page.value > 1 ? ` · Página ${page.value}` : ""} · ${store.value.name}`,
   "Explora perfumes por marca, familia olfativa y presentación. Precios en COP y pedidos por WhatsApp.",
-  "/images/hero-perfumes-editorial-v2.png",
+  "/images/hero-perfumes-editorial-v2.webp",
   { imageAlt: "Colección de perfumes disponibles en Colombia" },
 );
 const base = siteBase(useRuntimeConfig().public.siteUrl);
@@ -427,6 +427,9 @@ useHead(() => ({
       </button>
     </div>
     <template v-else>
+      <h2 class="catalog-list-title">
+        {{ hasFilters ? "Resultados de tu búsqueda" : "Perfumes disponibles" }}
+      </h2>
       <div ref="productGrid" class="product-grid">
         <ProductCard
           v-for="(product, index) in paginatedProducts"

@@ -7,7 +7,7 @@ const base = siteBase(useRuntimeConfig().public.siteUrl);
 usePageSeo(
   `Guía de perfumes y familias olfativas · ${store.value.name}`,
   "Aprende a elegir un perfume: familias olfativas, concentraciones, notas, proyección y duración.",
-  "/images/hero-perfumes-editorial-v2.png",
+  "/images/hero-perfumes-editorial-v2.webp",
   { imageAlt: "Guía para elegir perfumes y familias olfativas" },
 );
 
@@ -118,6 +118,7 @@ useHead(() => ({
               "Familias olfativas, concentraciones, notas, proyección y duración.",
             inLanguage: "es-CO",
             mainEntityOfPage: base + "/guia-de-perfumes",
+            image: base + "/images/hero-perfumes-editorial-v2.webp",
             publisher: { "@id": base + "/#organization" },
           },
           {
@@ -161,7 +162,7 @@ useHead(() => ({
 
     <header class="guide-hero">
       <span class="eyebrow">APRENDE A ELEGIR TU AROMA</span>
-      <h1>El perfume se entiende <em>en la piel.</em></h1>
+      <h1>Guía para elegir un perfume y entender <em>cómo evoluciona.</em></h1>
       <p>
         Una guía sencilla para reconocer qué te gusta, leer una pirámide
         olfativa y elegir una fragancia con más seguridad.
@@ -170,6 +171,15 @@ useHead(() => ({
         >Explorar perfumes <span>↗</span></NuxtLink
       >
     </header>
+
+    <nav class="guide-index" aria-label="Contenido de la guía">
+      <strong>En esta guía</strong>
+      <a href="#familias-title">Familias olfativas</a>
+      <a href="#notas-title">Pirámide olfativa</a>
+      <a href="#concentraciones-title">Concentraciones</a>
+      <a href="#rendimiento-title">Rendimiento</a>
+      <a href="#faq-title">Preguntas frecuentes</a>
+    </nav>
 
     <section class="guide-section" aria-labelledby="familias-title">
       <div class="guide-heading">

@@ -5,6 +5,13 @@ const base = process.argv[2] || "http://127.0.0.1:3107";
 const products = await (await fetch(`${base}/api/products`)).json();
 const browser = await chromium.launch({ headless: true, channel: "msedge" });
 const results = [];
+const landingPaths = [
+  "/categorias/mujer",
+  "/categorias/hombre",
+  "/categorias/unisex",
+  "/marcas/lattafa",
+  "/marcas/armaf",
+];
 await mkdir("test-results/seo-browser", { recursive: true });
 try {
   for (const width of [320, 390, 768, 1440]) {
@@ -15,6 +22,7 @@ try {
       "/",
       "/perfumes",
       "/guia-de-perfumes",
+      ...landingPaths,
       `/perfumes/${products[0].slug}`,
     ]) {
       const response = await page.goto(base + path);
@@ -42,6 +50,9 @@ try {
     }
     if (width === 390) {
       await page.goto(base + "/perfumes");
+      await page.waitForFunction(() =>
+        Boolean(document.querySelector("#__nuxt")?.__vue_app__),
+      );
       await page
         .getByRole("link", { name: "Siguiente →", exact: true })
         .click();
@@ -57,6 +68,7 @@ try {
       await page
         .getByRole("combobox", { name: "Categoría", exact: true })
         .selectOption("Mujer");
+      await expect(page).toHaveURL(/category=Mujer/);
       await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
         "content",
         "noindex, follow",
@@ -68,6 +80,16 @@ try {
         await related.click();
         await expect(page.locator("h1")).not.toHaveText(firstName);
       }
+      await page.goto(base + "/categorias/mujer");
+      await expect(page.locator(".product-card")).toHaveCount(12);
+      await page
+        .getByRole("link", { name: "Siguiente →", exact: true })
+        .click();
+      await expect(page).toHaveURL(/\/categorias\/mujer\?page=2$/);
+      await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+        "href",
+        /\/categorias\/mujer\?page=2$/,
+      );
     }
     results.push({ width, errors });
     await page.close();
@@ -80,6 +102,8 @@ try {
     products[0].description,
   );
   await expect(noJS.locator(".price")).toContainText("COP");
+  await noJS.goto(base + "/marcas/lattafa");
+  await expect(noJS.locator(".product-card")).toHaveCount(12);
   results.push({
     javascriptDisabled:
       "Product description, price and page 2 product links visible",
