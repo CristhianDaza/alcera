@@ -1,9 +1,9 @@
 import type { Settings } from "#shared/types";
-import { canonicalUrl, metaDescription, siteBase } from "#shared/seo";
+import { pageCanonical, metaDescription, siteBase } from "#shared/seo";
 export const useStore = () =>
   useState<Settings>("store", () => ({ name: "ALCÉRA", whatsapp: "" }));
 export function usePageSeo(
-  title: string,
+  title: MaybeRefOrGetter<string>,
   description: string,
   image?: string,
   options: { imageAlt?: string } = {},
@@ -11,14 +11,16 @@ export function usePageSeo(
   const route = useRoute(),
     config = useRuntimeConfig();
   const base = siteBase(config.public.siteUrl);
-  const canonical = computed(() => canonicalUrl(base, route.path));
+  const canonical = computed(() =>
+    pageCanonical(base, route.path, route.query),
+  );
   const summary = metaDescription(description);
   const socialImage = new URL(image || "/brand/alcera-logo.png", base).href;
-  const imageAlt = options.imageAlt || title;
+  const imageAlt = () => options.imageAlt || toValue(title);
   useSeoMeta({
-    title,
+    title: () => toValue(title),
     description: summary,
-    ogTitle: title,
+    ogTitle: () => toValue(title),
     ogDescription: summary,
     ogImage: socialImage,
     ogImageAlt: imageAlt,
@@ -27,7 +29,7 @@ export function usePageSeo(
     ogLocale: "es_CO",
     ogSiteName: useStore().value.name,
     twitterCard: image ? "summary_large_image" : "summary",
-    twitterTitle: title,
+    twitterTitle: () => toValue(title),
     twitterDescription: summary,
     twitterImage: socialImage,
     twitterImageAlt: imageAlt,

@@ -7,6 +7,11 @@ const {
   error,
   refresh,
 } = await useFetch<Product[]>("/api/products/featured");
+if (import.meta.server && error.value)
+  throw createError({
+    statusCode: 503,
+    statusMessage: "La colección no está disponible temporalmente",
+  });
 const products = computed(() =>
   catalog.loaded.value
     ? catalog.products.value

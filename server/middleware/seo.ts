@@ -1,7 +1,7 @@
-import { defineEventHandler, getRequestURL, setHeader } from "h3";
+import { defineEventHandler, getRequestURL, getQuery, setHeader } from "h3";
 // @ts-ignore
 import { useRuntimeConfig } from "#imports";
-import { canIndex } from "../../shared/seo";
+import { canIndex, catalogHasParameters } from "../../shared/seo";
 
 export default defineEventHandler((event) => {
   const url = getRequestURL(event);
@@ -11,6 +11,9 @@ export default defineEventHandler((event) => {
     /^\/(admin|carrito|api)(\/|$)/.test(path)
   )
     setHeader(event, "X-Robots-Tag", "noindex, nofollow");
-  else if (/^\/perfumes\/?$/.test(path) && url.search)
+  else if (
+    /^\/perfumes\/?$/.test(path) &&
+    catalogHasParameters(getQuery(event))
+  )
     setHeader(event, "X-Robots-Tag", "noindex, follow");
 });

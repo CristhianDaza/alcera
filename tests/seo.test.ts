@@ -5,6 +5,10 @@ import {
   metaDescription,
   serializeSchema,
   siteBase,
+  catalogPage,
+  catalogHasParameters,
+  pageCanonical,
+  productSearchName,
 } from "../shared/seo";
 import { productSchema } from "../server/utils/validation";
 describe("Indexación y URLs públicas", () => {
@@ -38,6 +42,49 @@ describe("Indexación y URLs públicas", () => {
     expect(metaDescription(description)).toMatch(/…$/);
     expect(metaDescription(description).length).toBeLessThanOrEqual(160);
     expect(metaDescription("  Aroma   floral. ")).toBe("Aroma floral.");
+  });
+  it("evita repetir una marca ya presente en el nombre del producto", () => {
+    expect(
+      productSearchName("Lattafa Shaheen Silver Eau de Parfum", "Lattafa"),
+    ).toBe("Lattafa Shaheen Silver Eau de Parfum");
+    expect(productSearchName("Lancome Idole", "Lancôme")).toBe("Lancome Idole");
+    expect(productSearchName("Sauvage", "Dior")).toBe("Sauvage de Dior");
+  });
+  it("conserva la paginación canónica y excluye filtros y parámetros ambiguos", () => {
+    expect(catalogPage(undefined)).toBe(1);
+    expect(catalogPage("2")).toBe(2);
+    for (const value of [
+      "0",
+      "-1",
+      "2abc",
+      "01",
+      "1.5",
+      "",
+      ["2", "3"],
+      "9007199254740992",
+    ])
+      expect(catalogPage(value)).toBeNull();
+    expect(catalogHasParameters({ page: "2" })).toBe(false);
+    expect(pageCanonical(live.siteUrl, "/perfumes/", { page: "2" })).toBe(
+      `${live.siteUrl}/perfumes?page=2`,
+    );
+    expect(pageCanonical(live.siteUrl, "/perfumes", { page: "1" })).toBe(
+      `${live.siteUrl}/perfumes`,
+    );
+    for (const query of [
+      { page: "2", q: "rosa" },
+      { category: "Mujer" },
+      { page: ["2", "3"] },
+      { utm_source: "google" },
+    ]) {
+      expect(catalogHasParameters(query)).toBe(true);
+      expect(pageCanonical(live.siteUrl, "/perfumes", query)).toBe(
+        `${live.siteUrl}/perfumes`,
+      );
+    }
+    expect(pageCanonical(live.siteUrl, "/perfumes/rosa", { page: "2" })).toBe(
+      `${live.siteUrl}/perfumes/rosa`,
+    );
   });
   it("serializa contenido sin permitir cerrar el script JSON-LD", () => {
     const content = { name: "</script><script>alert(1)</script>" };

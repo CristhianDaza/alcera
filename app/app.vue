@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { canIndex, siteBase, serializeSchema } from "#shared/seo";
+import {
+  canIndex,
+  catalogHasParameters,
+  siteBase,
+  serializeSchema,
+} from "#shared/seo";
 const store = useStore();
 const { data } = await useFetch("/api/settings");
 if (data.value) store.value = data.value;
@@ -12,7 +17,7 @@ useSeoMeta({
   robots: () =>
     !canIndex(config) || /^\/(admin|carrito)(\/|$)/.test(route.path)
       ? "noindex, nofollow"
-      : /^\/perfumes\/?$/.test(route.path) && Object.keys(route.query).length
+      : /^\/perfumes\/?$/.test(route.path) && catalogHasParameters(route.query)
         ? "noindex, follow"
         : "index, follow, max-image-preview:large",
 });
@@ -145,7 +150,7 @@ const activeCategory = computed(() =>
       </div>
       <div class="shell footer-bottom">
         <span>
-          © 2026 Arcéla Perfumes. Designed &amp; Developed by
+          © 2026 {{ store.name }} Perfumes. Designed &amp; Developed by
           <a
             href="https://cris-dev.com/"
             target="_blank"

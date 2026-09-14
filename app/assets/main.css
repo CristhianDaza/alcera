@@ -1035,6 +1035,8 @@ p {
 }
 
 .faq-list summary span {
+    align-self: center;
+    flex-shrink: 0;
     color: var(--accent);
     font-size: 24px;
     font-weight: 400;
@@ -2758,7 +2760,7 @@ main:focus {
 
     .faq-list summary {
         font-size: 16px;
-        padding: 19px 2px;
+        padding: 19px 8px;
     }
 
     .guide-cta {

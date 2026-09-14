@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { siteBase, serializeSchema } from "#shared/seo";
+import { productSearchName, siteBase, serializeSchema } from "#shared/seo";
 import { money } from "#shared/commerce";
 import { selectRelatedProducts } from "#shared/catalog";
 import type { Product } from "#shared/types";
@@ -43,7 +43,7 @@ const variant = computed(() =>
 );
 const { add } = useCart();
 usePageSeo(
-  p.name + " de " + p.brand + " · " + useStore().value.name,
+  productSearchName(p.name, p.brand) + " · " + useStore().value.name,
   p.aromaDescription || p.description,
   p.images[0]?.url,
   {
@@ -233,7 +233,7 @@ useHead({
             @click="photo = index"
           >
             <img
-              :src="image.url"
+              :src="imageWidth(image.url, 180)"
               alt=""
               loading="lazy"
               decoding="async"
