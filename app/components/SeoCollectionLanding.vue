@@ -43,6 +43,34 @@ if (import.meta.server && !data.value?.products.length)
 const canonical = computed(() =>
   paginatedCanonical(base, route.path, route.query),
 );
+const displayedPages = computed(() => {
+  const total = data.value?.totalPages ?? 1;
+  const current = data.value?.page ?? 1;
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  const pages: (number | string)[] = [1];
+  if (current > 3) pages.push("...");
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  for (let index = start; index <= end; index += 1) pages.push(index);
+  if (current < total - 2) pages.push("...");
+  pages.push(total);
+  return pages;
+});
+function pageLocation(pageNumber: number) {
+  return pageNumber > 1
+    ? { path: route.path, query: { page: String(pageNumber) } }
+    : { path: route.path };
+}
+const productGrid = ref<HTMLElement | null>(null);
+function scrollToProducts() {
+  productGrid.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+watch(
+  () => data.value?.page,
+  (current, previous) => {
+    if (previous && current !== previous) void nextTick(scrollToProducts);
+  },
+);
 
 usePageSeo(
   () =>
@@ -144,7 +172,7 @@ useHead(() => ({
       <p>No pudimos cargar esta colección.</p>
       <button class="text-link" @click="refresh()">Reintentar</button>
     </div>
-    <div v-else class="product-grid">
+    <div v-else ref="productGrid" class="product-grid">
       <ProductCard
         v-for="(product, index) in data?.products"
         :key="product.id"
@@ -166,17 +194,39 @@ useHead(() => ({
         <NuxtLink
           v-if="data.page > 1"
           class="text-link pagination-btn"
-          :to="
-            data.page === 2 ? route.path : `${route.path}?page=${data.page - 1}`
-          "
+          :to="pageLocation(data.page - 1)"
+          @click="scrollToProducts"
           >← Anterior</NuxtLink
         >
+        <span v-else class="text-link pagination-btn is-disabled">
+          ← Anterior
+        </span>
+        <div class="pagination-pages">
+          <template v-for="(item, index) in displayedPages" :key="index">
+            <span v-if="typeof item === 'string'" class="pagination-ellipsis">{{
+              item
+            }}</span>
+            <NuxtLink
+              v-else
+              class="pagination-page-btn"
+              :class="{ active: item === data.page }"
+              :aria-current="item === data.page ? 'page' : undefined"
+              :to="pageLocation(item)"
+              @click="scrollToProducts"
+              >{{ item }}</NuxtLink
+            >
+          </template>
+        </div>
         <NuxtLink
           v-if="data.page < data.totalPages"
           class="text-link pagination-btn"
-          :to="`${route.path}?page=${data.page + 1}`"
+          :to="pageLocation(data.page + 1)"
+          @click="scrollToProducts"
           >Siguiente →</NuxtLink
         >
+        <span v-else class="text-link pagination-btn is-disabled">
+          Siguiente →
+        </span>
       </div>
     </nav>
 

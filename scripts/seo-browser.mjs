@@ -90,10 +90,16 @@ try {
       }
       await page.goto(base + "/categorias/mujer");
       await expect(page.locator(".product-card")).toHaveCount(12);
+      await expect(page.locator(".pagination-page-btn")).not.toHaveCount(0);
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      const previousScroll = await page.evaluate(() => window.scrollY);
       await page
-        .getByRole("link", { name: "Siguiente →", exact: true })
-        .click();
+        .getByRole("link", { name: "2", exact: true })
+        .evaluate((element) => element.click());
       await expect(page).toHaveURL(/\/categorias\/mujer\?page=2$/);
+      await expect
+        .poll(() => page.evaluate(() => window.scrollY))
+        .toBeLessThan(previousScroll);
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
         "href",
         /\/categorias\/mujer\?page=2$/,
