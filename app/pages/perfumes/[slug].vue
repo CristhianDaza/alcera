@@ -271,6 +271,15 @@ useHead({
         <div class="pills">
           <NuxtLink
             :to="
+              brandLanding
+                ? `/marcas/${brandLanding.slug}`
+                : { path: '/perfumes', query: { brand: p.brand } }
+            "
+          >
+            {{ p.brand }}
+          </NuxtLink>
+          <NuxtLink
+            :to="
               categoryLanding
                 ? `/categorias/${categoryLanding.slug}`
                 : { path: '/perfumes', query: { category: p.category } }
