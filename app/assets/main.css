@@ -862,7 +862,7 @@ p {
     margin-bottom: 28px;
 }
 
-.guide-section {
+.guide-section:not(:first-of-type) {
     padding: 64px 0;
     border-top: 1px solid var(--line);
 }
@@ -2782,10 +2782,6 @@ main:focus {
 
     .guide-hero > p {
         font-size: 15px;
-    }
-
-    .guide-section {
-        padding: 45px 0;
     }
 
     .guide-heading h2 {
