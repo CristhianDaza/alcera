@@ -343,7 +343,7 @@ useHead({
           </button>
           <p v-if="added" class="added-notice" role="status">
             Añadido a tu bolsa.
-            <NuxtLink class="text-link" to="/carrito">Ver bolsa ↗</NuxtLink>
+            <NuxtLink class="text-link" to="/carrito">Ver bolsa</NuxtLink>
           </p>
           <p class="muted">
             Finaliza tu consulta por WhatsApp.<br />Envío y forma de pago a
@@ -422,7 +422,7 @@ useHead({
           <span class="eyebrow">SIGUE DESCUBRIENDO</span>
           <h2 id="related-title">También te pueden <em>interesar.</em></h2>
         </div>
-        <NuxtLink class="text-link" to="/perfumes">Ver colección ↗</NuxtLink>
+        <NuxtLink class="text-link" to="/perfumes">Ver colección</NuxtLink>
       </div>
       <div class="product-grid">
         <ProductCard

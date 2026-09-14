@@ -167,9 +167,7 @@ useHead(() => ({
         Una guía sencilla para reconocer qué te gusta, leer una pirámide
         olfativa y elegir una fragancia con más seguridad.
       </p>
-      <NuxtLink class="button" to="/perfumes"
-        >Explorar perfumes <span>↗</span></NuxtLink
-      >
+      <NuxtLink class="button" to="/perfumes">Explorar perfumes</NuxtLink>
     </header>
 
     <nav class="guide-index" aria-label="Contenido de la guía">
@@ -199,7 +197,7 @@ useHead(() => ({
         >
           <h3>{{ family.name }}</h3>
           <p>{{ family.description }}</p>
-          <span>Ver perfumes ↗</span>
+          <span>Ver perfumes</span>
         </NuxtLink>
       </div>
     </section>
@@ -357,8 +355,7 @@ useHead(() => ({
         ocasión.
       </p>
       <div>
-        <NuxtLink class="button" to="/perfumes"
-          >Ver la colección <span>↗</span></NuxtLink
+        <NuxtLink class="button" to="/perfumes">Ver la colección</NuxtLink
         ><NuxtLink class="button button--outline" to="/?finder=1"
           >Usar el buscador de perfume ✦</NuxtLink
         >

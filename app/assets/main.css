@@ -1178,7 +1178,6 @@ p {
 }
 
 .catalog-landings a::after {
-    content: "↗";
     color: var(--accent-soft);
     font-size: 10px;
     transition: color .2s ease, transform .2s ease

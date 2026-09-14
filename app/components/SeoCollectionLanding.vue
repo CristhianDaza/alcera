@@ -233,7 +233,7 @@ useHead(() => ({
     <div class="seo-collection__more">
       <p>¿Quieres comparar con otras marcas o perfiles olfativos?</p>
       <NuxtLink class="button button--outline" to="/perfumes">
-        Ver todos los perfumes <span>↗</span>
+        Ver todos los perfumes
       </NuxtLink>
     </div>
   </section>

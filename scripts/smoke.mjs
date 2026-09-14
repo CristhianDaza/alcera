@@ -62,7 +62,7 @@ try {
     await expect(page.locator(".product-card")).toHaveCount(1);
     await page.locator(".product-card").click();
     await page.getByRole("button", { name: "Añadir a mi bolsa" }).click();
-    await page.getByRole("link", { name: "Ver bolsa ↗", exact: true }).click();
+    await page.getByRole("link", { name: "Ver bolsa", exact: true }).click();
     await page.locator(".cart-row").waitFor();
     await page.waitForLoadState("networkidle");
     await page.reload();

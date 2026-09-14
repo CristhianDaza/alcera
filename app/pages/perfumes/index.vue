@@ -442,7 +442,7 @@ useHead(() => ({
         }}
       </p>
       <button v-if="hasFilters" class="button" @click="clearFilters">
-        Ver toda la colección ↗
+        Ver toda la colección
       </button>
     </div>
     <template v-else>

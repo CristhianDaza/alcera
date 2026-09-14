@@ -162,7 +162,7 @@ const activeCategory = computed(() =>
             Elige tus favoritos y consulta tu pedido<br />por WhatsApp. Envío y
             pago a convenir.
           </p>
-          <NuxtLink to="/admin" rel="nofollow">Administración ↗</NuxtLink>
+          <NuxtLink to="/admin" rel="nofollow">Administración</NuxtLink>
         </div>
       </div>
       <div class="shell footer-bottom">

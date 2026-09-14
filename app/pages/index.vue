@@ -124,7 +124,7 @@ watch(finderOpen, (isOpen) => {
       </p>
       <div class="hero-actions">
         <NuxtLink class="button hero-cta" to="/perfumes">
-          Explorar la colección <span>↗</span>
+          Explorar la colección
         </NuxtLink>
         <button
           class="button button--outline hero-cta"
@@ -137,7 +137,7 @@ watch(finderOpen, (isOpen) => {
           class="button button--outline hero-cta"
           to="/guia-de-perfumes"
         >
-          Aprende sobre perfumes <span>↗</span>
+          Aprende sobre perfumes
         </NuxtLink>
         <div class="hero-shortcuts">
           <span class="hero-shortcuts-label">Explora por:</span>
@@ -189,7 +189,7 @@ watch(finderOpen, (isOpen) => {
         <h2>Perfumes elegidos para <em>ti.</em></h2>
       </div>
       <button class="text-link" type="button" @click="finderOpen = true">
-        Actualizar mi selección ↗
+        Actualizar mi selección
       </button>
     </div>
     <div
@@ -224,7 +224,6 @@ watch(finderOpen, (isOpen) => {
     </div>
     <div class="trust-divider" aria-hidden="true"></div>
     <div class="trust-item">
-      <span class="trust-icon" aria-hidden="true">↗</span>
       <div class="trust-text">
         <strong>Envíos a toda Colombia</strong>
         <span>Entrega segura y empaque protegido</span>
@@ -239,7 +238,7 @@ watch(finderOpen, (isOpen) => {
         <h2>Fragancias que <em>dejan huella.</em></h2>
       </div>
       <NuxtLink class="text-link" to="/perfumes"
-        >Ver toda la colección ↗</NuxtLink
+        >Ver toda la colección</NuxtLink
       >
     </div>
     <div v-if="error" class="notice" role="alert">
@@ -282,11 +281,10 @@ watch(finderOpen, (isOpen) => {
       >
         <div class="family-card-head">
           <span class="family-badge">{{ item.tag }}</span>
-          <span class="family-arrow" aria-hidden="true">↗</span>
         </div>
         <h3>{{ item.name }}</h3>
         <p>{{ item.desc }}</p>
-        <span class="family-link-label">Explorar notas ↗</span>
+        <span class="family-link-label">Explorar notas</span>
       </NuxtLink>
     </div>
   </section>
@@ -301,7 +299,7 @@ watch(finderOpen, (isOpen) => {
       </p>
     </div>
     <NuxtLink class="button button--outline" to="/guia-de-perfumes"
-      >Conocer la guía <span>↗</span></NuxtLink
+      >Conocer la guía</NuxtLink
     >
   </section>
 
@@ -314,9 +312,7 @@ watch(finderOpen, (isOpen) => {
         asesoramos en tiempo real y coordinamos tu entrega fácilmente.
       </p>
       <div class="concierge-actions">
-        <NuxtLink class="button" to="/perfumes"
-          >Ver catálogo completo <span>↗</span></NuxtLink
-        >
+        <NuxtLink class="button" to="/perfumes">Ver catálogo completo</NuxtLink>
         <a
           v-if="whatsappUrl"
           :href="whatsappUrl"

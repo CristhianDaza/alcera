@@ -228,7 +228,7 @@ watch(step, (currentStep) => {
                   choose(questions[step]!.key as keyof Answers, option[0] || '')
                 "
               >
-                {{ option[1] }} <span>↗</span>
+                {{ option[1] }}
               </button>
             </div>
           </template>
@@ -257,10 +257,11 @@ watch(step, (currentStep) => {
                 <span
                   ><small>{{ product.brand }}</small
                   ><strong>{{ product.name }}</strong
-                  ><em>{{ product.family?.join(" · ") || product.category }}</em></span
-                >
-                <b aria-hidden="true">↗</b>
-              </NuxtLink>
+                  ><em>{{
+                    product.family?.join(" · ") || product.category
+                  }}</em></span
+                ></NuxtLink
+              >
             </div>
             <div class="finder-result-actions">
               <button class="text-link" type="button" @click="restart">

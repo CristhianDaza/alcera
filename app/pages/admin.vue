@@ -503,7 +503,7 @@ function move(index: number, direction: number) {
         <h1>El atelier.</h1>
       </div>
       <button v-if="token" class="text-link" @click="logout">
-        Cerrar sesión ↗
+        Cerrar sesión
       </button>
     </div>
     <p v-if="demo" class="demo-banner">
@@ -531,7 +531,7 @@ function move(index: number, direction: number) {
           autocomplete="current-password"
           required /></label
       ><button class="button full" :disabled="busy">
-        {{ busy ? "Entrando…" : "Entrar al atelier ↗" }}
+        {{ busy ? "Entrando…" : "Entrar al atelier" }}
       </button>
     </form>
     <template v-else>
@@ -627,7 +627,7 @@ function move(index: number, direction: number) {
                   ></span
                 ><span class="product-status"
                   >{{ p.status === "published" ? "Activo" : "Inactivo" }} ·
-                  Editar ↗</span
+                  Editar</span
                 >
               </button>
               <button

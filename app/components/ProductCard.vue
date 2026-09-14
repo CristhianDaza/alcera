@@ -21,10 +21,7 @@ const startingPrice = computed(() =>
 </script>
 
 <template>
-  <NuxtLink
-    :to="`/perfumes/${product.slug}`"
-    class="product-card"
-  >
+  <NuxtLink :to="`/perfumes/${product.slug}`" class="product-card">
     <div class="product-photo">
       <img
         :src="product.images[0]?.url"
@@ -50,7 +47,6 @@ const startingPrice = computed(() =>
         height="800"
       />
       <span class="product-tag">{{ product.brand }}</span>
-      <span class="product-arrow" aria-hidden="true">↗</span>
     </div>
     <div class="product-card__details">
       <div class="product-meta">
@@ -71,7 +67,7 @@ const startingPrice = computed(() =>
         <span>Desde {{ money(startingPrice) }}</span>
         <span>{{
           product.variants.some((variant) => variant.available)
-            ? "Ver perfume ↗"
+            ? "Ver perfume"
             : "AGOTADO"
         }}</span>
       </div>
