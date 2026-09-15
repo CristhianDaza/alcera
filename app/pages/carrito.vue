@@ -10,6 +10,32 @@ const customer = reactive({ name: "", phone: "", city: "" });
 const contactConsent = ref(false);
 const orderId = ref("");
 let attempt: { signature: string; id: string } | undefined;
+const analyticsItems = computed(() =>
+  lines.value.map((line) => ({
+    item_id: line.productId,
+    item_name: line.name,
+    item_variant: line.size,
+    price: line.price,
+    quantity: line.quantity,
+  })),
+);
+onMounted(() => {
+  void trackAnalyticsEvent("view_cart", {
+    currency: "COP",
+    value: total.value,
+    item_count: lines.value.reduce((sum, line) => sum + line.quantity, 0),
+    items: analyticsItems.value,
+  });
+});
+function trackWhatsappClick() {
+  void trackAnalyticsEvent("whatsapp_click", {
+    link_location: "checkout",
+    order_id: orderId.value,
+    currency: "COP",
+    value: total.value,
+    item_count: lines.value.reduce((sum, line) => sum + line.quantity, 0),
+  });
+}
 watch([customer, contactConsent], () => {
   readyUrl.value = "";
   orderId.value = "";
@@ -72,6 +98,12 @@ async function checkout() {
         expectedPrice: line.price,
       })),
     };
+    void trackAnalyticsEvent("begin_checkout", {
+      currency: "COP",
+      value: total.value,
+      item_count: updated.reduce((sum, line) => sum + line.quantity, 0),
+      items: analyticsItems.value,
+    });
     const bytes = await crypto.subtle.digest(
       "SHA-256",
       new TextEncoder().encode(JSON.stringify(payload)),
@@ -102,6 +134,11 @@ async function checkout() {
     });
     readyUrl.value = result.whatsappUrl;
     orderId.value = result.id;
+    void trackAnalyticsEvent("generate_lead", {
+      currency: "COP",
+      value: total.value,
+      order_id: result.id,
+    });
     notice.value =
       "Registramos tu solicitud. Abre WhatsApp para acordar el envío y el pago. Aún no es una compra confirmada ni reserva productos.";
   } catch (error) {
@@ -229,6 +266,7 @@ async function checkout() {
             target="_blank"
             rel="noopener noreferrer"
             class="button full"
+            @click="trackWhatsappClick"
             >Abrir WhatsApp ↗</a
           >
         </form>

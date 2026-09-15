@@ -41,6 +41,13 @@ const whatsappUrl = computed(() => {
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 });
 
+function trackWhatsappClick() {
+  void trackAnalyticsEvent("whatsapp_click", {
+    link_location: "home_concierge",
+    page_path: route.fullPath,
+  });
+}
+
 const familyList = [
   {
     name: "Floral",
@@ -319,6 +326,7 @@ watch(finderOpen, (isOpen) => {
           target="_blank"
           rel="noopener noreferrer"
           class="button button--outline"
+          @click="trackWhatsappClick"
         >
           Consultar por WhatsApp ↗
         </a>

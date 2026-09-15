@@ -18,10 +18,23 @@ const startingPrice = computed(() =>
     ).map((variant) => variant.price),
   ),
 );
+const route = useRoute();
+
+function trackProductSelection() {
+  void trackAnalyticsEvent("select_item", {
+    item_list_id: route.path,
+    item_list_name: document.title,
+    items: [analyticsItem(props.product)],
+  });
+}
 </script>
 
 <template>
-  <NuxtLink :to="`/perfumes/${product.slug}`" class="product-card">
+  <NuxtLink
+    :to="`/perfumes/${product.slug}`"
+    class="product-card"
+    @click="trackProductSelection"
+  >
     <div class="product-photo">
       <img
         :src="product.images[0]?.url"

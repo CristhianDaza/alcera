@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const store = useStore();
+const route = useRoute();
 const showBackToTop = ref(false);
 
 const whatsappUrl = computed(() => {
@@ -16,6 +17,13 @@ function updateScrollState() {
 
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function trackWhatsappClick() {
+  void trackAnalyticsEvent("whatsapp_click", {
+    link_location: "floating_button",
+    page_path: route.fullPath,
+  });
 }
 
 onMounted(() => {
@@ -51,6 +59,7 @@ onBeforeUnmount(() => window.removeEventListener("scroll", updateScrollState));
       rel="noopener noreferrer"
       aria-label="Escríbenos por WhatsApp"
       title="Escríbenos por WhatsApp"
+      @click="trackWhatsappClick"
     >
       <svg viewBox="0 0 32 32" aria-hidden="true">
         <path
