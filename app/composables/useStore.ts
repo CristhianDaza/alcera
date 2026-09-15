@@ -1,7 +1,14 @@
 import type { Settings } from "#shared/types";
 import { pageCanonical, metaDescription, siteBase } from "#shared/seo";
 export const useStore = () =>
-  useState<Settings>("store", () => ({ name: "ALCÉRA", whatsapp: "" }));
+  useState<Settings>("store", () => ({
+    name: "ALCÉRA",
+    whatsapp: "",
+    whatsappEnabled: true,
+    telegram: "",
+    telegramEnabled: false,
+    tawkEnabled: true,
+  }));
 export function usePageSeo(
   title: MaybeRefOrGetter<string>,
   description: string,

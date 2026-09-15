@@ -6,6 +6,7 @@ node_modules
 .env.example
 playwright-report
 test-results
+artifacts
 .idea
 --dotenv
 VERIFICACION.md

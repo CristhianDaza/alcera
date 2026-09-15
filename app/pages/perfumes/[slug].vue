@@ -22,12 +22,13 @@ if (!cachedProduct) {
   fetchedPage = data.value ?? null;
   fetchError = error.value ?? null;
 }
-const p = cachedProduct ?? fetchedPage?.product;
-if (!p)
+const resolvedProduct = cachedProduct ?? fetchedPage?.product;
+if (!resolvedProduct)
   throw createError({
     statusCode: fetchError?.statusCode || 404,
     statusMessage: "No encontramos este perfume",
   });
+const p: Product = resolvedProduct;
 
 const categoryLanding = seoLanding(
   "categorias",
@@ -55,6 +56,23 @@ const variant = computed(() =>
   p.variants.find((item) => item.id === selected.value)!,
 );
 const { add } = useCart();
+function addSelectedVariant() {
+  add(p, variant.value);
+  added.value = true;
+  void trackAnalyticsEvent("add_to_cart", {
+    currency: "COP",
+    value: variant.value.price,
+    items: [analyticsItem(p, variant.value)],
+  });
+}
+
+onMounted(() => {
+  void trackAnalyticsEvent("view_item", {
+    currency: "COP",
+    value: variant.value.price,
+    items: [analyticsItem(p, variant.value)],
+  });
+});
 usePageSeo(
   productSearchName(p.name, p.brand) + " · " + useStore().value.name,
   p.aromaDescription || p.description,
@@ -325,10 +343,7 @@ useHead({
           <button
             class="button full"
             :disabled="!variant.available"
-            @click="
-              add(p, variant);
-              added = true;
-            "
+            @click="addSelectedVariant"
           >
             {{
               !variant.available

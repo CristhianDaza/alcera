@@ -70,12 +70,39 @@ describe("Validación administrativa", () => {
   it("rechaza imágenes ajenas a Cloudinary", () =>
     expect(productSchema.safeParse(p).success).toBe(false));
   it("valida WhatsApp sin inventar un contacto", () => {
+    const contactSettings = {
+      whatsappEnabled: true,
+      telegram: "",
+      telegramEnabled: false,
+      tawkEnabled: false,
+    };
     expect(
-      settingsSchema.safeParse({ name: "Esencia", whatsapp: "" }).success,
+      settingsSchema.safeParse({
+        name: "Esencia",
+        whatsapp: "",
+        ...contactSettings,
+      }).success,
     ).toBe(true);
     expect(
-      settingsSchema.safeParse({ name: "Esencia", whatsapp: "+57 abc" })
-        .success,
+      settingsSchema.safeParse({
+        name: "Esencia",
+        whatsapp: "+57 abc",
+        ...contactSettings,
+      }).success,
+    ).toBe(false);
+  });
+  it("valida el usuario de Telegram y los interruptores de chat", () => {
+    const settings = {
+      name: "Esencia",
+      whatsapp: "573001234567",
+      whatsappEnabled: true,
+      telegram: "alcera_perfumes",
+      telegramEnabled: true,
+      tawkEnabled: true,
+    };
+    expect(settingsSchema.safeParse(settings).success).toBe(true);
+    expect(
+      settingsSchema.safeParse({ ...settings, telegram: "@usuario" }).success,
     ).toBe(false);
   });
 });

@@ -72,6 +72,20 @@ watch(
   },
 );
 
+function trackCollectionView() {
+  if (!data.value) return;
+  void trackAnalyticsEvent("view_item_list", {
+    item_list_id: `${props.landing.kind}:${props.landing.slug}`,
+    item_list_name: props.landing.name,
+    collection_kind: props.landing.kind,
+    page_number: data.value.page,
+    items: data.value.products.map((product) => analyticsItem(product)),
+  });
+}
+
+onMounted(trackCollectionView);
+watch(() => data.value?.page, trackCollectionView);
+
 usePageSeo(
   () =>
     `${props.landing.title}${page.value && page.value > 1 ? ` · Página ${page.value}` : ""} · ${store.value.name}`,

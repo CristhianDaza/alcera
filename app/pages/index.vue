@@ -22,7 +22,7 @@ const router = useRouter();
 const selection = computed(() =>
   [...(products.value ?? [])]
     .sort((a, b) => Number(b.featured) - Number(a.featured))
-    .slice(0, 12),
+    .slice(0, 4),
 );
 const store = useStore();
 usePageSeo(
@@ -41,30 +41,37 @@ const whatsappUrl = computed(() => {
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 });
 
+function trackWhatsappClick() {
+  void trackAnalyticsEvent("whatsapp_click", {
+    link_location: "home_concierge",
+    page_path: route.fullPath,
+  });
+}
+
 const familyList = [
   {
     name: "Floral",
     to: "/familias/florales",
     tag: "Luminosa",
-    desc: "Delicada, radiante y envolvente. Notas de rosa, jazmín silvestre y azahar.",
+    desc: "Rosa, jazmín y azahar.",
   },
   {
     name: "Amaderada",
     to: "/familias/amaderados",
     tag: "Profunda",
-    desc: "Cálida, señorial y terrosa. Cedro noble, sándalo cremoso y vetiver.",
+    desc: "Cedro, sándalo y vetiver.",
   },
   {
     name: "Cítrica",
     to: "/familias/citricos",
     tag: "Vibrante",
-    desc: "Fresca, espontánea y luminosa. Bergamota viva, neroli y mandarina.",
+    desc: "Bergamota, neroli y mandarina.",
   },
   {
     name: "Oriental",
     to: "/familias/orientales",
     tag: "Seductora",
-    desc: "Intensa, especiada y magnética. Ámbar cálido, vainilla noble y benjuí.",
+    desc: "Ámbar, vainilla y benjuí.",
   },
 ];
 
@@ -117,43 +124,22 @@ watch(finderOpen, (isOpen) => {
   <section class="hero shell">
     <div class="hero-copy">
       <span class="eyebrow"><i /> ALTA PERFUMERÍA</span>
-      <h1>Perfumes originales en Colombia, <em>una huella en la piel.</em></h1>
+      <h1>Encuentra un perfume que <em>se sienta como tú.</em></h1>
       <p class="hero-desc">
-        Perfumes 100% originales para mujer, hombre y unisex en Colombia.
-        Descubre tu aroma personal con asesoría experta y pedido directo.
+        Perfumes 100% originales para mujer, hombre y unisex, con asesoría
+        personalizada y envíos a toda Colombia.
       </p>
       <div class="hero-actions">
-        <NuxtLink class="button hero-cta" to="/perfumes">
-          Explorar la colección
-        </NuxtLink>
         <button
-          class="button button--outline hero-cta"
+          class="button hero-cta"
           type="button"
           @click="finderOpen = true"
         >
           Encuentra tu perfume ideal <span>✦</span>
         </button>
-        <NuxtLink
-          class="button button--outline hero-cta"
-          to="/guia-de-perfumes"
-        >
-          Aprende sobre perfumes
+        <NuxtLink class="hero-secondary-link" to="/perfumes">
+          Ver todos los perfumes <span aria-hidden="true">→</span>
         </NuxtLink>
-        <div class="hero-shortcuts">
-          <span class="hero-shortcuts-label">Explora por:</span>
-          <div class="hero-chips">
-            <NuxtLink to="/categorias/mujer" class="hero-chip">Mujer</NuxtLink>
-            <NuxtLink to="/categorias/hombre" class="hero-chip"
-              >Hombre</NuxtLink
-            >
-            <NuxtLink to="/categorias/unisex" class="hero-chip"
-              >Unisex</NuxtLink
-            >
-            <NuxtLink to="/colecciones/perfumes-arabes" class="hero-chip"
-              >Árabes</NuxtLink
-            >
-          </div>
-        </div>
       </div>
     </div>
     <div class="hero-image">
@@ -182,6 +168,31 @@ watch(finderOpen, (isOpen) => {
     </div>
   </section>
 
+  <div class="trust-banner shell">
+    <div class="trust-item">
+      <span class="trust-icon" aria-hidden="true">✦</span>
+      <div class="trust-text">
+        <strong>100% Originales</strong>
+        <span>Fragancias auténticas y seleccionadas</span>
+      </div>
+    </div>
+    <div class="trust-divider" aria-hidden="true"></div>
+    <div class="trust-item">
+      <span class="trust-icon" aria-hidden="true">◈</span>
+      <div class="trust-text">
+        <strong>Elección acompañada</strong>
+        <span>Te ayudamos a encontrar tu aroma ideal</span>
+      </div>
+    </div>
+    <div class="trust-divider" aria-hidden="true"></div>
+    <div class="trust-item">
+      <div class="trust-text">
+        <strong>Envíos a toda Colombia</strong>
+        <span>Entrega coordinada y empaque protegido</span>
+      </div>
+    </div>
+  </div>
+
   <section v-if="savedFinderProducts.length" class="section shell saved-finder">
     <div class="section-heading">
       <div>
@@ -206,36 +217,11 @@ watch(finderOpen, (isOpen) => {
     </div>
   </section>
 
-  <div class="trust-banner shell">
-    <div class="trust-item">
-      <span class="trust-icon" aria-hidden="true">✦</span>
-      <div class="trust-text">
-        <strong>100% Originales</strong>
-        <span>Perfumes auténticos, seleccionados para ti</span>
-      </div>
-    </div>
-    <div class="trust-divider" aria-hidden="true"></div>
-    <div class="trust-item">
-      <span class="trust-icon" aria-hidden="true">◈</span>
-      <div class="trust-text">
-        <strong>Asesoría Personalizada</strong>
-        <span>Te guiamos por WhatsApp a elegir tu fragancia</span>
-      </div>
-    </div>
-    <div class="trust-divider" aria-hidden="true"></div>
-    <div class="trust-item">
-      <div class="trust-text">
-        <strong>Envíos a toda Colombia</strong>
-        <span>Entrega segura y empaque protegido</span>
-      </div>
-    </div>
-  </div>
-
   <section class="section shell">
     <div class="section-heading">
       <div>
-        <span class="eyebrow">SELECCIÓN DESTACADA</span>
-        <h2>Fragancias que <em>dejan huella.</em></h2>
+        <span class="eyebrow">FAVORITOS PARA DESCUBRIR</span>
+        <h2>Cuatro aromas para <em>empezar.</em></h2>
       </div>
       <NuxtLink class="text-link" to="/perfumes"
         >Ver toda la colección</NuxtLink
@@ -270,7 +256,7 @@ watch(finderOpen, (isOpen) => {
         <span class="eyebrow">UNIVERSO OLFATIVO</span>
         <h2>¿A qué huele <em>tu esencia?</em></h2>
       </div>
-      <span class="muted">Elige una familia para descubrir sus notas.</span>
+      <span class="muted">Encuentra rápidamente las notas que prefieres.</span>
     </div>
     <div class="family-cards">
       <NuxtLink
@@ -289,39 +275,31 @@ watch(finderOpen, (isOpen) => {
     </div>
   </section>
 
-  <section class="shell guide-teaser">
-    <div>
-      <span class="eyebrow">GUÍA DE PERFUMES</span>
-      <h2>Aprende a leer lo que <em>hueles.</em></h2>
-      <p>
-        Familias olfativas, concentraciones, notas, proyección y duración: todo
-        lo que necesitas para elegir con confianza.
-      </p>
-    </div>
-    <NuxtLink class="button button--outline" to="/guia-de-perfumes"
-      >Conocer la guía</NuxtLink
-    >
-  </section>
-
   <section class="shell concierge-card">
     <div class="concierge-content">
       <span class="eyebrow">ATENCIÓN PERSONALIZADA</span>
-      <h2>¿Buscas una recomendación <em>a tu medida?</em></h2>
+      <h2>Elige con confianza, <em>estamos para ayudarte.</em></h2>
       <p>
-        Si tienes dudas sobre qué aroma va mejor con tu estilo, ocasión, te
-        asesoramos en tiempo real y coordinamos tu entrega fácilmente.
+        Cuéntanos qué aromas disfrutas, para qué ocasión lo buscas y tu
+        presupuesto. Te recomendamos opciones y coordinamos tu entrega.
       </p>
       <div class="concierge-actions">
-        <NuxtLink class="button" to="/perfumes">Ver catálogo completo</NuxtLink>
         <a
           v-if="whatsappUrl"
           :href="whatsappUrl"
           target="_blank"
           rel="noopener noreferrer"
-          class="button button--outline"
+          class="button"
+          @click="trackWhatsappClick"
         >
-          Consultar por WhatsApp ↗
+          Recibir asesoría por WhatsApp ↗
         </a>
+        <button v-else class="button" type="button" @click="finderOpen = true">
+          Recibir una recomendación <span>✦</span>
+        </button>
+        <NuxtLink class="guide-inline-link" to="/guia-de-perfumes">
+          ¿No sabes qué concentración elegir? Consulta nuestra guía
+        </NuxtLink>
       </div>
     </div>
   </section>

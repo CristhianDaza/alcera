@@ -575,6 +575,28 @@ function move(index: number, direction: number) {
               v-model="storeForm.whatsapp"
               placeholder="Sin configurar"
               pattern="[1-9][0-9]{7,14}" /></label
+          ><label
+            >Usuario de Telegram (sin @)<input
+              v-model="storeForm.telegram"
+              placeholder="Sin configurar"
+              pattern="[A-Za-z][A-Za-z0-9_]{4,31}"
+              maxlength="32"
+          /></label>
+          <fieldset class="contact-channel-options">
+            <legend>Canales de atención visibles</legend>
+            <label class="check"
+              ><input v-model="storeForm.whatsappEnabled" type="checkbox" />
+              WhatsApp</label
+            >
+            <label class="check"
+              ><input v-model="storeForm.telegramEnabled" type="checkbox" />
+              Telegram</label
+            >
+            <label class="check"
+              ><input v-model="storeForm.tawkEnabled" type="checkbox" /> Chat de
+              Tawk.to</label
+            >
+          </fieldset>
           ><button class="button" :disabled="busy || demo">
             Guardar configuración
           </button>

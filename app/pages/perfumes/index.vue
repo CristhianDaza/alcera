@@ -209,6 +209,26 @@ const paginatedProducts = computed(() => {
   const start = (page.value - 1) * pageSize;
   return filtered.value.slice(start, start + pageSize);
 });
+function trackCatalogView() {
+  void trackAnalyticsEvent("view_item_list", {
+    item_list_id: "catalog",
+    item_list_name: "Colección de perfumes",
+    page_number: page.value,
+    result_count: filtered.value.length,
+    search_term: search.value || undefined,
+    filter_category: category.value || undefined,
+    filter_family: family.value || undefined,
+    filter_brand: brand.value || undefined,
+    filter_concentration: concentration.value || undefined,
+    items: paginatedProducts.value.map((product) => analyticsItem(product)),
+  });
+}
+
+onMounted(trackCatalogView);
+watch(
+  () => route.fullPath,
+  () => void nextTick(trackCatalogView),
+);
 const displayedPages = computed(() => {
   const total = totalPages.value;
   const current = page.value;
