@@ -373,12 +373,24 @@ export async function productBySlug(slug: string): Promise<Product | null> {
 }
 
 export async function settings(): Promise<Settings> {
-  if (isDemo()) return { name: "ALCÉRA", whatsapp: "" };
+  if (isDemo())
+    return {
+      name: "ALCÉRA",
+      whatsapp: "",
+      whatsappEnabled: false,
+      telegram: "",
+      telegramEnabled: false,
+      tawkEnabled: false,
+    };
   return cached(settingsCache, SETTINGS_CACHE_MS, async () => {
     const doc = await database().collection("settings").doc("store").get();
     const stored = doc.data() as Partial<Settings> | undefined;
     return {
       whatsapp: "",
+      whatsappEnabled: true,
+      telegram: "",
+      telegramEnabled: false,
+      tawkEnabled: true,
       ...stored,
       name: !stored?.name || stored.name === "Esencia" ? "ALCÉRA" : stored.name,
     };

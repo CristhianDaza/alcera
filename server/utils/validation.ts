@@ -78,4 +78,8 @@ export const productSchema = z.object({
 export const settingsSchema = z.object({
   name: text,
   whatsapp: z.string().regex(/^$|^[1-9]\d{7,14}$/),
+  whatsappEnabled: z.boolean(),
+  telegram: z.string().regex(/^$|^[A-Za-z][A-Za-z0-9_]{4,31}$/),
+  telegramEnabled: z.boolean(),
+  tawkEnabled: z.boolean(),
 });

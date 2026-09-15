@@ -40,6 +40,10 @@ export interface Product {
 export interface Settings {
   name: string;
   whatsapp: string;
+  whatsappEnabled: boolean;
+  telegram: string;
+  telegramEnabled: boolean;
+  tawkEnabled: boolean;
 }
 export interface CartLine {
   productId: string;

@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   if (!result.success)
     throw createError({
       statusCode: 400,
-      statusMessage: "Nombre o número de WhatsApp inválido",
+      statusMessage: "Revisa el nombre y los datos de contacto",
     });
   await database().collection("settings").doc("store").set(result.data);
   invalidateSettingsCache();

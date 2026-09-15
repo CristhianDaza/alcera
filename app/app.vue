@@ -182,5 +182,6 @@ const activeCategory = computed(() =>
       </div>
     </footer>
     <FloatingActions />
+    <TawkChat />
   </div>
 </template>
