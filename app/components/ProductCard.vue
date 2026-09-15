@@ -68,19 +68,19 @@ function trackProductSelection() {
       </div>
       <h3>{{ product.name }}</h3>
       <p
-        v-if="product.duration || product.projection"
+        v-if="product.family?.length || product.duration"
         class="product-performance"
       >
-        <span v-if="product.duration">Duración: {{ product.duration }}</span>
-        <span v-if="product.projection"
-          >Proyección: {{ product.projection }}</span
-        >
+        <span v-if="product.family?.length">{{
+          product.family.join(" · ")
+        }}</span>
+        <span v-if="product.duration">Duración {{ product.duration }}</span>
       </p>
       <div class="product-bottom">
-        <span>Desde {{ money(startingPrice) }}</span>
-        <span>{{
+        <strong>Desde {{ money(startingPrice) }}</strong>
+        <span class="product-card__action">{{
           product.variants.some((variant) => variant.available)
-            ? "Ver perfume"
+            ? "Elegir presentación"
             : "AGOTADO"
         }}</span>
       </div>
@@ -93,9 +93,14 @@ function trackProductSelection() {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;
-  margin: -3px 0 10px;
+  margin: -3px 0 14px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.product-performance span + span::before {
+  content: "·";
+  margin-right: 10px;
 }
 
 .product-photo__alternate {
