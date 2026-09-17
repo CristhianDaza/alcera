@@ -1236,6 +1236,50 @@ p {
   color: #fff;
 }
 
+.home-explore {
+  border-top: 1px solid var(--line);
+}
+
+.home-explore__groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px 48px;
+}
+
+.home-explore__groups h3 {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-explore__groups nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.home-explore__groups a {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.home-explore__groups a:hover {
+  transform: translateY(-1px);
+  background: var(--accent);
+  color: #fff;
+}
+
 .seo-collection__heading {
   margin-top: 46px;
 }
@@ -3327,6 +3371,11 @@ main:focus {
 
   .family-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-explore__groups {
+    grid-template-columns: 1fr;
+    gap: 26px;
   }
 
   .family-card {
