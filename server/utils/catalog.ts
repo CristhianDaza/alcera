@@ -375,8 +375,8 @@ export async function productBySlug(slug: string): Promise<Product | null> {
 export async function settings(): Promise<Settings> {
   if (isDemo())
     return {
-      name: "ALCÉRA",
-      contactEmail: "alcera@cris-dev.com",
+      name: "Alcéra Perfumes",
+      contactEmail: "",
       legalName: "",
       taxId: "",
       whatsapp: "",
@@ -389,7 +389,7 @@ export async function settings(): Promise<Settings> {
     const doc = await database().collection("settings").doc("store").get();
     const stored = doc.data() as Partial<Settings> | undefined;
     return {
-      contactEmail: "alcera@cris-dev.com",
+      contactEmail: "",
       legalName: "",
       taxId: "",
       whatsapp: "",
@@ -398,7 +398,10 @@ export async function settings(): Promise<Settings> {
       telegramEnabled: false,
       tawkEnabled: true,
       ...stored,
-      name: !stored?.name || stored.name === "Esencia" ? "ALCÉRA" : stored.name,
+      name:
+        !stored?.name || stored.name === "Esencia"
+          ? "Alcéra Perfumes"
+          : stored.name,
     };
   });
 }

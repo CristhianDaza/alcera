@@ -85,7 +85,7 @@ export const settingsSchema = z.object({
       (value) => value === "" || z.email().safeParse(value).success,
       "Correo inválido",
     )
-    .default("alcera@cris-dev.com"),
+    .default(""),
   legalName: z.string().trim().max(200).default(""),
   taxId: z
     .string()

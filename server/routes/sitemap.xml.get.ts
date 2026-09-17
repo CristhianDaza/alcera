@@ -26,6 +26,10 @@ export default defineEventHandler(async (event) => {
         "/",
         "/perfumes",
         "/guia-de-perfumes",
+        "/politica-de-privacidad",
+        "/terminos-y-condiciones",
+        "/cambios-devoluciones",
+        "/informacion-envios",
         "/politica-de-cookies",
         ...seoLandings.map((landing) => `/${landing.kind}/${landing.slug}`),
         ...(await products())

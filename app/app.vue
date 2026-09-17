@@ -168,6 +168,20 @@ const { openPreferences } = useCookieConsent();
           </p>
           <NuxtLink to="/admin" rel="nofollow">Administración</NuxtLink>
         </div>
+        <div>
+          <h2>Información legal</h2>
+          <NuxtLink to="/politica-de-privacidad"
+            >Política de privacidad</NuxtLink
+          >
+          <NuxtLink to="/terminos-y-condiciones"
+            >Términos y condiciones</NuxtLink
+          >
+          <NuxtLink to="/cambios-devoluciones"
+            >Cambios, devoluciones y garantías</NuxtLink
+          >
+          <NuxtLink to="/informacion-envios">Información de envíos</NuxtLink>
+          <NuxtLink to="/politica-de-cookies">Política de cookies</NuxtLink>
+        </div>
       </div>
       <div class="shell footer-bottom">
         <span>
@@ -183,7 +197,6 @@ const { openPreferences } = useCookieConsent();
           >Sitio de demostración · Productos y precios ilustrativos</span
         >
         <span v-else>Precios en pesos colombianos</span>
-        <NuxtLink to="/politica-de-cookies">Política de cookies</NuxtLink>
         <button
           class="footer-cookie-link"
           type="button"

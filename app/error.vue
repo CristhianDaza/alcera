@@ -1,13 +1,13 @@
 <script setup lang="ts">
 useSeoMeta({
-  title: "Página no disponible · ALCÉRA",
+  title: "Página no disponible · Alcéra Perfumes",
   robots: "noindex, nofollow",
 });
 defineProps<{ error: { statusCode: number; statusMessage?: string } }>();
 </script>
 <template>
   <div class="shell empty">
-    <span class="eyebrow">ALCÉRA · {{ error.statusCode }}</span>
+    <span class="eyebrow">Alcéra Perfumes · {{ error.statusCode }}</span>
     <h1>
       {{
         error.statusCode === 404

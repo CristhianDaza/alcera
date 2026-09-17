@@ -133,7 +133,10 @@ const crypto = globalThis.crypto;
 let stopAuthListener: (() => void) | undefined;
 let restoredUid = "";
 let restoringSession: Promise<void> | undefined;
-useSeoMeta({ title: "Administración · ALCÉRA", robots: "noindex, nofollow" });
+useSeoMeta({
+  title: "Administración · Alcéra Perfumes",
+  robots: "noindex, nofollow",
+});
 async function auth() {
   const { initializeApp, getApps } = await import("firebase/app");
   const { browserLocalPersistence, getAuth, setPersistence } =
