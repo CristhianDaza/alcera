@@ -72,6 +72,7 @@ const activeCategory = computed(() =>
           ? "Unisex"
           : null,
 );
+const { openPreferences } = useCookieConsent();
 </script>
 <template>
   <div>
@@ -179,9 +180,17 @@ const activeCategory = computed(() =>
           >Sitio de demostración · Productos y precios ilustrativos</span
         >
         <span v-else>Precios en pesos colombianos</span>
+        <button
+          class="footer-cookie-link"
+          type="button"
+          @click="openPreferences"
+        >
+          Política y configuración de cookies
+        </button>
       </div>
     </footer>
     <FloatingActions />
     <TawkChat />
+    <CookieConsent />
   </div>
 </template>
