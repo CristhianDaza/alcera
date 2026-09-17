@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
+import { seoLandings } from "#shared/seo-landings";
 
 const catalog = useCatalogStore();
 const {
@@ -21,9 +22,28 @@ const route = useRoute();
 const router = useRouter();
 const selection = computed(() =>
   [...(products.value ?? [])]
+    .filter((product) => product.variants.some((variant) => variant.available))
     .sort((a, b) => Number(b.featured) - Number(a.featured))
-    .slice(0, 4),
+    .slice(0, 8),
 );
+const exploreGroups = [
+  {
+    title: "Comprar por categoría",
+    links: seoLandings.filter((landing) => landing.kind === "categorias"),
+  },
+  {
+    title: "Comprar por marca",
+    links: seoLandings.filter((landing) => landing.kind === "marcas"),
+  },
+  {
+    title: "Comprar por familia olfativa",
+    links: seoLandings.filter((landing) => landing.kind === "familias"),
+  },
+  {
+    title: "Selección especial",
+    links: seoLandings.filter((landing) => landing.kind === "colecciones"),
+  },
+];
 const store = useStore();
 usePageSeo(
   `Perfumes en Colombia · ${store.value.name}`,
@@ -221,7 +241,7 @@ watch(finderOpen, (isOpen) => {
     <div class="section-heading">
       <div>
         <span class="eyebrow">FAVORITOS PARA DESCUBRIR</span>
-        <h2>Cuatro aromas para <em>empezar.</em></h2>
+        <h2>Una selección para <em>empezar.</em></h2>
       </div>
       <NuxtLink class="text-link" to="/perfumes"
         >Ver toda la colección</NuxtLink
@@ -248,6 +268,30 @@ watch(finderOpen, (isOpen) => {
     <p v-if="products && !products.length" class="empty-notice">
       Pronto descubrirás nuestra primera colección.
     </p>
+  </section>
+
+  <section class="section shell home-explore">
+    <div class="section-heading">
+      <div>
+        <span class="eyebrow">EXPLORA LA COLECCIÓN</span>
+        <h2>Encuentra tu aroma por <em>marca o estilo.</em></h2>
+      </div>
+      <NuxtLink class="text-link" to="/perfumes">Ver todos los perfumes</NuxtLink>
+    </div>
+    <div class="home-explore__groups">
+      <section v-for="group in exploreGroups" :key="group.title">
+        <h3>{{ group.title }}</h3>
+        <nav :aria-label="group.title">
+          <NuxtLink
+            v-for="landing in group.links"
+            :key="`${landing.kind}-${landing.slug}`"
+            :to="`/${landing.kind}/${landing.slug}`"
+          >
+            {{ landing.name }}
+          </NuxtLink>
+        </nav>
+      </section>
+    </div>
   </section>
 
   <section class="section shell">
