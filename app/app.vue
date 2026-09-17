@@ -161,14 +161,6 @@ const { openPreferences } = useCookieConsent();
           <NuxtLink to="/guia-de-perfumes">Guía de perfumes</NuxtLink>
         </div>
         <div>
-          <h2>A tu ritmo</h2>
-          <p>
-            Elige tus favoritos y consulta tu pedido<br />por WhatsApp. Envío y
-            pago a convenir.
-          </p>
-          <NuxtLink to="/admin" rel="nofollow">Administración</NuxtLink>
-        </div>
-        <div>
           <h2>Información legal</h2>
           <NuxtLink to="/politica-de-privacidad"
             >Política de privacidad</NuxtLink
