@@ -39,6 +39,9 @@ useHead(() => ({
             "@type": "Organization",
             "@id": base + "/#organization",
             name: store.value.name,
+            legalName: store.value.legalName || undefined,
+            taxID: store.value.taxId || undefined,
+            email: store.value.contactEmail || undefined,
             url: base + "/",
             logo: base + "/brand/alcera-logo.png",
           },
@@ -72,6 +75,7 @@ const activeCategory = computed(() =>
           ? "Unisex"
           : null,
 );
+const { openPreferences } = useCookieConsent();
 </script>
 <template>
   <div>
@@ -157,12 +161,18 @@ const activeCategory = computed(() =>
           <NuxtLink to="/guia-de-perfumes">Guía de perfumes</NuxtLink>
         </div>
         <div>
-          <h2>A tu ritmo</h2>
-          <p>
-            Elige tus favoritos y consulta tu pedido<br />por WhatsApp. Envío y
-            pago a convenir.
-          </p>
-          <NuxtLink to="/admin" rel="nofollow">Administración</NuxtLink>
+          <h2>Información legal</h2>
+          <NuxtLink to="/politica-de-privacidad"
+            >Política de privacidad</NuxtLink
+          >
+          <NuxtLink to="/terminos-y-condiciones"
+            >Términos y condiciones</NuxtLink
+          >
+          <NuxtLink to="/cambios-devoluciones"
+            >Cambios, devoluciones y garantías</NuxtLink
+          >
+          <NuxtLink to="/informacion-envios">Información de envíos</NuxtLink>
+          <NuxtLink to="/politica-de-cookies">Política de cookies</NuxtLink>
         </div>
       </div>
       <div class="shell footer-bottom">
@@ -179,9 +189,17 @@ const activeCategory = computed(() =>
           >Sitio de demostración · Productos y precios ilustrativos</span
         >
         <span v-else>Precios en pesos colombianos</span>
+        <button
+          class="footer-cookie-link"
+          type="button"
+          @click="openPreferences"
+        >
+          Configurar cookies
+        </button>
       </div>
     </footer>
     <FloatingActions />
     <TawkChat />
+    <CookieConsent />
   </div>
 </template>

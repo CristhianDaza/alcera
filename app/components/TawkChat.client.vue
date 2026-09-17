@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const store = useStore();
+const { consent, hydrateConsent } = useCookieConsent();
 const scriptId = "tawk-chat-script";
 const scriptSource = "https://embed.tawk.to/6aa9516b0ae6783441905464/1k2imc35e";
 
@@ -33,14 +34,15 @@ function enableTawk() {
 }
 
 function syncTawk(enabled: boolean) {
-  if (enabled) enableTawk();
+  if (enabled && consent.value === "accepted") enableTawk();
   else tawkApi()?.hideWidget?.();
 }
 
 onMounted(() => {
+  hydrateConsent();
   watch(
-    () => store.value.tawkEnabled,
-    (enabled) => syncTawk(enabled),
+    [() => store.value.tawkEnabled, consent],
+    ([enabled]) => syncTawk(Boolean(enabled)),
     { immediate: true },
   );
 });

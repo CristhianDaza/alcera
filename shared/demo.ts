@@ -11,7 +11,7 @@ export const demoProducts: Product[] = [
   [
     "bruma-dorada",
     "Bruma Dorada",
-    "ALCÉRA PERFUMES",
+    "Alcéra Perfumes",
     "Unisex",
     "Amaderada",
     "Bergamota, Sándalo, Ámbar",
@@ -29,7 +29,7 @@ export const demoProducts: Product[] = [
   [
     "noche-de-cedro",
     "Noche de Cedro",
-    "ALCÉRA PERFUMES",
+    "Alcéra Perfumes",
     "Hombre",
     "Amaderada",
     "Cedro, Vetiver, Pimienta",

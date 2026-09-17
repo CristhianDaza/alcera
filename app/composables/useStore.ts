@@ -3,6 +3,9 @@ import { pageCanonical, metaDescription, siteBase } from "#shared/seo";
 export const useStore = () =>
   useState<Settings>("store", () => ({
     name: "ALCÉRA",
+    contactEmail: "",
+    legalName: "",
+    taxId: "",
     whatsapp: "",
     whatsappEnabled: true,
     telegram: "",

@@ -1,21 +1,17 @@
 import {
   initializeStoreAnalytics,
+  setStoreAnalyticsConsent,
   trackAnalyticsEvent,
 } from "~/utils/analytics";
 
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig().public;
-  initializeStoreAnalytics({
-    apiKey: String(config.firebaseApiKey || ""),
-    authDomain: String(config.firebaseAuthDomain || ""),
-    projectId: String(config.firebaseProjectId || ""),
-    appId: String(config.firebaseAppId || ""),
-    measurementId: String(config.firebaseMeasurementId || ""),
-  });
+  const { consent, hydrateConsent } = useCookieConsent();
+  hydrateConsent();
 
   const router = useRouter();
   let lastLocation = "";
-  nuxtApp.hook("page:finish", () => {
+  function trackPageView() {
     const route = router.currentRoute.value;
     const pageLocation = window.location.href;
     if (pageLocation === lastLocation) return;
@@ -25,5 +21,25 @@ export default defineNuxtPlugin((nuxtApp) => {
       page_location: pageLocation,
       page_path: route.fullPath,
     });
+  }
+
+  function applyConsent(accepted: boolean) {
+    setStoreAnalyticsConsent(accepted);
+    if (!accepted) return;
+
+    initializeStoreAnalytics({
+      apiKey: String(config.firebaseApiKey || ""),
+      authDomain: String(config.firebaseAuthDomain || ""),
+      projectId: String(config.firebaseProjectId || ""),
+      appId: String(config.firebaseAppId || ""),
+      measurementId: String(config.firebaseMeasurementId || ""),
+    });
+    lastLocation = "";
+    trackPageView();
+  }
+
+  watch(consent, (value) => applyConsent(value === "accepted"), {
+    immediate: true,
   });
+  nuxtApp.hook("page:finish", trackPageView);
 });

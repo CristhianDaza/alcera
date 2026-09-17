@@ -133,7 +133,10 @@ const crypto = globalThis.crypto;
 let stopAuthListener: (() => void) | undefined;
 let restoredUid = "";
 let restoringSession: Promise<void> | undefined;
-useSeoMeta({ title: "Administración · ALCÉRA", robots: "noindex, nofollow" });
+useSeoMeta({
+  title: "Administración · Alcéra Perfumes",
+  robots: "noindex, nofollow",
+});
 async function auth() {
   const { initializeApp, getApps } = await import("firebase/app");
   const { browserLocalPersistence, getAuth, setPersistence } =
@@ -571,6 +574,25 @@ function move(index: number, direction: number) {
               required
               maxlength="200" /></label
           ><label
+            >Correo de privacidad y contacto<input
+              v-model="storeForm.contactEmail"
+              type="email"
+              autocomplete="email"
+              placeholder="Sin configurar"
+              maxlength="254" /></label
+          ><label
+            >Razón social<input
+              v-model="storeForm.legalName"
+              placeholder="Sin configurar"
+              maxlength="200" /></label
+          ><label
+            >NIT<input
+              v-model="storeForm.taxId"
+              inputmode="numeric"
+              placeholder="Sin configurar"
+              pattern="[0-9.-]{5,30}"
+              maxlength="30" /></label
+          ><label
             >WhatsApp con código de país (sin +)<input
               v-model="storeForm.whatsapp"
               placeholder="Sin configurar"
@@ -597,7 +619,7 @@ function move(index: number, direction: number) {
               Tawk.to</label
             >
           </fieldset>
-          ><button class="button" :disabled="busy || demo">
+          <button class="button" :disabled="busy || demo">
             Guardar configuración
           </button>
         </form>

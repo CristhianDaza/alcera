@@ -18,7 +18,37 @@ type EventParameters = Record<
 let analyticsSetup: Promise<void> | undefined;
 let analyticsInstance: Analytics | null = null;
 let analyticsAllowed = false;
+let analyticsConsentGranted = false;
+let loadedAnalyticsModule: typeof import("firebase/analytics") | null = null;
+let analyticsUserSignedIn = true;
 let authChangeId = 0;
+
+export function setStoreAnalyticsConsent(granted: boolean) {
+  analyticsConsentGranted = granted;
+  if (
+    granted &&
+    !analyticsUserSignedIn &&
+    analyticsInstance &&
+    loadedAnalyticsModule
+  ) {
+    loadedAnalyticsModule.setAnalyticsCollectionEnabled(
+      analyticsInstance,
+      true,
+    );
+    analyticsAllowed = true;
+    return;
+  }
+  if (!granted) {
+    analyticsAllowed = false;
+    authChangeId += 1;
+    if (analyticsInstance && loadedAnalyticsModule) {
+      loadedAnalyticsModule.setAnalyticsCollectionEnabled(
+        analyticsInstance,
+        false,
+      );
+    }
+  }
+}
 
 export function initializeStoreAnalytics(config: AnalyticsConfig) {
   if (!import.meta.client || analyticsSetup) return analyticsSetup;
@@ -36,6 +66,7 @@ export function initializeStoreAnalytics(config: AnalyticsConfig) {
     import("firebase/auth"),
   ])
     .then(async ([firebase, analyticsModule, authModule]) => {
+      loadedAnalyticsModule = analyticsModule;
       const app =
         firebase.getApps()[0] ??
         firebase.initializeApp({
@@ -105,11 +136,17 @@ async function updateAnalyticsAccess(
   analyticsModule: typeof import("firebase/analytics"),
   signedIn: boolean,
 ) {
+  analyticsUserSignedIn = signedIn;
   analyticsAllowed = false;
   const currentChange = ++authChangeId;
   if (analyticsInstance)
     analyticsModule.setAnalyticsCollectionEnabled(analyticsInstance, false);
-  if (signedIn || !(await analyticsModule.isSupported())) return;
+  if (
+    !analyticsConsentGranted ||
+    signedIn ||
+    !(await analyticsModule.isSupported())
+  )
+    return;
   if (currentChange !== authChangeId) return;
 
   analyticsInstance ??= analyticsModule.initializeAnalytics(app, {

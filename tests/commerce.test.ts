@@ -105,4 +105,26 @@ describe("Validación administrativa", () => {
       settingsSchema.safeParse({ ...settings, telegram: "@usuario" }).success,
     ).toBe(false);
   });
+  it("valida los datos legales opcionales de la tienda", () => {
+    const settings = {
+      name: "Esencia",
+      contactEmail: "alcera@cris-dev.com",
+      legalName: "",
+      taxId: "",
+      whatsapp: "573001234567",
+      whatsappEnabled: true,
+      telegram: "",
+      telegramEnabled: false,
+      tawkEnabled: true,
+    };
+    expect(settingsSchema.safeParse(settings).success).toBe(true);
+    expect(
+      settingsSchema.safeParse({ ...settings, contactEmail: "correo-invalido" })
+        .success,
+    ).toBe(false);
+    expect(
+      settingsSchema.safeParse({ ...settings, taxId: "NIT desconocido" })
+        .success,
+    ).toBe(false);
+  });
 });

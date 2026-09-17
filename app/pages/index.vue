@@ -50,7 +50,8 @@ usePageSeo(
   "Descubre fragancias florales, amaderadas y cítricas. Encuentra un perfume que deje huella y consulta tu pedido por WhatsApp en Colombia.",
   "/images/hero-perfumes-editorial-v2.webp",
   {
-    imageAlt: "Selección de perfumes de ALCÉRA sobre una composición editorial",
+    imageAlt:
+      "Selección de perfumes de Alcéra Perfumes sobre una composición editorial",
   },
 );
 
@@ -276,7 +277,9 @@ watch(finderOpen, (isOpen) => {
         <span class="eyebrow">EXPLORA LA COLECCIÓN</span>
         <h2>Encuentra tu aroma por <em>marca o estilo.</em></h2>
       </div>
-      <NuxtLink class="text-link" to="/perfumes">Ver todos los perfumes</NuxtLink>
+      <NuxtLink class="text-link" to="/perfumes"
+        >Ver todos los perfumes</NuxtLink
+      >
     </div>
     <div class="home-explore__groups">
       <section v-for="group in exploreGroups" :key="group.title">

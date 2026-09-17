@@ -48,7 +48,10 @@ watch(
   },
   { deep: true, flush: "sync" },
 );
-useSeoMeta({ title: "Tu bolsa · ALCÉRA", robots: "noindex, nofollow" });
+useSeoMeta({
+  title: "Tu bolsa · Alcéra Perfumes",
+  robots: "noindex, nofollow",
+});
 function quantity(index: number, event: Event) {
   const input = event.target as HTMLInputElement;
   const value = Math.max(1, Math.min(99, Math.floor(Number(input.value) || 1)));
@@ -244,10 +247,24 @@ async function checkout() {
             /></label>
             <label class="check"
               ><input v-model="contactConsent" type="checkbox" required />
-              Autorizo que la tienda guarde estos datos y me contacte para
-              gestionar esta solicitud.</label
+              <span
+                >Autorizo que la tienda trate estos datos y me contacte para
+                gestionar esta solicitud, conforme a la
+                <NuxtLink to="/politica-de-privacidad"
+                  >Política de Privacidad</NuxtLink
+                >.</span
+              ></label
             >
           </fieldset>
+          <p class="checkout-legal">
+            Al registrar la solicitud reconoces la
+            <NuxtLink to="/politica-de-privacidad"
+              >Política de Privacidad</NuxtLink
+            >. Si confirmas la compra por WhatsApp, esta se regirá por los
+            <NuxtLink to="/terminos-y-condiciones"
+              >Términos y Condiciones</NuxtLink
+            >.
+          </p>
           <button
             v-if="!readyUrl"
             class="button full"
@@ -304,6 +321,17 @@ async function checkout() {
 .order-customer .check {
   align-items: flex-start;
   font-size: 12px;
+}
+.order-customer .check a,
+.checkout-legal a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.checkout-legal {
+  margin: -8px 0 18px;
+  font-size: 11px;
 }
 .order-reference {
   overflow-wrap: anywhere;

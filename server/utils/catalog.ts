@@ -375,7 +375,10 @@ export async function productBySlug(slug: string): Promise<Product | null> {
 export async function settings(): Promise<Settings> {
   if (isDemo())
     return {
-      name: "ALCÉRA",
+      name: "Alcéra Perfumes",
+      contactEmail: "",
+      legalName: "",
+      taxId: "",
       whatsapp: "",
       whatsappEnabled: false,
       telegram: "",
@@ -386,13 +389,19 @@ export async function settings(): Promise<Settings> {
     const doc = await database().collection("settings").doc("store").get();
     const stored = doc.data() as Partial<Settings> | undefined;
     return {
+      contactEmail: "",
+      legalName: "",
+      taxId: "",
       whatsapp: "",
       whatsappEnabled: true,
       telegram: "",
       telegramEnabled: false,
       tawkEnabled: true,
       ...stored,
-      name: !stored?.name || stored.name === "Esencia" ? "ALCÉRA" : stored.name,
+      name:
+        !stored?.name || stored.name === "Esencia"
+          ? "Alcéra Perfumes"
+          : stored.name,
     };
   });
 }
