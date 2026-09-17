@@ -15,7 +15,7 @@ usePageSeo(
     </nav>
 
     <header class="legal-page__hero">
-      <span class="eyebrow">DE ALCÉRA A TU PUERTA</span>
+      <span class="eyebrow">DE {{ store.name.toUpperCase() }} A TU PUERTA</span>
       <h1>Información de envíos</h1>
       <p>
         El envío se cotiza y acuerda contigo antes de confirmar la compra. Aquí
