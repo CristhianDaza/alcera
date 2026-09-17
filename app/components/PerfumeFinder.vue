@@ -156,7 +156,7 @@ function score(product: Product) {
   return value;
 }
 const results = computed(() =>
-  [...props.products].sort((a, b) => score(b) - score(a)).slice(0, 3),
+  [...props.products].sort((a, b) => score(b) - score(a)).slice(0, 4),
 );
 
 function choose(key: keyof Answers, value: string) {
