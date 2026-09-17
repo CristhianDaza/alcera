@@ -7,8 +7,12 @@ const {
   closePreferences,
 } = useCookieConsent();
 const dialog = useTemplateRef<HTMLElement>("dialog");
+const noticeDismissed = ref(false);
 
-const visible = computed(() => consent.value === null || preferencesOpen.value);
+const visible = computed(
+  () =>
+    preferencesOpen.value || (consent.value === null && !noticeDismissed.value),
+);
 
 function acceptAll() {
   setConsent("accepted");
@@ -16,6 +20,10 @@ function acceptAll() {
 
 function necessaryOnly() {
   setConsent("rejected");
+}
+
+function viewPolicy() {
+  noticeDismissed.value = true;
 }
 
 onMounted(() => {
@@ -51,7 +59,7 @@ watch(preferencesOpen, (open) => {
         ×
       </button>
       <span class="cookie-panel__eyebrow">Cookies y privacidad</span>
-      <h2 id="cookie-title">Política de cookies</h2>
+      <h2 id="cookie-title">Preferencias de cookies</h2>
       <p id="cookie-description">
         Usamos cookies y tecnologías similares necesarias para guardar tu bolsa,
         tema y preferencias. Si nos autorizas, también podremos medir de forma
@@ -73,6 +81,9 @@ watch(preferencesOpen, (open) => {
       <p class="cookie-panel__note">
         Las cookies necesarias siempre permanecen activas. Puedes cambiar esta
         elección cuando quieras desde el pie de página.
+        <NuxtLink to="/politica-de-cookies" @click="viewPolicy"
+          >Consulta la política de cookies</NuxtLink
+        >.
       </p>
     </section>
   </Transition>

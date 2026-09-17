@@ -39,6 +39,9 @@ useHead(() => ({
             "@type": "Organization",
             "@id": base + "/#organization",
             name: store.value.name,
+            legalName: store.value.legalName || undefined,
+            taxID: store.value.taxId || undefined,
+            email: store.value.contactEmail || undefined,
             url: base + "/",
             logo: base + "/brand/alcera-logo.png",
           },
@@ -180,12 +183,13 @@ const { openPreferences } = useCookieConsent();
           >Sitio de demostración · Productos y precios ilustrativos</span
         >
         <span v-else>Precios en pesos colombianos</span>
+        <NuxtLink to="/politica-de-cookies">Política de cookies</NuxtLink>
         <button
           class="footer-cookie-link"
           type="button"
           @click="openPreferences"
         >
-          Política y configuración de cookies
+          Configurar cookies
         </button>
       </div>
     </footer>

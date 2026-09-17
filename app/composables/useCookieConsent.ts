@@ -22,6 +22,10 @@ export function useCookieConsent() {
   }
 
   function setConsent(value: Exclude<CookieConsent, null>) {
+    const reloadWithoutOptionalServices =
+      import.meta.client &&
+      consent.value === "accepted" &&
+      value === "rejected";
     consent.value = value;
     preferencesOpen.value = false;
 
@@ -30,6 +34,8 @@ export function useCookieConsent() {
     } catch {
       /* La elección se conserva durante la sesión. */
     }
+
+    if (reloadWithoutOptionalServices) window.location.reload();
   }
 
   function openPreferences() {

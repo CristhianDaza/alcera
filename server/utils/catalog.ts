@@ -376,6 +376,9 @@ export async function settings(): Promise<Settings> {
   if (isDemo())
     return {
       name: "ALCÉRA",
+      contactEmail: "alcera@cris-dev.com",
+      legalName: "",
+      taxId: "",
       whatsapp: "",
       whatsappEnabled: false,
       telegram: "",
@@ -386,6 +389,9 @@ export async function settings(): Promise<Settings> {
     const doc = await database().collection("settings").doc("store").get();
     const stored = doc.data() as Partial<Settings> | undefined;
     return {
+      contactEmail: "alcera@cris-dev.com",
+      legalName: "",
+      taxId: "",
       whatsapp: "",
       whatsappEnabled: true,
       telegram: "",

@@ -77,6 +77,21 @@ export const productSchema = z.object({
 });
 export const settingsSchema = z.object({
   name: text,
+  contactEmail: z
+    .string()
+    .trim()
+    .max(254)
+    .refine(
+      (value) => value === "" || z.email().safeParse(value).success,
+      "Correo inválido",
+    )
+    .default("alcera@cris-dev.com"),
+  legalName: z.string().trim().max(200).default(""),
+  taxId: z
+    .string()
+    .trim()
+    .regex(/^$|^[0-9.-]{5,30}$/)
+    .default(""),
   whatsapp: z.string().regex(/^$|^[1-9]\d{7,14}$/),
   whatsappEnabled: z.boolean(),
   telegram: z.string().regex(/^$|^[A-Za-z][A-Za-z0-9_]{4,31}$/),

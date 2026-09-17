@@ -39,6 +39,9 @@ export interface Product {
 }
 export interface Settings {
   name: string;
+  contactEmail: string;
+  legalName: string;
+  taxId: string;
   whatsapp: string;
   whatsappEnabled: boolean;
   telegram: string;
