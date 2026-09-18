@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { OlfactoryPyramid, Product, Settings } from "#shared/types";
+import {
+  shoppingOccasions,
+  type OlfactoryPyramid,
+  type Product,
+  type Settings,
+  type ShoppingOccasion,
+} from "#shared/types";
 import type { User } from "firebase/auth";
 
 type EditableImage = Product["images"][number] & { file?: File };
@@ -9,6 +15,7 @@ type EditableProduct = Omit<
   | "olfactoryPyramid"
   | "aromaDescription"
   | "idealFor"
+  | "occasions"
   | "duration"
   | "projection"
   | "concentration"
@@ -21,6 +28,7 @@ type EditableProduct = Omit<
   olfactoryPyramid: OlfactoryPyramid;
   aromaDescription: string;
   idealFor: string[];
+  occasions: ShoppingOccasion[];
   duration: string;
   projection: string;
   concentration: string;
@@ -279,6 +287,7 @@ function edit(p?: Product) {
         },
         aromaDescription: p.aromaDescription ?? "",
         idealFor: p.idealFor ?? [],
+        occasions: p.occasions ?? [],
         duration: p.duration ?? "",
         projection: p.projection ?? "",
         concentration: p.concentration ?? "",
@@ -302,6 +311,7 @@ function edit(p?: Product) {
         olfactoryPyramid: { top: [], heart: [], base: [] },
         aromaDescription: "",
         idealFor: [],
+        occasions: [],
         duration: "",
         projection: "",
         concentration: "",
@@ -317,6 +327,8 @@ function edit(p?: Product) {
         ],
         status: "published",
         featured: false,
+        newArrival: false,
+        bestSeller: false,
       };
   notice.value = "";
   topNotes.value = editor.value.olfactoryPyramid.top.join(", ");
@@ -426,6 +438,7 @@ async function save() {
     if (!product.aromaDescription)
       Reflect.deleteProperty(product, "aromaDescription");
     if (!product.idealFor.length) Reflect.deleteProperty(product, "idealFor");
+    if (!product.occasions.length) Reflect.deleteProperty(product, "occasions");
     if (!product.duration) Reflect.deleteProperty(product, "duration");
     if (!product.projection) Reflect.deleteProperty(product, "projection");
     if (!product.concentration)
@@ -605,6 +618,30 @@ function move(index: number, direction: number) {
               placeholder="Sin configurar"
               pattern="[1-9][0-9]{7,14}" /></label
           ><label
+            >Perfil de Instagram<input
+              v-model="storeForm.instagram"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://instagram.com/tu-perfil"
+              maxlength="2048" /></label
+          ><label
+            >Página de Facebook<input
+              v-model="storeForm.facebook"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://facebook.com/tu-página"
+              maxlength="2048" /></label
+          ><label
+            >Perfil de TikTok<input
+              v-model="storeForm.tiktok"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://tiktok.com/@tu-perfil"
+              maxlength="2048" /></label
+          ><label
             >Usuario de Telegram (sin @)<input
               v-model="storeForm.telegram"
               placeholder="Sin configurar"
@@ -676,9 +713,6 @@ function move(index: number, direction: number) {
                     >{{ p.brand }} ·
                     {{ p.variants.length }} presentaciones</small
                   ></span
-                ><span class="product-status"
-                  >{{ p.status === "published" ? "Activo" : "Inactivo" }} ·
-                  Editar</span
                 >
               </button>
               <button
@@ -846,8 +880,24 @@ function move(index: number, direction: number) {
           ><label class="wide"
             >Ideal para (opcional, separado por comas)<input
               v-model="idealFor"
-              placeholder="Uso diario, Todo el año, Climas frescos" /></label
-          ><label class="wide"
+              placeholder="Uso diario, Todo el año, Climas frescos"
+          /></label>
+          <fieldset class="family-options wide">
+            <legend>Momentos de compra (opcional)</legend>
+            <label
+              v-for="occasion in shoppingOccasions"
+              :key="occasion"
+              class="check"
+            >
+              <input
+                v-model="editor.occasions"
+                type="checkbox"
+                :value="occasion"
+              />
+              {{ occasion }}
+            </label>
+          </fieldset>
+          <label class="wide"
             >Descripción<textarea
               v-model="editor.description"
               required
@@ -965,6 +1015,12 @@ function move(index: number, direction: number) {
           ><label class="check"
             ><input v-model="editor.featured" type="checkbox" /> Destacar en
             inicio</label
+          ><label class="check"
+            ><input v-model="editor.newArrival" type="checkbox" />
+            Novedad</label
+          ><label class="check"
+            ><input v-model="editor.bestSeller" type="checkbox" /> Más
+            vendido</label
           ><label v-if="!editor.id" class="check"
             ><input v-model="addAnother" type="checkbox" /> Agregar otro al
             guardar</label

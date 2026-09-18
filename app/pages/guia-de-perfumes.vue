@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { serializeSchema, siteBase } from "#shared/seo";
 import { seoLandingForFilter } from "#shared/seo-landings";
+import type { Product } from "#shared/types";
 
 const store = useStore();
 const base = siteBase(useRuntimeConfig().public.siteUrl);
@@ -8,8 +9,8 @@ const base = siteBase(useRuntimeConfig().public.siteUrl);
 usePageSeo(
   `Guía de perfumes y familias olfativas · ${store.value.name}`,
   "Aprende a elegir un perfume: familias olfativas, concentraciones, notas, proyección y duración.",
-  "/images/hero-perfumes-editorial-v2.webp",
-  { imageAlt: "Guía para elegir perfumes y familias olfativas" },
+  "/images/perfume-guide-editorial.jpg",
+  { imageAlt: "Libreta y atomizador para acompañar la guía de perfumes" },
 );
 
 const families = [
@@ -77,6 +78,27 @@ function familyLocation(family: string) {
     : { path: "/perfumes", query: { family } };
 }
 
+const { data: catalogProducts } = await useFetch<Product[]>("/api/products");
+const familyRecommendations = computed(() =>
+  families
+    .map((family) => ({
+      ...family,
+      products: (catalogProducts.value ?? [])
+        .filter(
+          (product) =>
+            product.variants.some((variant) => variant.available) &&
+            product.family?.some(
+              (item) =>
+                item.localeCompare(family.name, "es", {
+                  sensitivity: "base",
+                }) === 0,
+            ),
+        )
+        .slice(0, 4),
+    }))
+    .filter((family) => family.products.length),
+);
+
 const faqs = [
   {
     question: "¿Cómo sé qué familia olfativa elegir?",
@@ -126,7 +148,7 @@ useHead(() => ({
               "Familias olfativas, concentraciones, notas, proyección y duración.",
             inLanguage: "es-CO",
             mainEntityOfPage: base + "/guia-de-perfumes",
-            image: base + "/images/hero-perfumes-editorial-v2.webp",
+            image: base + "/images/perfume-guide-editorial.jpg",
             publisher: { "@id": base + "/#organization" },
           },
           {
@@ -207,6 +229,33 @@ useHead(() => ({
           <p>{{ family.description }}</p>
           <span>Ver perfumes</span>
         </NuxtLink>
+      </div>
+      <div v-if="familyRecommendations.length" class="guide-family-products">
+        <section
+          v-for="family in familyRecommendations"
+          :key="`${family.name}-products`"
+          class="guide-family-products__group"
+          :aria-labelledby="`${family.name}-products-title`"
+        >
+          <div class="guide-family-products__heading">
+            <div>
+              <span class="eyebrow">PARA EXPLORAR</span>
+              <h3 :id="`${family.name}-products-title`">
+                Perfumes <em>{{ family.name.toLocaleLowerCase() }}</em>
+              </h3>
+            </div>
+            <NuxtLink class="text-link" :to="familyLocation(family.name)">
+              Ver todos
+            </NuxtLink>
+          </div>
+          <div class="guide-family-products__grid">
+            <ProductCard
+              v-for="product in family.products"
+              :key="product.id"
+              :product="product"
+            />
+          </div>
+        </section>
       </div>
     </section>
 

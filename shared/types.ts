@@ -16,6 +16,13 @@ export interface OlfactoryPyramid {
   heart: string[];
   base: string[];
 }
+export const shoppingOccasions = [
+  "Día a día",
+  "Oficina",
+  "Noche",
+  "Regalo",
+] as const;
+export type ShoppingOccasion = (typeof shoppingOccasions)[number];
 export interface Product {
   id: string;
   slug: string;
@@ -31,6 +38,7 @@ export interface Product {
   olfactoryPyramid?: OlfactoryPyramid;
   aromaDescription?: string;
   idealFor?: string[];
+  occasions?: ShoppingOccasion[];
   duration?: string;
   projection?: string;
   concentration?: string;
@@ -38,6 +46,8 @@ export interface Product {
   variants: Variant[];
   status: "draft" | "published";
   featured: boolean;
+  newArrival?: boolean;
+  bestSeller?: boolean;
 }
 export interface Settings {
   name: string;
@@ -46,6 +56,9 @@ export interface Settings {
   taxId: string;
   whatsapp: string;
   whatsappEnabled: boolean;
+  instagram: string;
+  facebook: string;
+  tiktok: string;
   telegram: string;
   telegramEnabled: boolean;
   tawkEnabled: boolean;

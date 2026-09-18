@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
-import { seoLandings } from "#shared/seo-landings";
 
 const catalog = useCatalogStore();
 const {
@@ -24,26 +23,8 @@ const selection = computed(() =>
   [...(products.value ?? [])]
     .filter((product) => product.variants.some((variant) => variant.available))
     .sort((a, b) => Number(b.featured) - Number(a.featured))
-    .slice(0, 8),
+    .slice(0, 4),
 );
-const exploreGroups = [
-  {
-    title: "Comprar por categoría",
-    links: seoLandings.filter((landing) => landing.kind === "categorias"),
-  },
-  {
-    title: "Comprar por marca",
-    links: seoLandings.filter((landing) => landing.kind === "marcas"),
-  },
-  {
-    title: "Comprar por familia olfativa",
-    links: seoLandings.filter((landing) => landing.kind === "familias"),
-  },
-  {
-    title: "Selección especial",
-    links: seoLandings.filter((landing) => landing.kind === "colecciones"),
-  },
-];
 const store = useStore();
 usePageSeo(
   `Perfumes en Colombia · ${store.value.name}`,
@@ -56,16 +37,35 @@ usePageSeo(
 );
 
 const whatsappUrl = computed(() => {
+  if (store.value.whatsappEnabled === false) return "";
   const number = store.value.whatsapp?.replace(/\D/g, "");
   if (!number) return "";
   const message = `Hola, me gustaría recibir asesoría sobre las fragancias de ${store.value.name}.`;
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
 });
 
-function trackWhatsappClick() {
+function trackWhatsappClick(linkLocation: "home_hero" | "home_concierge") {
   void trackAnalyticsEvent("whatsapp_click", {
-    link_location: "home_concierge",
+    link_location: linkLocation,
     page_path: route.fullPath,
+  });
+}
+
+function openFinder(
+  linkLocation: "home_hero" | "home_finder" | "home_concierge",
+) {
+  finderOpen.value = true;
+  void catalog.ensureLoaded();
+  void trackAnalyticsEvent("perfume_finder_started", {
+    link_location: linkLocation,
+    page_path: route.fullPath,
+  });
+}
+
+function trackFinderComplete(productIds: string[]) {
+  void trackAnalyticsEvent("perfume_finder_completed", {
+    page_path: route.fullPath,
+    result_count: productIds.length,
   });
 }
 
@@ -74,55 +74,41 @@ const familyList = [
     name: "Floral",
     to: "/familias/florales",
     tag: "Luminosa",
-    desc: "Rosa, jazmín y azahar.",
+    desc: "Romántica, luminosa y atemporal.",
+    image: "/images/family-floral.jpg",
+    imageSmall: "/images/family-floral-480.jpg",
+    alt: "Rosa y flores de jazmín sobre una superficie de piedra",
   },
   {
     name: "Amaderada",
     to: "/familias/amaderados",
     tag: "Profunda",
-    desc: "Cedro, sándalo y vetiver.",
+    desc: "Cálida, sofisticada y con carácter.",
+    image: "/images/family-woody.jpg",
+    imageSmall: "/images/family-woody-480.jpg",
+    alt: "Maderas de cedro y vetiver sobre una superficie oscura",
   },
   {
     name: "Cítrica",
     to: "/familias/citricos",
     tag: "Vibrante",
-    desc: "Bergamota, neroli y mandarina.",
+    desc: "Fresca, vibrante y llena de energía.",
+    image: "/images/family-citrus.jpg",
+    imageSmall: "/images/family-citrus-480.jpg",
+    alt: "Bergamota, limón y hojas verdes sobre piedra oscura",
   },
   {
     name: "Oriental",
     to: "/familias/orientales",
     tag: "Seductora",
-    desc: "Ámbar, vainilla y benjuí.",
+    desc: "Intensa, envolvente y seductora.",
+    image: "/images/family-oriental.jpg",
+    imageSmall: "/images/family-oriental-480.jpg",
+    alt: "Ámbar, vainilla y especias sobre una superficie color vino",
   },
 ];
 
 const finderOpen = ref(route.query.finder === "1");
-const savedFinderIds = ref<string[]>([]);
-const savedFinderProducts = computed(() =>
-  savedFinderIds.value
-    .map((id) => products.value?.find((product) => product.id === id))
-    .filter((product): product is Product => Boolean(product)),
-);
-
-function setSavedFinderProducts(productIds: string[]) {
-  savedFinderIds.value = productIds;
-}
-
-onMounted(() => {
-  try {
-    const stored = JSON.parse(
-      localStorage.getItem("alcera-perfume-finder") || "{}",
-    ) as { productIds?: unknown };
-    if (
-      Array.isArray(stored.productIds) &&
-      stored.productIds.every((id) => typeof id === "string")
-    )
-      savedFinderIds.value = stored.productIds;
-    if (savedFinderIds.value.length) void catalog.ensureLoaded();
-  } catch {
-    localStorage.removeItem("alcera-perfume-finder");
-  }
-});
 
 watch(
   () => route.query.finder,
@@ -151,16 +137,27 @@ watch(finderOpen, (isOpen) => {
         personalizada y envíos a toda Colombia.
       </p>
       <div class="hero-actions">
-        <button
-          class="button hero-cta"
-          type="button"
-          @click="finderOpen = true"
-        >
-          Encuentra tu perfume ideal <span>✦</span>
-        </button>
-        <NuxtLink class="hero-secondary-link" to="/perfumes">
-          Ver todos los perfumes <span aria-hidden="true">→</span>
+        <NuxtLink class="button hero-cta" to="/perfumes">
+          Explorar colección <span aria-hidden="true">→</span>
         </NuxtLink>
+        <a
+          v-if="whatsappUrl"
+          class="hero-secondary-link"
+          :href="whatsappUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          @click="trackWhatsappClick('home_hero')"
+        >
+          Recibir asesoría <span aria-hidden="true">↗</span>
+        </a>
+        <button
+          v-else
+          class="hero-secondary-link"
+          type="button"
+          @click="openFinder('home_hero')"
+        >
+          Recibir asesoría <span aria-hidden="true">→</span>
+        </button>
       </div>
     </div>
     <div class="hero-image">
@@ -207,6 +204,7 @@ watch(finderOpen, (isOpen) => {
     </div>
     <div class="trust-divider" aria-hidden="true"></div>
     <div class="trust-item">
+      <span class="trust-icon" aria-hidden="true">◇</span>
       <div class="trust-text">
         <strong>Envíos a toda Colombia</strong>
         <span>Entrega coordinada y empaque protegido</span>
@@ -214,27 +212,67 @@ watch(finderOpen, (isOpen) => {
     </div>
   </div>
 
-  <section v-if="savedFinderProducts.length" class="section shell saved-finder">
+  <section class="section shell">
     <div class="section-heading">
       <div>
-        <span class="eyebrow">TU SELECCIÓN GUARDADA</span>
-        <h2>Perfumes elegidos para <em>ti.</em></h2>
+        <span class="eyebrow">UNIVERSO OLFATIVO</span>
+        <h2>Descubre tu <em>familia olfativa.</em></h2>
       </div>
-      <button class="text-link" type="button" @click="finderOpen = true">
-        Actualizar mi selección
+      <span class="muted"
+        >Cada aroma despierta una emoción. ¿Cuál te representa?</span
+      >
+    </div>
+    <div class="family-cards">
+      <NuxtLink
+        v-for="item in familyList"
+        :key="item.name"
+        :to="item.to"
+        class="family-card"
+      >
+        <img
+          class="family-card-image"
+          :src="item.image"
+          :srcset="`${item.imageSmall} 480w, ${item.image} 720w`"
+          sizes="(max-width: 700px) 45vw, (max-width: 1050px) 42vw, 23vw"
+          :alt="item.alt"
+          loading="lazy"
+          decoding="async"
+          width="720"
+          height="1080"
+        />
+        <div class="family-card-head">
+          <span class="family-badge">{{ item.tag }}</span>
+        </div>
+        <h3>{{ item.name }}</h3>
+        <p>{{ item.desc }}</p>
+        <span class="family-link-label">Explorar notas</span>
+      </NuxtLink>
+    </div>
+  </section>
+
+  <section class="shell finder-teaser" aria-labelledby="finder-teaser-title">
+    <div class="finder-teaser__copy">
+      <span class="eyebrow">RECOMENDACIÓN PERSONALIZADA</span>
+      <h2 id="finder-teaser-title">
+        Encuentra un perfume que <em>se sienta como tú.</em>
+      </h2>
+      <p>
+        Responde seis preguntas cortas sobre tus gustos, tu estilo y el momento
+        en que lo usarás. Te mostraremos una selección pensada para ti.
+      </p>
+      <button class="button" type="button" @click="openFinder('home_finder')">
+        Encontrar mi perfume ideal <span aria-hidden="true">→</span>
       </button>
     </div>
-    <div
-      class="product-grid selection-grid"
-      :style="{
-        '--selection-columns': Math.max(1, savedFinderProducts.length),
-      }"
-    >
-      <ProductCard
-        v-for="product in savedFinderProducts"
-        :key="product.id"
-        :product="product"
-      />
+    <div class="finder-teaser__details" aria-label="Cómo funciona">
+      <span class="finder-teaser__number" aria-hidden="true">01</span>
+      <div class="finder-teaser__bottle" aria-hidden="true"><i /><b />✦</div>
+      <ol>
+        <li><strong>Tu aroma</strong><span>Familia y personalidad</span></li>
+        <li><strong>Tu momento</strong><span>Ocasión e intensidad</span></li>
+        <li><strong>Tu selección</strong><span>Opciones disponibles</span></li>
+      </ol>
+      <span class="finder-teaser__time">6 preguntas · menos de 2 minutos</span>
     </div>
   </section>
 
@@ -256,7 +294,7 @@ watch(finderOpen, (isOpen) => {
       v-else
       class="product-grid selection-grid"
       :style="{
-        '--selection-columns': Math.min(4, Math.max(1, selection.length)),
+        '--selection-columns': Math.max(1, selection.length),
       }"
     >
       <ProductCard
@@ -271,65 +309,50 @@ watch(finderOpen, (isOpen) => {
     </p>
   </section>
 
-  <section class="section shell home-explore">
-    <div class="section-heading">
+  <section class="shell home-guide">
+    <div class="home-guide__image">
+      <img
+        src="/images/perfume-guide-editorial.jpg"
+        srcset="
+          /images/perfume-guide-editorial-640.jpg  640w,
+          /images/perfume-guide-editorial.jpg     1280w
+        "
+        sizes="(max-width: 700px) 100vw, 40vw"
+        alt="Libreta, atomizador e ingredientes para acompañar la guía de perfumes"
+        loading="lazy"
+        decoding="async"
+        width="1280"
+        height="720"
+      />
+    </div>
+    <div class="home-guide__content">
       <div>
-        <span class="eyebrow">EXPLORA LA COLECCIÓN</span>
-        <h2>Encuentra tu aroma por <em>marca o estilo.</em></h2>
+        <span class="eyebrow">APRENDE A ELEGIR</span>
+        <h2>¿Qué tipo de fragancia <em>va contigo?</em></h2>
+        <p>
+          Conoce las familias olfativas, las notas y las concentraciones para
+          elegir con más confianza.
+        </p>
       </div>
-      <NuxtLink class="text-link" to="/perfumes"
-        >Ver todos los perfumes</NuxtLink
-      >
-    </div>
-    <div class="home-explore__groups">
-      <section v-for="group in exploreGroups" :key="group.title">
-        <h3>{{ group.title }}</h3>
-        <nav :aria-label="group.title">
-          <NuxtLink
-            v-for="landing in group.links"
-            :key="`${landing.kind}-${landing.slug}`"
-            :to="`/${landing.kind}/${landing.slug}`"
-          >
-            {{ landing.name }}
-          </NuxtLink>
-        </nav>
-      </section>
-    </div>
-  </section>
-
-  <section class="section shell">
-    <div class="section-heading">
-      <div>
-        <span class="eyebrow">UNIVERSO OLFATIVO</span>
-        <h2>¿A qué huele <em>tu esencia?</em></h2>
-      </div>
-      <span class="muted">Encuentra rápidamente las notas que prefieres.</span>
-    </div>
-    <div class="family-cards">
-      <NuxtLink
-        v-for="item in familyList"
-        :key="item.name"
-        :to="item.to"
-        class="family-card"
-      >
-        <div class="family-card-head">
-          <span class="family-badge">{{ item.tag }}</span>
-        </div>
-        <h3>{{ item.name }}</h3>
-        <p>{{ item.desc }}</p>
-        <span class="family-link-label">Explorar notas</span>
+      <NuxtLink class="button" to="/guia-de-perfumes">
+        Ver guía completa <span aria-hidden="true">→</span>
       </NuxtLink>
     </div>
   </section>
 
   <section class="shell concierge-card">
     <div class="concierge-content">
-      <span class="eyebrow">ATENCIÓN PERSONALIZADA</span>
-      <h2>Elige con confianza, <em>estamos para ayudarte.</em></h2>
+      <span class="eyebrow">¿NECESITAS AYUDA?</span>
+      <h2>Hablemos por <em>WhatsApp.</em></h2>
       <p>
-        Cuéntanos qué aromas disfrutas, para qué ocasión lo buscas y tu
-        presupuesto. Te recomendamos opciones y coordinamos tu entrega.
+        Cuéntanos qué aromas usas, para qué ocasión lo buscas y tu presupuesto.
+        Te recomendamos opciones disponibles.
       </p>
+      <ul class="concierge-benefits" aria-label="Cómo te asesoramos">
+        <li>Respuesta personal</li>
+        <li>Recomendación según tus gustos</li>
+        <li>Coordinación de entrega</li>
+      </ul>
       <div class="concierge-actions">
         <a
           v-if="whatsappUrl"
@@ -337,23 +360,35 @@ watch(finderOpen, (isOpen) => {
           target="_blank"
           rel="noopener noreferrer"
           class="button"
-          @click="trackWhatsappClick"
+          @click="trackWhatsappClick('home_concierge')"
         >
           Recibir asesoría por WhatsApp ↗
         </a>
-        <button v-else class="button" type="button" @click="finderOpen = true">
+        <button
+          v-else
+          class="button"
+          type="button"
+          @click="openFinder('home_concierge')"
+        >
           Recibir una recomendación <span>✦</span>
         </button>
-        <NuxtLink class="guide-inline-link" to="/guia-de-perfumes">
-          ¿No sabes qué concentración elegir? Consulta nuestra guía
-        </NuxtLink>
       </div>
+    </div>
+    <div class="concierge-image">
+      <img
+        src="/images/whatsapp-advisory-editorial.jpg"
+        alt="Teléfono y libreta sobre una mesa de asesoría de perfumes"
+        loading="lazy"
+        decoding="async"
+        width="900"
+        height="1350"
+      />
     </div>
   </section>
 
   <PerfumeFinder
     v-model="finderOpen"
     :products="products || []"
-    @complete="setSavedFinderProducts"
+    @complete="trackFinderComplete"
   />
 </template>

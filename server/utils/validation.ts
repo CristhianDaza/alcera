@@ -1,6 +1,28 @@
 import { z } from "zod";
+import { shoppingOccasions } from "../../shared/types";
 const text = z.string().trim().min(1).max(200);
 const optionalText = z.string().trim().min(1).max(500).optional();
+const socialUrl = (hosts: string[]) =>
+  z
+    .string()
+    .trim()
+    .max(2048)
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        const url = new URL(value);
+        return (
+          url.protocol === "https:" &&
+          hosts.some(
+            (host) =>
+              url.hostname === host || url.hostname.endsWith(`.${host}`),
+          )
+        );
+      } catch {
+        return false;
+      }
+    }, "Enlace de red social inválido")
+    .default("");
 const validGtin = (value: string) => {
   const digits = [...value].map(Number);
   const check = digits.pop();
@@ -41,6 +63,10 @@ export const productSchema = z.object({
     .optional(),
   aromaDescription: z.string().trim().min(1).max(5000).optional(),
   idealFor: z.array(text).max(20).optional(),
+  occasions: z
+    .array(z.enum(shoppingOccasions))
+    .max(shoppingOccasions.length)
+    .optional(),
   duration: optionalText,
   projection: optionalText,
   concentration: optionalText,
@@ -75,6 +101,8 @@ export const productSchema = z.object({
     ),
   status: z.enum(["draft", "published"]),
   featured: z.boolean(),
+  newArrival: z.boolean().optional(),
+  bestSeller: z.boolean().optional(),
 });
 export const settingsSchema = z.object({
   name: text,
@@ -95,6 +123,9 @@ export const settingsSchema = z.object({
     .default(""),
   whatsapp: z.string().regex(/^$|^[1-9]\d{7,14}$/),
   whatsappEnabled: z.boolean(),
+  instagram: socialUrl(["instagram.com"]),
+  facebook: socialUrl(["facebook.com", "fb.com"]),
+  tiktok: socialUrl(["tiktok.com"]),
   telegram: z.string().regex(/^$|^[A-Za-z][A-Za-z0-9_]{4,31}$/),
   telegramEnabled: z.boolean(),
   tawkEnabled: z.boolean(),
