@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { reconcileCart, whatsappMessage, money } from "../shared/commerce";
+import {
+  reconcileCart,
+  whatsappMessage,
+  money,
+  variantLabel,
+} from "../shared/commerce";
 import { demoProducts } from "../shared/demo";
 import { productSchema, settingsSchema } from "../server/utils/validation";
 const p = demoProducts[0]!,
@@ -43,6 +48,9 @@ describe("Pedido por WhatsApp", () => {
     expect(message).toContain(money(200000));
     expect(message).toContain("envío y forma de pago");
   });
+  it("identifica los decants en la bolsa y en el pedido", () => {
+    expect(variantLabel({ ...v, type: "decant" })).toBe(`Decant · ${v.size}`);
+  });
 });
 describe("Validación administrativa", () => {
   const valid = {
@@ -57,6 +65,15 @@ describe("Validación administrativa", () => {
   };
   it("acepta un producto completo", () =>
     expect(productSchema.safeParse(valid).success).toBe(true));
+  it("acepta presentaciones decant y normaliza las antiguas como frasco", () => {
+    const decant = productSchema.parse({
+      ...valid,
+      variants: [{ ...v, id: "decant-5", type: "decant" }],
+    });
+    const legacy = productSchema.parse(valid);
+    expect(decant.variants[0]?.type).toBe("decant");
+    expect(legacy.variants[0]?.type).toBe("bottle");
+  });
   it("rechaza precios inválidos, slugs inseguros y variantes duplicadas", () => {
     for (const change of [
       { slug: "../x" },

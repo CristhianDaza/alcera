@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { catalogVariants } from "#shared/catalog";
+import type { Product } from "#shared/types";
 const router = useRouter();
 const route = useRoute();
 
@@ -83,8 +85,8 @@ onBeforeUnmount(() => {
 
 watch(() => route.fullPath, close);
 
-const minPrice = (p: { variants: { price: number }[] }) =>
-  Math.min(...p.variants.map((v) => v.price));
+const minPrice = (p: Product) =>
+  Math.min(...catalogVariants(p).map((variant) => variant.price));
 
 const fmt = new Intl.NumberFormat("es-CO", {
   style: "currency",

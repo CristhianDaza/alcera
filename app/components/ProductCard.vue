@@ -1,20 +1,29 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
 import { money } from "#shared/commerce";
+import { catalogVariants, isDecantVariant } from "#shared/catalog";
 
 const props = defineProps<{
   product: Product;
   index?: number;
   priority?: boolean;
+  variantType?: "bottle" | "decant";
 }>();
+const relevantVariants = computed(() =>
+  props.variantType === "decant"
+    ? props.product.variants.filter(isDecantVariant)
+    : props.variantType === "bottle"
+      ? props.product.variants.filter((variant) => !isDecantVariant(variant))
+      : catalogVariants(props.product),
+);
 const availableVariants = computed(() =>
-  props.product.variants.filter((variant) => variant.available),
+  relevantVariants.value.filter((variant) => variant.available),
 );
 const startingPrice = computed(() =>
   Math.min(
     ...(availableVariants.value.length
       ? availableVariants.value
-      : props.product.variants
+      : relevantVariants.value
     ).map((variant) => variant.price),
   ),
 );
@@ -31,7 +40,10 @@ function trackProductSelection() {
 
 <template>
   <NuxtLink
-    :to="`/perfumes/${product.slug}`"
+    :to="{
+      path: `/perfumes/${product.slug}`,
+      query: variantType === 'decant' ? { formato: 'decant' } : undefined,
+    }"
     class="product-card"
     @click="trackProductSelection"
   >
@@ -60,6 +72,7 @@ function trackProductSelection() {
         height="800"
       />
       <span class="product-tag">{{ product.brand }}</span>
+      <span v-if="variantType === 'decant'" class="decant-tag">DECANT</span>
     </div>
     <div class="product-card__details">
       <div class="product-meta">
@@ -79,9 +92,7 @@ function trackProductSelection() {
       <div class="product-bottom">
         <strong>Desde {{ money(startingPrice) }}</strong>
         <span class="product-card__action">{{
-          product.variants.some((variant) => variant.available)
-            ? "Elegir presentación"
-            : "AGOTADO"
+          availableVariants.length ? "Elegir presentación" : "AGOTADO"
         }}</span>
       </div>
     </div>
@@ -110,6 +121,17 @@ function trackProductSelection() {
   height: 100%;
   opacity: 0;
   transition: opacity 0.25s ease;
+}
+.decant-tag {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 6px 9px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
 }
 
 @media (hover: hover) {

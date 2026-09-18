@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Product } from "./types";
-import { money } from "./commerce";
+import { money, variantLabel } from "./commerce";
 
 export const orderStatuses = [
   "pending",
@@ -117,7 +117,7 @@ export function resolveOrderItems(
       productId: product.id,
       variantId: variant.id,
       name: product.name,
-      size: variant.size,
+      size: variantLabel(variant),
       price: variant.price,
       quantity: item.quantity,
     };

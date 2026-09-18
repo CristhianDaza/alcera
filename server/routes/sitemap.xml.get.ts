@@ -25,6 +25,7 @@ export default defineEventHandler(async (event) => {
     ? [
         "/",
         "/perfumes",
+        "/decants",
         "/guia-de-perfumes",
         "/politica-de-privacidad",
         "/terminos-y-condiciones",

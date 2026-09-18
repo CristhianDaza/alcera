@@ -1,4 +1,5 @@
 import type { CartLine, Product, Variant } from "#shared/types";
+import { variantLabel } from "#shared/commerce";
 export function useCart() {
   const lines = useState<CartLine[]>("cart", () => []);
   const count = computed(() => lines.value.reduce((s, l) => s + l.quantity, 0));
@@ -16,7 +17,7 @@ export function useCart() {
         productId: product.id,
         variantId: variant.id,
         name: product.name,
-        size: variant.size,
+        size: variantLabel(variant),
         price: variant.price,
         quantity: 1,
         available: true,

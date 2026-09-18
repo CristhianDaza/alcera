@@ -6,6 +6,7 @@ import {
   siteBase,
 } from "#shared/seo";
 import { seoLandings } from "#shared/seo-landings";
+import { catalogVariants } from "#shared/catalog";
 
 const route = useRoute();
 const router = useRouter();
@@ -167,11 +168,11 @@ const filtered = computed(() => {
       (!family.value || p.family?.includes(family.value)) &&
       (!brand.value || p.brand === brand.value) &&
       (!concentration.value || p.concentration === concentration.value) &&
-      (!available.value || p.variants.some((v) => v.available)),
+      (!available.value || catalogVariants(p).some((v) => v.available)),
   );
   const price = (p: (typeof list)[number]) =>
     Math.min(
-      ...p.variants
+      ...catalogVariants(p)
         .filter((v) => !available.value || v.available)
         .map((v) => v.price),
     );

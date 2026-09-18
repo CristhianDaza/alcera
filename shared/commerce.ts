@@ -1,4 +1,6 @@
-import type { CartLine, Product } from "./types";
+import type { CartLine, Product, Variant } from "./types";
+export const variantLabel = (variant: Variant) =>
+  variant.type === "decant" ? `Decant · ${variant.size}` : variant.size;
 export const money = (value: number) =>
   new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -14,7 +16,7 @@ export function reconcileCart(lines: CartLine[], products: Product[]) {
     return {
       ...line,
       name: product?.name ?? line.name,
-      size: variant?.size ?? line.size,
+      size: variant ? variantLabel(variant) : line.size,
       price: variant?.price ?? line.price,
       available: !!variant?.available,
       image: product?.images[0]?.url ?? line.image,

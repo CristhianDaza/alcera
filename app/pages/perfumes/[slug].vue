@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { productSearchName, siteBase, serializeSchema } from "#shared/seo";
-import { money } from "#shared/commerce";
-import { selectRelatedProducts } from "#shared/catalog";
+import { money, variantLabel } from "#shared/commerce";
+import { isDecantVariant, selectRelatedProducts } from "#shared/catalog";
 import type { Product } from "#shared/types";
 import { seoLanding, seoLandingForFilter } from "#shared/seo-landings";
 
@@ -47,14 +47,25 @@ const relatedProducts = computed(() =>
     ? selectRelatedProducts(catalog.products.value, p)
     : (fetchedPage?.related ?? []),
 );
+const requestedDecant = route.query.formato === "decant";
+const preferredVariants = requestedDecant
+  ? p.variants.filter(isDecantVariant)
+  : p.variants;
 const selected = ref(
-  p.variants.find((variant) => variant.available)?.id || p.variants[0]!.id,
+  preferredVariants.find((item) => item.available)?.id ||
+    preferredVariants[0]?.id ||
+    p.variants.find((item) => item.available)?.id ||
+    p.variants[0]!.id,
 );
 const photo = ref(0);
 const added = ref(false);
 const variant = computed(() =>
   p.variants.find((item) => item.id === selected.value)!,
 );
+const bottleVariants = computed(() =>
+  p.variants.filter((item) => !isDecantVariant(item)),
+);
+const decantVariants = computed(() => p.variants.filter(isDecantVariant));
 const { add } = useCart();
 function addSelectedVariant() {
   add(p, variant.value);
@@ -184,7 +195,7 @@ useHead({
         ],
         offers: p.variants.map((item) => ({
           "@type": "Offer",
-          name: p.name + " " + item.size,
+          name: p.name + " " + variantLabel(item),
           seller: { "@id": base + "/#organization" },
           sku: (p.sku || p.id) + "-" + item.id,
           price: item.price,
@@ -324,22 +335,76 @@ useHead({
 
         <div class="purchase-panel">
           <h2>Elige tu presentación</h2>
-          <div class="variants">
-            <button
-              v-for="item in p.variants"
-              :key="item.id"
-              :class="{ selected: selected === item.id }"
-              :aria-pressed="selected === item.id"
-              @click="
-                selected = item.id;
-                added = false;
-              "
-            >
-              {{ item.size
-              }}<small>{{ item.available ? "Disponible" : "Agotado" }}</small>
-            </button>
+          <p class="purchase-guidance">
+            Selecciona el formato y tamaño que prefieras.
+          </p>
+          <div class="variant-groups">
+            <section v-if="bottleVariants.length" class="variant-group">
+              <h3>Frasco original</h3>
+              <div class="variants">
+                <button
+                  v-for="item in bottleVariants"
+                  :key="item.id"
+                  :class="{
+                    selected: selected === item.id,
+                    unavailable: !item.available,
+                  }"
+                  :aria-pressed="selected === item.id"
+                  :aria-label="`${variantLabel(item)}, ${item.available ? 'disponible' : 'agotado'}`"
+                  @click="
+                    selected = item.id;
+                    added = false;
+                  "
+                >
+                  <span>{{ item.size }}</span>
+                  <small>{{ item.available ? "Disponible" : "Agotado" }}</small>
+                  <span
+                    v-if="selected === item.id"
+                    class="variant-check"
+                    aria-hidden="true"
+                    >✓</span
+                  >
+                </button>
+              </div>
+            </section>
+            <section v-if="decantVariants.length" class="variant-group">
+              <h3>Decants</h3>
+              <p>El perfume original, reenvasado en un formato práctico.</p>
+              <div class="variants">
+                <button
+                  v-for="item in decantVariants"
+                  :key="item.id"
+                  :class="{
+                    selected: selected === item.id,
+                    unavailable: !item.available,
+                  }"
+                  :aria-pressed="selected === item.id"
+                  :aria-label="`${variantLabel(item)}, ${item.available ? 'disponible' : 'agotado'}`"
+                  @click="
+                    selected = item.id;
+                    added = false;
+                  "
+                >
+                  <span>{{ item.size }}</span>
+                  <small>{{ item.available ? "Disponible" : "Agotado" }}</small>
+                  <span
+                    v-if="selected === item.id"
+                    class="variant-check"
+                    aria-hidden="true"
+                    >✓</span
+                  >
+                </button>
+              </div>
+            </section>
           </div>
-          <p class="price">{{ money(variant.price) }} <small>COP</small></p>
+          <div class="purchase-summary">
+            <span>{{
+              isDecantVariant(variant)
+                ? `Decant de ${variant.size}`
+                : `Frasco de ${variant.size}`
+            }}</span>
+            <p class="price">{{ money(variant.price) }} <small>COP</small></p>
+          </div>
           <button
             class="button full"
             :disabled="!variant.available"
@@ -449,6 +514,95 @@ useHead({
 </template>
 
 <style scoped>
+.purchase-panel {
+  position: relative;
+}
+.purchase-guidance {
+  margin: -7px 0 20px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.variant-groups {
+  display: grid;
+  gap: 20px;
+}
+.variant-group + .variant-group {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.variant-group h3 {
+  margin: 0 0 4px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.variant-group > p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.purchase-panel .variants {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 9px;
+}
+.purchase-panel .variants button {
+  position: relative;
+  min-width: 0;
+  min-height: 66px;
+  padding: 12px 34px 12px 13px;
+  text-align: left;
+}
+.purchase-panel .variants button > span:first-child {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+.purchase-panel .variants small {
+  color: var(--muted);
+}
+.purchase-panel .variants button:not(.selected) {
+  background: color-mix(in srgb, var(--paper) 35%, transparent);
+}
+.purchase-panel .variants .unavailable:not(.selected) {
+  opacity: 0.58;
+}
+.purchase-panel .variants .selected {
+  padding: 11px 33px 11px 12px;
+  box-shadow: inset 0 0 0 1px var(--accent-soft);
+}
+.variant-check {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  transform: translateY(-50%);
+}
+.purchase-summary {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 0 17px;
+}
+.purchase-summary > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.purchase-summary .price {
+  margin: 0;
+  text-align: right;
+}
 .aroma-description {
   margin: 0 0 26px;
 }
@@ -548,6 +702,42 @@ useHead({
   font-size: 42px;
 }
 @media (max-width: 700px) {
+  .purchase-panel {
+    padding: 18px;
+  }
+  .purchase-panel > h2 {
+    margin-bottom: 13px;
+    font-size: 24px;
+  }
+  .purchase-guidance {
+    max-width: 240px;
+    margin-bottom: 22px;
+  }
+  .purchase-panel .variants {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .purchase-panel .variants button {
+    min-height: 70px;
+    padding: 12px 30px 12px 11px;
+  }
+  .purchase-panel .variants .selected {
+    padding: 11px 29px 11px 10px;
+  }
+  .variant-check {
+    right: 9px;
+  }
+  .purchase-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .purchase-summary .price {
+    font-size: 32px;
+    text-align: left;
+  }
+  .purchase-panel > .button {
+    min-height: 52px;
+  }
   .delivery-estimate {
     margin-top: 42px;
     padding: 24px;

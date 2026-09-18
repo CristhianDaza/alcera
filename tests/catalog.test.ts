@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { selectRelatedProducts } from "../shared/catalog";
+import {
+  isDecantVariant,
+  catalogVariants,
+  productHasDecants,
+  selectRelatedProducts,
+} from "../shared/catalog";
 import { demoProducts } from "../shared/demo";
 
 const product = demoProducts[0]!;
@@ -51,5 +56,28 @@ describe("Productos relacionados", () => {
     const related = selectRelatedProducts([product, overlapping], product);
 
     expect(related).toEqual([overlapping]);
+  });
+});
+
+describe("Decants", () => {
+  it("distingue decants de frascos y respeta disponibilidad", () => {
+    const withDecants = {
+      ...product,
+      variants: [
+        ...product.variants.filter((variant) => !isDecantVariant(variant)),
+        {
+          id: "decant-test",
+          size: "5 ml",
+          price: 30000,
+          available: false,
+          type: "decant" as const,
+        },
+      ],
+    };
+
+    expect(isDecantVariant(product.variants[0]!)).toBe(false);
+    expect(productHasDecants(withDecants)).toBe(true);
+    expect(productHasDecants(withDecants, true)).toBe(false);
+    expect(catalogVariants(withDecants).every(isDecantVariant)).toBe(false);
   });
 });

@@ -91,7 +91,16 @@ function normalizeProduct(value: Record<string, unknown>, id: string): Product {
     : typeof rawFamily === "string" && rawFamily.trim()
       ? [rawFamily.trim()]
       : [];
-  return { ...value, id, family } as Product;
+  const variants = Array.isArray(value.variants)
+    ? value.variants.map((variant) => ({
+        ...(variant as Product["variants"][number]),
+        type:
+          (variant as Product["variants"][number]).type === "decant"
+            ? "decant"
+            : "bottle",
+      }))
+    : [];
+  return { ...value, id, family, variants } as Product;
 }
 
 function cacheCatalog(allProducts: Product[]) {

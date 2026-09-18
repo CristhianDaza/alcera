@@ -63,6 +63,7 @@ const navigation = [
   { label: "Mujer", category: "Mujer", to: "/categorias/mujer" },
   { label: "Hombre", category: "Hombre", to: "/categorias/hombre" },
   { label: "Unisex", category: "Unisex", to: "/categorias/unisex" },
+  { label: "Decants", category: null, to: "/decants" },
 ];
 const activeCategory = computed(() =>
   /^\/perfumes\/?$/.test(route.path)
@@ -75,6 +76,11 @@ const activeCategory = computed(() =>
           ? "Unisex"
           : null,
 );
+function isNavigationActive(item: (typeof navigation)[number]) {
+  return item.to === "/decants"
+    ? route.path === "/decants"
+    : activeCategory.value === item.category;
+}
 const { openPreferences } = useCookieConsent();
 </script>
 <template>
@@ -103,10 +109,8 @@ const { openPreferences } = useCookieConsent();
         >
           <a
             :href="href || item.to"
-            :class="{ 'is-current': activeCategory === item.category }"
-            :aria-current="
-              activeCategory === item.category ? 'page' : undefined
-            "
+            :class="{ 'is-current': isNavigationActive(item) }"
+            :aria-current="isNavigationActive(item) ? 'page' : undefined"
             @click="navigate"
             >{{ item.label }}</a
           >
@@ -155,6 +159,7 @@ const { openPreferences } = useCookieConsent();
           ><NuxtLink to="/categorias/mujer">Perfumes para mujer</NuxtLink
           ><NuxtLink to="/categorias/hombre">Perfumes para hombre</NuxtLink
           ><NuxtLink to="/categorias/unisex">La colección unisex</NuxtLink>
+          <NuxtLink to="/decants">Decants de perfumes</NuxtLink>
           <NuxtLink to="/marcas/lattafa">Perfumes Lattafa</NuxtLink>
           <NuxtLink to="/marcas/armaf">Perfumes Armaf</NuxtLink>
           <NuxtLink to="/colecciones/perfumes-arabes">Perfumes árabes</NuxtLink>

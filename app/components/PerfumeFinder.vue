@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
+import { catalogVariants } from "#shared/catalog";
 
 type Budget = "under250" | "250to450" | "over450";
 type Answers = {
@@ -81,7 +82,7 @@ const questions = computed(() => [
 ]);
 
 function startingPrice(product: Product) {
-  return Math.min(...product.variants.map((variant) => variant.price));
+  return Math.min(...catalogVariants(product).map((variant) => variant.price));
 }
 function includesValue(value: string | undefined, terms: string[]) {
   return terms.some((term) => value?.toLocaleLowerCase().includes(term));
