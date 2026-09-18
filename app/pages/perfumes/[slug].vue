@@ -47,6 +47,16 @@ const relatedProducts = computed(() =>
     ? selectRelatedProducts(catalog.products.value, p)
     : (fetchedPage?.related ?? []),
 );
+const sameBrandProducts = computed(() =>
+  relatedProducts.value.filter((product) => product.brand === p.brand),
+);
+const sameFamilyProducts = computed(() =>
+  relatedProducts.value.filter(
+    (product) =>
+      product.brand !== p.brand &&
+      product.family?.some((family) => p.family?.includes(family)),
+  ),
+);
 const selected = ref(
   p.variants.find((variant) => variant.available)?.id || p.variants[0]!.id,
 );
@@ -491,7 +501,7 @@ useHead({
         </div>
         <NuxtLink class="text-link" to="/perfumes">Ver colección</NuxtLink>
       </div>
-      <div class="product-grid">
+      <div class="product-grid recently-viewed-grid">
         <ProductCard
           v-for="item in recentlyViewed"
           :key="item.id"
@@ -501,20 +511,43 @@ useHead({
     </aside>
 
     <aside
-      v-if="relatedProducts.length"
+      v-if="sameBrandProducts.length"
       class="related-products"
-      aria-labelledby="related-title"
+      aria-labelledby="same-brand-title"
     >
       <div class="section-heading">
         <div>
-          <span class="eyebrow">SIGUE DESCUBRIENDO</span>
-          <h2 id="related-title">También te pueden <em>interesar.</em></h2>
+          <span class="eyebrow">DE LA MISMA MARCA</span>
+          <h2 id="same-brand-title">
+            Más de <em>{{ p.brand }}.</em>
+          </h2>
         </div>
         <NuxtLink class="text-link" to="/perfumes">Ver colección</NuxtLink>
       </div>
-      <div class="product-grid">
+      <div class="product-grid recommendation-grid">
         <ProductCard
-          v-for="item in relatedProducts"
+          v-for="item in sameBrandProducts"
+          :key="item.id"
+          :product="item"
+        />
+      </div>
+    </aside>
+
+    <aside
+      v-if="sameFamilyProducts.length"
+      class="related-products related-products--family"
+      aria-labelledby="same-family-title"
+    >
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">DE LA MISMA FAMILIA OLFATIVA</span>
+          <h2 id="same-family-title">Aromas con un aire <em>parecido.</em></h2>
+        </div>
+        <NuxtLink class="text-link" to="/perfumes">Ver colección</NuxtLink>
+      </div>
+      <div class="product-grid recommendation-grid">
+        <ProductCard
+          v-for="item in sameFamilyProducts"
           :key="item.id"
           :product="item"
         />
@@ -641,8 +674,18 @@ useHead({
   padding-top: 60px;
   border-top: 1px solid var(--line);
 }
+.related-products--family {
+  margin-top: 54px;
+  padding-top: 54px;
+}
+.recommendation-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 .recently-viewed {
   margin-top: 72px;
+}
+.recently-viewed-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .related-products .section-heading h2,
 .recently-viewed .section-heading h2 {
@@ -661,9 +704,19 @@ useHead({
   .recently-viewed {
     margin-top: 48px;
   }
+  .recently-viewed-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .related-products {
     margin-top: 48px;
     padding-top: 42px;
+  }
+  .related-products--family {
+    margin-top: 42px;
+    padding-top: 42px;
+  }
+  .recommendation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 700px) {
