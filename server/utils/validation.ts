@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { shoppingOccasions } from "../../shared/types";
 const text = z.string().trim().min(1).max(200);
 const optionalText = z.string().trim().min(1).max(500).optional();
 const validGtin = (value: string) => {
@@ -41,6 +42,10 @@ export const productSchema = z.object({
     .optional(),
   aromaDescription: z.string().trim().min(1).max(5000).optional(),
   idealFor: z.array(text).max(20).optional(),
+  occasions: z
+    .array(z.enum(shoppingOccasions))
+    .max(shoppingOccasions.length)
+    .optional(),
   duration: optionalText,
   projection: optionalText,
   concentration: optionalText,

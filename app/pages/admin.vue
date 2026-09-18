@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { OlfactoryPyramid, Product, Settings } from "#shared/types";
+import {
+  shoppingOccasions,
+  type OlfactoryPyramid,
+  type Product,
+  type Settings,
+  type ShoppingOccasion,
+} from "#shared/types";
 import type { User } from "firebase/auth";
 
 type EditableImage = Product["images"][number] & { file?: File };
@@ -9,6 +15,7 @@ type EditableProduct = Omit<
   | "olfactoryPyramid"
   | "aromaDescription"
   | "idealFor"
+  | "occasions"
   | "duration"
   | "projection"
   | "concentration"
@@ -21,6 +28,7 @@ type EditableProduct = Omit<
   olfactoryPyramid: OlfactoryPyramid;
   aromaDescription: string;
   idealFor: string[];
+  occasions: ShoppingOccasion[];
   duration: string;
   projection: string;
   concentration: string;
@@ -278,6 +286,7 @@ function edit(p?: Product) {
         },
         aromaDescription: p.aromaDescription ?? "",
         idealFor: p.idealFor ?? [],
+        occasions: p.occasions ?? [],
         duration: p.duration ?? "",
         projection: p.projection ?? "",
         concentration: p.concentration ?? "",
@@ -301,6 +310,7 @@ function edit(p?: Product) {
         olfactoryPyramid: { top: [], heart: [], base: [] },
         aromaDescription: "",
         idealFor: [],
+        occasions: [],
         duration: "",
         projection: "",
         concentration: "",
@@ -419,6 +429,8 @@ async function save() {
     if (!product.aromaDescription)
       Reflect.deleteProperty(product, "aromaDescription");
     if (!product.idealFor.length) Reflect.deleteProperty(product, "idealFor");
+    if (!product.occasions.length)
+      Reflect.deleteProperty(product, "occasions");
     if (!product.duration) Reflect.deleteProperty(product, "duration");
     if (!product.projection) Reflect.deleteProperty(product, "projection");
     if (!product.concentration)
@@ -840,6 +852,21 @@ function move(index: number, direction: number) {
             >Ideal para (opcional, separado por comas)<input
               v-model="idealFor"
               placeholder="Uso diario, Todo el año, Climas frescos" /></label
+          ><fieldset class="family-options wide">
+            <legend>Momentos de compra (opcional)</legend>
+            <label
+              v-for="occasion in shoppingOccasions"
+              :key="occasion"
+              class="check"
+            >
+              <input
+                v-model="editor.occasions"
+                type="checkbox"
+                :value="occasion"
+              />
+              {{ occasion }}
+            </label>
+          </fieldset
           ><label class="wide"
             >Descripción<textarea
               v-model="editor.description"

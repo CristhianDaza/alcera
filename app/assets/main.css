@@ -679,7 +679,7 @@ button.hero-secondary-link {
   transform: scale(1.04);
 }
 
-.product-tag {
+.product-status {
   position: absolute;
   top: 14px;
   left: 14px;
@@ -687,6 +687,10 @@ button.hero-secondary-link {
   padding: 3px 9px;
   font-size: 8px;
   letter-spacing: 0.4px;
+}
+
+.product-status--sold-out {
+  color: var(--muted);
 }
 
 .product-arrow {
@@ -2163,7 +2167,7 @@ button.hero-secondary-link {
 
 .filters {
   display: grid;
-  grid-template-columns: 2fr repeat(5, 1fr);
+  grid-template-columns: 2fr repeat(6, 1fr);
   gap: 17px;
   padding: 18px 0 12px;
 }
@@ -3002,7 +3006,7 @@ select {
     font-size: 6px;
   }
 
-  .product-tag {
+  .product-status {
     top: 9px;
     left: 9px;
     font-size: 7px;
@@ -3729,7 +3733,7 @@ main:focus {
     font-size: 10px;
   }
 
-  .product-tag {
+  .product-status {
     font-size: 10px;
     padding: 3px 7px;
   }

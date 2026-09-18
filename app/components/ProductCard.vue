@@ -10,6 +10,12 @@ const props = defineProps<{
 const availableVariants = computed(() =>
   props.product.variants.filter((variant) => variant.available),
 );
+const cardStatus = computed(() => {
+  if (!availableVariants.value.length) return "Agotado";
+  return props.product.occasions?.includes("Regalo")
+    ? "Ideal para regalo"
+    : "Disponible";
+});
 const startingPrice = computed(() =>
   Math.min(
     ...(availableVariants.value.length
@@ -59,11 +65,15 @@ function trackProductSelection() {
         width="650"
         height="800"
       />
-      <span class="product-tag">{{ product.brand }}</span>
+      <span
+        class="product-status"
+        :class="{ 'product-status--sold-out': !availableVariants.length }"
+        >{{ cardStatus }}</span
+      >
     </div>
     <div class="product-card__details">
       <div class="product-meta">
-        <span>{{ product.category }}</span>
+        <span>{{ product.brand }}</span>
         <span v-if="product.concentration">{{ product.concentration }}</span>
       </div>
       <h3>{{ product.name }}</h3>
