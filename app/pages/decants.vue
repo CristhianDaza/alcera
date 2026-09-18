@@ -239,7 +239,6 @@ useHead(() => ({
   background: var(--surface);
 }
 .decant-benefits strong {
-  font-family: var(--serif);
   font-size: 18px;
 }
 .decant-benefits span,
