@@ -320,6 +320,8 @@ function edit(p?: Product) {
         ],
         status: "published",
         featured: false,
+        newArrival: false,
+        bestSeller: false,
       };
   notice.value = "";
   topNotes.value = editor.value.olfactoryPyramid.top.join(", ");
@@ -429,8 +431,7 @@ async function save() {
     if (!product.aromaDescription)
       Reflect.deleteProperty(product, "aromaDescription");
     if (!product.idealFor.length) Reflect.deleteProperty(product, "idealFor");
-    if (!product.occasions.length)
-      Reflect.deleteProperty(product, "occasions");
+    if (!product.occasions.length) Reflect.deleteProperty(product, "occasions");
     if (!product.duration) Reflect.deleteProperty(product, "duration");
     if (!product.projection) Reflect.deleteProperty(product, "projection");
     if (!product.concentration)
@@ -875,8 +876,9 @@ function move(index: number, direction: number) {
           ><label class="wide"
             >Ideal para (opcional, separado por comas)<input
               v-model="idealFor"
-              placeholder="Uso diario, Todo el año, Climas frescos" /></label
-          ><fieldset class="family-options wide">
+              placeholder="Uso diario, Todo el año, Climas frescos"
+          /></label>
+          <fieldset class="family-options wide">
             <legend>Momentos de compra (opcional)</legend>
             <label
               v-for="occasion in shoppingOccasions"
@@ -890,8 +892,8 @@ function move(index: number, direction: number) {
               />
               {{ occasion }}
             </label>
-          </fieldset
-          ><label class="wide"
+          </fieldset>
+          <label class="wide"
             >Descripción<textarea
               v-model="editor.description"
               required
@@ -998,6 +1000,12 @@ function move(index: number, direction: number) {
           ><label class="check"
             ><input v-model="editor.featured" type="checkbox" /> Destacar en
             inicio</label
+          ><label class="check"
+            ><input v-model="editor.newArrival" type="checkbox" />
+            Novedad</label
+          ><label class="check"
+            ><input v-model="editor.bestSeller" type="checkbox" /> Más
+            vendido</label
           ><label v-if="!editor.id" class="check"
             ><input v-model="addAnother" type="checkbox" /> Agregar otro al
             guardar</label

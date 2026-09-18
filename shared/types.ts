@@ -44,6 +44,8 @@ export interface Product {
   variants: Variant[];
   status: "draft" | "published";
   featured: boolean;
+  newArrival?: boolean;
+  bestSeller?: boolean;
 }
 export interface Settings {
   name: string;

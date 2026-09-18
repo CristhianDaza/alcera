@@ -14,7 +14,8 @@ const socialUrl = (hosts: string[]) =>
         return (
           url.protocol === "https:" &&
           hosts.some(
-            (host) => url.hostname === host || url.hostname.endsWith(`.${host}`),
+            (host) =>
+              url.hostname === host || url.hostname.endsWith(`.${host}`),
           )
         );
       } catch {
@@ -99,6 +100,8 @@ export const productSchema = z.object({
     ),
   status: z.enum(["draft", "published"]),
   featured: z.boolean(),
+  newArrival: z.boolean().optional(),
+  bestSeller: z.boolean().optional(),
 });
 export const settingsSchema = z.object({
   name: text,

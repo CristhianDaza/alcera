@@ -10,12 +10,19 @@ const props = defineProps<{
 const availableVariants = computed(() =>
   props.product.variants.filter((variant) => variant.available),
 );
-const cardStatus = computed(() => {
-  if (!availableVariants.value.length) return "Agotado";
-  return props.product.occasions?.includes("Regalo")
-    ? "Ideal para regalo"
-    : "Disponible";
+const cardBadge = computed(() => {
+  if (!availableVariants.value.length)
+    return { label: "Agotado", tone: "sold-out" };
+  if (props.product.newArrival) return { label: "Novedad", tone: "featured" };
+  if (props.product.bestSeller)
+    return { label: "Más vendido", tone: "featured" };
+  if (props.product.occasions?.includes("Regalo"))
+    return { label: "Ideal para regalo", tone: "default" };
+  return null;
 });
+const availabilityLabel = computed(() =>
+  availableVariants.value.length ? "Disponible" : "Agotado",
+);
 const startingPrice = computed(() =>
   Math.min(
     ...(availableVariants.value.length
@@ -66,9 +73,10 @@ function trackProductSelection() {
         height="800"
       />
       <span
+        v-if="cardBadge"
         class="product-status"
-        :class="{ 'product-status--sold-out': !availableVariants.length }"
-        >{{ cardStatus }}</span
+        :class="`product-status--${cardBadge.tone}`"
+        >{{ cardBadge.label }}</span
       >
     </div>
     <div class="product-card__details">
@@ -88,6 +96,13 @@ function trackProductSelection() {
       </p>
       <div class="product-bottom">
         <strong>Desde {{ money(startingPrice) }}</strong>
+        <span
+          class="product-availability"
+          :class="{
+            'product-availability--sold-out': !availableVariants.length,
+          }"
+          >{{ availabilityLabel }}</span
+        >
         <span class="product-card__action">{{
           product.variants.some((variant) => variant.available)
             ? "Elegir presentación"
@@ -111,6 +126,15 @@ function trackProductSelection() {
 .product-performance span + span::before {
   content: "·";
   margin-right: 10px;
+}
+
+.product-availability {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.product-availability--sold-out {
+  color: var(--error);
 }
 
 .product-photo__alternate {
