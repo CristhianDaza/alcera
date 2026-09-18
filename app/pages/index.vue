@@ -51,6 +51,24 @@ function trackWhatsappClick(linkLocation: "home_hero" | "home_concierge") {
   });
 }
 
+function openFinder(
+  linkLocation: "home_hero" | "home_finder" | "home_concierge",
+) {
+  finderOpen.value = true;
+  void catalog.ensureLoaded();
+  void trackAnalyticsEvent("perfume_finder_started", {
+    link_location: linkLocation,
+    page_path: route.fullPath,
+  });
+}
+
+function trackFinderComplete(productIds: string[]) {
+  void trackAnalyticsEvent("perfume_finder_completed", {
+    page_path: route.fullPath,
+    result_count: productIds.length,
+  });
+}
+
 const familyList = [
   {
     name: "Floral",
@@ -136,7 +154,7 @@ watch(finderOpen, (isOpen) => {
           v-else
           class="hero-secondary-link"
           type="button"
-          @click="finderOpen = true"
+          @click="openFinder('home_hero')"
         >
           Recibir asesoría <span aria-hidden="true">→</span>
         </button>
@@ -232,6 +250,32 @@ watch(finderOpen, (isOpen) => {
     </div>
   </section>
 
+  <section class="shell finder-teaser" aria-labelledby="finder-teaser-title">
+    <div class="finder-teaser__copy">
+      <span class="eyebrow">RECOMENDACIÓN PERSONALIZADA</span>
+      <h2 id="finder-teaser-title">
+        Encuentra un perfume que <em>se sienta como tú.</em>
+      </h2>
+      <p>
+        Responde seis preguntas cortas sobre tus gustos, tu estilo y el momento
+        en que lo usarás. Te mostraremos una selección pensada para ti.
+      </p>
+      <button class="button" type="button" @click="openFinder('home_finder')">
+        Encontrar mi perfume ideal <span aria-hidden="true">→</span>
+      </button>
+    </div>
+    <div class="finder-teaser__details" aria-label="Cómo funciona">
+      <span class="finder-teaser__number" aria-hidden="true">01</span>
+      <div class="finder-teaser__bottle" aria-hidden="true"><i /><b />✦</div>
+      <ol>
+        <li><strong>Tu aroma</strong><span>Familia y personalidad</span></li>
+        <li><strong>Tu momento</strong><span>Ocasión e intensidad</span></li>
+        <li><strong>Tu selección</strong><span>Opciones disponibles</span></li>
+      </ol>
+      <span class="finder-teaser__time">6 preguntas · menos de 2 minutos</span>
+    </div>
+  </section>
+
   <section class="section shell">
     <div class="section-heading">
       <div>
@@ -320,7 +364,12 @@ watch(finderOpen, (isOpen) => {
         >
           Recibir asesoría por WhatsApp ↗
         </a>
-        <button v-else class="button" type="button" @click="finderOpen = true">
+        <button
+          v-else
+          class="button"
+          type="button"
+          @click="openFinder('home_concierge')"
+        >
           Recibir una recomendación <span>✦</span>
         </button>
       </div>
@@ -337,5 +386,9 @@ watch(finderOpen, (isOpen) => {
     </div>
   </section>
 
-  <PerfumeFinder v-model="finderOpen" :products="products || []" />
+  <PerfumeFinder
+    v-model="finderOpen"
+    :products="products || []"
+    @complete="trackFinderComplete"
+  />
 </template>

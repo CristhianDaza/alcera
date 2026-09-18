@@ -10,6 +10,17 @@ type Answers = {
   style: "classic" | "sweet" | "magnetic" | "fresh";
   budget: Budget;
 };
+type FinderOption = {
+  value: string;
+  label: string;
+  detail: string;
+};
+type FinderQuestion = {
+  key: keyof Answers;
+  title: string;
+  description: string;
+  options: FinderOption[];
+};
 
 const props = defineProps<{ products: Product[] }>();
 const open = defineModel<boolean>({ default: false });
@@ -17,6 +28,7 @@ const emit = defineEmits<{ complete: [productIds: string[]] }>();
 const storageKey = "alcera-perfume-finder";
 const step = ref(0);
 const answers = ref<Partial<Answers>>({});
+const isChoosing = ref(false);
 
 const familyOptions = computed(() => {
   const families = [
@@ -26,62 +38,136 @@ const familyOptions = computed(() => {
     ? families
     : ["Cítrica", "Floral", "Amaderada", "Oriental"];
 });
-const questions = computed(() => [
+const questions = computed<FinderQuestion[]>(() => [
   {
     key: "category",
     title: "¿Para quién buscas el perfume?",
+    description: "Elegimos desde dónde empezar tu selección.",
     options: [
-      ["Hombre", "Hombre"],
-      ["Mujer", "Mujer"],
-      ["Unisex", "Unisex"],
+      { value: "Hombre", label: "Hombre", detail: "Aromas con carácter" },
+      {
+        value: "Mujer",
+        label: "Mujer",
+        detail: "Aromas que acompañan tu estilo",
+      },
+      {
+        value: "Unisex",
+        label: "Unisex",
+        detail: "Sin etiquetas, solo afinidad",
+      },
     ],
   },
   {
     key: "family",
     title: "¿Qué tipo de aroma te atrae más?",
-    options: familyOptions.value.map((family) => [family, family]),
+    description: "La familia olfativa es la pista más importante.",
+    options: familyOptions.value.map((family) => ({
+      value: family,
+      label: family,
+      detail: familyDescription(family),
+    })),
   },
   {
     key: "intensity",
     title: "¿Qué tan fuerte quieres que se sienta?",
+    description: "Piensa en el rastro que quieres dejar.",
     options: [
-      ["soft", "Suave y discreto"],
-      ["balanced", "Equilibrado"],
-      ["intense", "Intenso, que deje huella"],
+      { value: "soft", label: "Suave y discreto", detail: "Cerca de la piel" },
+      {
+        value: "balanced",
+        label: "Equilibrado",
+        detail: "Presencia sin imponerse",
+      },
+      { value: "intense", label: "Intenso", detail: "Que deje huella" },
     ],
   },
   {
     key: "occasion",
     title: "¿Para qué momento lo usarás más?",
+    description: "Una fragancia cambia con el plan y la hora.",
     options: [
-      ["day", "Día a día"],
-      ["night", "Noches y ocasiones especiales"],
-      ["all", "Para todo, sin distinción"],
+      {
+        value: "day",
+        label: "Día a día",
+        detail: "Oficina, planes tranquilos y rutina",
+      },
+      {
+        value: "night",
+        label: "Noche y ocasiones",
+        detail: "Cenas, citas y celebraciones",
+      },
+      { value: "all", label: "Para todo", detail: "Una opción versátil" },
     ],
   },
   {
     key: "style",
     title: "¿Qué frase te describe mejor?",
+    description: "Tu estilo nos ayuda a ordenar las opciones.",
     options: [
-      ["classic", "Clásica, elegante y atemporal"],
-      ["sweet", "Dulce, divertida y juvenil"],
-      ["magnetic", "Segura, intensa y magnética"],
-      ["fresh", "Relajada, natural y fresca"],
+      {
+        value: "classic",
+        label: "Clásico y elegante",
+        detail: "Atemporal y refinado",
+      },
+      {
+        value: "sweet",
+        label: "Dulce y expresivo",
+        detail: "Alegre, cálido y cercano",
+      },
+      {
+        value: "magnetic",
+        label: "Magnético e intenso",
+        detail: "Seguro y memorable",
+      },
+      {
+        value: "fresh",
+        label: "Natural y fresco",
+        detail: "Relajado y luminoso",
+      },
     ],
   },
   {
     key: "budget",
     title: "¿Qué presupuesto tienes en mente?",
+    description: "Solo priorizaremos opciones que encajen contigo.",
     options: [
-      ["under250", "Menos de $250 mil"],
-      ["250to450", "Entre $250 mil y $450 mil"],
-      ["over450", "Más de $450 mil"],
+      {
+        value: "under250",
+        label: "Menos de $250 mil",
+        detail: "Para descubrir",
+      },
+      {
+        value: "250to450",
+        label: "Entre $250 y $450 mil",
+        detail: "Una selección amplia",
+      },
+      {
+        value: "over450",
+        label: "Más de $450 mil",
+        detail: "Para una elección especial",
+      },
     ],
   },
 ]);
 
 function startingPrice(product: Product) {
-  return Math.min(...product.variants.map((variant) => variant.price));
+  const prices = product.variants
+    .filter((variant) => variant.available)
+    .map((variant) => variant.price);
+  return prices.length ? Math.min(...prices) : Number.POSITIVE_INFINITY;
+}
+function familyDescription(family: string) {
+  const descriptions: Record<string, string> = {
+    cítrica: "Vibrante, limpia y energizante",
+    floral: "Luminosa, suave y envolvente",
+    amaderada: "Profunda, cálida y elegante",
+    oriental: "Intensa, especiada y seductora",
+    frutal: "Jugosa, alegre y moderna",
+    aromática: "Verde, fresca y refinada",
+  };
+  return (
+    descriptions[family.toLocaleLowerCase()] || "Descubre sus notas y carácter"
+  );
 }
 function includesValue(value: string | undefined, terms: string[]) {
   return terms.some((term) => value?.toLocaleLowerCase().includes(term));
@@ -108,6 +194,8 @@ function score(product: Product) {
 
   const projection =
     `${product.projection || ""} ${product.duration || ""}`.toLocaleLowerCase();
+  const occasions = (product.occasions ?? []).join(" ").toLocaleLowerCase();
+  const idealFor = (product.idealFor ?? []).join(" ").toLocaleLowerCase();
   if (
     answers.value.intensity === "intense" &&
     (includesValue(projection, ["alta", "intensa", "larga"]) ||
@@ -124,46 +212,80 @@ function score(product: Product) {
 
   if (
     answers.value.occasion === "day" &&
-    families.some((family) => ["cítrica", "floral"].includes(family))
+    (includesValue(occasions, ["día", "oficina"]) ||
+      families.some((family) =>
+        ["cítrica", "floral", "aromática"].includes(family),
+      ))
   )
     value += 3;
   if (
     answers.value.occasion === "night" &&
-    families.some((family) => ["oriental", "amaderada"].includes(family))
+    (includesValue(occasions, ["noche"]) ||
+      families.some((family) => ["oriental", "amaderada"].includes(family)))
   )
     value += 3;
   if (answers.value.occasion === "all" && category === "unisex") value += 3;
   if (
     answers.value.style === "classic" &&
-    families.some((family) => ["amaderada", "oriental"].includes(family))
+    (includesValue(idealFor, ["elegante", "clásic"]) ||
+      families.some((family) => ["amaderada", "oriental"].includes(family)))
   )
     value += 3;
   if (
     answers.value.style === "sweet" &&
-    families.some((family) => ["floral", "oriental", "dulce"].includes(family))
+    (includesValue(idealFor, ["dulce", "juvenil"]) ||
+      families.some((family) =>
+        ["floral", "oriental", "dulce", "frutal"].includes(family),
+      ))
   )
     value += 3;
   if (
     answers.value.style === "magnetic" &&
-    families.some((family) => ["oriental", "amaderada"].includes(family))
+    (includesValue(idealFor, ["intens", "noche", "seductor"]) ||
+      families.some((family) => ["oriental", "amaderada"].includes(family)))
   )
     value += 3;
   if (
     answers.value.style === "fresh" &&
-    families.some((family) => ["cítrica", "floral", "frutal"].includes(family))
+    (includesValue(idealFor, ["fresc", "día", "natural"]) ||
+      families.some((family) =>
+        ["cítrica", "floral", "frutal", "aromática"].includes(family),
+      ))
   )
     value += 3;
   return value;
 }
 const results = computed(() =>
-  [...props.products].sort((a, b) => score(b) - score(a)).slice(0, 4),
+  [...props.products]
+    .filter((product) => product.variants.some((variant) => variant.available))
+    .sort((a, b) => score(b) - score(a))
+    .slice(0, 4),
 );
+function matchReason(product: Product) {
+  const families = (product.family ?? []).map((family) =>
+    family.toLocaleLowerCase(),
+  );
+  if (families.includes(answers.value.family?.toLocaleLowerCase() ?? ""))
+    return `Tu afinidad por los aromas ${answers.value.family?.toLocaleLowerCase()}.`;
+  if (answers.value.occasion === "night")
+    return "Una buena opción para noches y planes especiales.";
+  if (answers.value.occasion === "day")
+    return "Una opción fácil de llevar durante el día.";
+  return "Encaja con el estilo y la intensidad que elegiste.";
+}
 
 function choose(key: keyof Answers, value: string) {
+  if (isChoosing.value) return;
+  isChoosing.value = true;
   answers.value[key] = value as never;
   window.setTimeout(() => {
     step.value += 1;
+    isChoosing.value = false;
   }, 180);
+}
+function previous() {
+  if (step.value <= 0 || isChoosing.value) return;
+  step.value -= 1;
 }
 function close() {
   open.value = false;
@@ -171,6 +293,7 @@ function close() {
 function restart() {
   step.value = 0;
   answers.value = {};
+  isChoosing.value = false;
 }
 function saveResults() {
   const productIds = results.value.map((product) => product.id);
@@ -217,18 +340,36 @@ watch(step, (currentStep) => {
           </div>
 
           <template v-if="step < questions.length">
-            <span class="eyebrow">TU PERFUME IDEAL · {{ step + 1 }} DE 6</span>
+            <div class="finder-step-meta">
+              <button
+                v-if="step > 0"
+                class="finder-back"
+                type="button"
+                @click="previous"
+              >
+                ← Atrás
+              </button>
+              <span class="eyebrow"
+                >TU PERFUME IDEAL · {{ step + 1 }} DE 6</span
+              >
+            </div>
             <h2 id="finder-title">{{ questions[step]?.title }}</h2>
+            <p class="finder-question-description">
+              {{ questions[step]?.description }}
+            </p>
             <div class="finder-options">
               <button
                 v-for="option in questions[step]?.options"
-                :key="option[0]"
+                :key="option.value"
                 type="button"
-                @click="
-                  choose(questions[step]!.key as keyof Answers, option[0] || '')
-                "
+                :disabled="isChoosing"
+                @click="choose(questions[step]!.key, option.value)"
               >
-                {{ option[1] }}
+                <span
+                  ><strong>{{ option.label }}</strong
+                  ><small>{{ option.detail }}</small></span
+                >
+                <i aria-hidden="true">→</i>
               </button>
             </div>
           </template>
@@ -237,9 +378,9 @@ watch(step, (currentStep) => {
             <span class="eyebrow">TU SELECCIÓN PERSONAL</span>
             <h2 id="finder-title">Perfumes hechos para <em>ti.</em></h2>
             <p class="finder-intro">
-              Seleccionamos estas fragancias según lo que nos contaste.
+              Seleccionamos opciones disponibles según lo que nos contaste.
             </p>
-            <div class="finder-results">
+            <div v-if="results.length" class="finder-results">
               <NuxtLink
                 v-for="product in results"
                 :key="product.id"
@@ -257,18 +398,20 @@ watch(step, (currentStep) => {
                 <span
                   ><small>{{ product.brand }}</small
                   ><strong>{{ product.name }}</strong
-                  ><em>{{
-                    product.family?.join(" · ") || product.category
-                  }}</em></span
-                ></NuxtLink
+                  ><em>{{ matchReason(product) }}</em></span
+                ><b aria-hidden="true">→</b></NuxtLink
               >
             </div>
+            <p v-else class="finder-empty">
+              Aún no tenemos opciones disponibles para recomendarte. Explora la
+              colección o vuelve a intentarlo pronto.
+            </p>
             <div class="finder-result-actions">
               <button class="text-link" type="button" @click="restart">
                 Repetir preguntas
               </button>
-              <NuxtLink class="button" to="/" @click="close"
-                >Ver mi selección en Inicio</NuxtLink
+              <NuxtLink class="button" to="/perfumes" @click="close"
+                >Ver toda la colección</NuxtLink
               >
             </div>
           </template>
@@ -366,9 +509,44 @@ watch(step, (currentStep) => {
   margin-left: auto;
   text-align: center;
 }
+.finder-step-meta {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 510px;
+  min-height: 24px;
+  margin: 0 auto;
+}
+.finder-step-meta .eyebrow {
+  display: block;
+  text-align: center;
+}
+.finder-back {
+  position: absolute;
+  left: 0;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.finder-back:hover {
+  color: var(--accent);
+}
 .finder-modal h2 {
   margin-top: 8px;
   font-size: clamp(34px, 5vw, 50px);
+}
+.finder-question-description {
+  max-width: 430px;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
 }
 .finder-intro {
   margin-bottom: 24px;
@@ -397,6 +575,27 @@ watch(step, (currentStep) => {
     border-color 0.2s,
     background 0.2s,
     transform 0.2s;
+}
+.finder-options button > span {
+  display: grid;
+  gap: 3px;
+}
+.finder-options button strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.finder-options button small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.finder-options button i {
+  color: var(--accent);
+  font-size: 18px;
+  font-style: normal;
+}
+.finder-options button:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 .finder-options button:hover {
   border-color: var(--accent-soft);
@@ -453,6 +652,14 @@ watch(step, (currentStep) => {
   color: var(--accent);
   font-weight: 400;
 }
+.finder-empty {
+  max-width: 430px;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: center;
+}
 .finder-result-actions {
   display: flex;
   justify-content: space-between;
@@ -484,6 +691,9 @@ watch(step, (currentStep) => {
   }
   .finder-progress {
     margin-bottom: 24px;
+  }
+  .finder-back {
+    left: -2px;
   }
   .finder-options {
     margin-top: 22px;

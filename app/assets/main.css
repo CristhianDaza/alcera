@@ -900,6 +900,179 @@ button.hero-secondary-link {
   border-color: var(--accent-hover);
 }
 
+.finder-teaser {
+  --finder-highlight: #f7c5cf;
+  --finder-detail: #f8e9e4;
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+  min-height: 430px;
+  margin: 12px auto 64px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #211713;
+  color: #fff;
+}
+
+.finder-teaser__copy {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+  padding: 56px clamp(34px, 6vw, 86px);
+}
+
+.finder-teaser .eyebrow {
+  color: var(--finder-highlight);
+}
+
+.finder-teaser h2 {
+  max-width: 580px;
+  margin: 12px 0 18px;
+  color: #fff;
+  font-size: clamp(36px, 4vw, 55px);
+  line-height: 1.08;
+}
+
+.finder-teaser h2 em {
+  color: var(--finder-highlight);
+}
+
+.finder-teaser p {
+  max-width: 520px;
+  margin: 0 0 30px;
+  color: var(--finder-detail);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.finder-teaser .button {
+  background: var(--finder-highlight);
+  color: #211713;
+}
+
+.finder-teaser .button:hover {
+  background: #fff7f4;
+}
+
+.finder-teaser__details {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+  gap: 25px;
+  padding: 52px clamp(32px, 5vw, 65px);
+  overflow: hidden;
+  background: #432a29;
+}
+
+.finder-teaser__details::before {
+  position: absolute;
+  width: 330px;
+  height: 330px;
+  right: -130px;
+  bottom: -165px;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: 50%;
+  content: "";
+}
+
+.finder-teaser__number {
+  position: absolute;
+  top: 22px;
+  right: 28px;
+  color: rgb(255 255 255 / 0.42);
+  font-family: "Libre Caslon Display", Georgia, serif;
+  font-size: 48px;
+}
+
+.finder-teaser__bottle {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 80px;
+  height: 98px;
+  place-items: center;
+  overflow: visible;
+  border: 2px solid var(--finder-highlight);
+  border-radius: 15px 15px 24px 24px;
+  color: var(--finder-highlight);
+  font-size: 22px;
+}
+
+.finder-teaser__bottle::before {
+  position: absolute;
+  top: -21px;
+  left: 23px;
+  width: 29px;
+  height: 19px;
+  border: 2px solid var(--finder-highlight);
+  background: #432a29;
+  content: "";
+}
+
+.finder-teaser__bottle i,
+.finder-teaser__bottle b {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background: var(--finder-highlight);
+  content: "";
+}
+
+.finder-teaser__bottle i {
+  top: 18px;
+  right: -20px;
+  width: 5px;
+  height: 5px;
+}
+
+.finder-teaser__bottle b {
+  top: 6px;
+  right: -38px;
+  width: 9px;
+  height: 9px;
+}
+
+.finder-teaser__details ol {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 15px;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.finder-teaser__details li {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.18);
+}
+
+.finder-teaser__details strong {
+  color: #fffaf7;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.finder-teaser__details li span,
+.finder-teaser__time {
+  color: var(--finder-detail);
+  font-size: 12px;
+}
+
+.finder-teaser__time {
+  position: relative;
+  z-index: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .concierge-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 0.45fr);
@@ -3096,6 +3269,34 @@ select {
   .family-cards {
     grid-template-columns: 1fr;
     gap: 14px;
+  }
+
+  .finder-teaser {
+    grid-template-columns: 1fr;
+    margin: 10px auto 42px;
+  }
+
+  .finder-teaser__copy {
+    padding: 42px 26px 38px;
+  }
+
+  .finder-teaser h2 {
+    font-size: 39px;
+  }
+
+  .finder-teaser .button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .finder-teaser__details {
+    gap: 22px;
+    min-height: 360px;
+    padding: 42px 26px;
+  }
+
+  .finder-teaser__details li {
+    grid-template-columns: 108px 1fr;
   }
 
   .concierge-card {
