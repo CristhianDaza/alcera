@@ -510,6 +510,16 @@ p {
     border-color 0.2s ease;
 }
 
+button.hero-secondary-link {
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
 .hero-secondary-link:hover,
 .guide-inline-link:hover {
   color: var(--accent);
@@ -813,6 +823,10 @@ p {
 }
 
 .concierge-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.45fr);
+  gap: 44px;
+  align-items: stretch;
   background: var(--surface);
   border: 1px solid var(--line);
   padding: 48px 52px;
@@ -821,6 +835,7 @@ p {
 
 .concierge-content {
   max-width: 640px;
+  align-self: center;
 }
 
 .concierge-content h2 {
@@ -844,9 +859,83 @@ p {
   flex-wrap: wrap;
 }
 
+.concierge-image {
+  height: 390px;
+  align-self: center;
+  overflow: hidden;
+  background: #604337;
+}
+
+.concierge-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 72% center;
+}
+
 .guide-inline-link {
   color: var(--muted);
   font-weight: 400;
+}
+
+.home-guide {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  min-height: 390px;
+  margin-top: 4px;
+  margin-bottom: 28px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.home-guide__image {
+  position: relative;
+  min-height: 390px;
+  overflow: hidden;
+  background: #d9c2ad;
+}
+
+.home-guide__image img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 58% 67%;
+  filter: saturate(0.78) contrast(0.95);
+  transform: scale(1.02);
+  transition: transform 0.7s ease;
+}
+
+.home-guide:hover .home-guide__image img {
+  transform: scale(1.05);
+}
+
+.home-guide__content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 30px;
+  padding: 52px clamp(32px, 5vw, 72px);
+}
+
+.home-guide__content .eyebrow {
+  margin-bottom: 14px;
+}
+
+.home-guide__content h2 {
+  margin: 0 0 17px;
+  max-width: 600px;
+}
+
+.home-guide__content p {
+  max-width: 590px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
 }
 
 .guide-teaser {
@@ -2833,8 +2922,33 @@ select {
   }
 
   .concierge-card {
+    grid-template-columns: 1fr;
+    gap: 26px;
     padding: 36px 24px;
     margin: 10px auto 40px;
+  }
+
+  .concierge-image {
+    order: -1;
+    height: 210px;
+  }
+
+  .home-guide {
+    grid-template-columns: 1fr;
+    margin-bottom: 18px;
+  }
+
+  .home-guide__image {
+    min-height: 230px;
+  }
+
+  .home-guide__content {
+    gap: 24px;
+    padding: 34px 24px 38px;
+  }
+
+  .home-guide__content .button {
+    width: 100%;
   }
 
   .concierge-actions {
