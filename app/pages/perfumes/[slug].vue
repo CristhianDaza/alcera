@@ -59,6 +59,8 @@ const selected = ref(
 );
 const photo = ref(0);
 const added = ref(false);
+const quantity = ref(1);
+const addedQuantity = ref(0);
 const variant = computed(() =>
   p.variants.find((item) => item.id === selected.value)!,
 );
@@ -66,14 +68,33 @@ const bottleVariants = computed(() =>
   p.variants.filter((item) => !isDecantVariant(item)),
 );
 const decantVariants = computed(() => p.variants.filter(isDecantVariant));
+const addButtonLabel = computed(() => {
+  if (!variant.value.available) return "Presentación agotada";
+  if (added.value)
+    return quantity.value > 1
+      ? `Añadir otras ${quantity.value} unidades`
+      : "Añadir otra unidad";
+  return quantity.value > 1
+    ? `Añadir ${quantity.value} unidades`
+    : "Añadir a mi bolsa";
+});
 const { add } = useCart();
+function setQuantity(value: number) {
+  quantity.value = Math.min(99, Math.max(1, Math.trunc(value) || 1));
+  added.value = false;
+}
+function changeQuantity(event: Event) {
+  setQuantity(Number((event.target as HTMLInputElement).value));
+}
 function addSelectedVariant() {
-  add(p, variant.value);
+  const amount = add(p, variant.value, quantity.value);
+  addedQuantity.value = amount;
   added.value = true;
+  if (!amount) return;
   void trackAnalyticsEvent("add_to_cart", {
     currency: "COP",
-    value: variant.value.price,
-    items: [analyticsItem(p, variant.value)],
+    value: variant.value.price * amount,
+    items: [{ ...analyticsItem(p, variant.value), quantity: amount }],
   });
 }
 
@@ -398,29 +419,63 @@ useHead({
             </section>
           </div>
           <div class="purchase-summary">
-            <span>{{
-              isDecantVariant(variant)
-                ? `Decant de ${variant.size}`
-                : `Frasco de ${variant.size}`
-            }}</span>
-            <p class="price">{{ money(variant.price) }} <small>COP</small></p>
+            <span
+              >{{
+                isDecantVariant(variant)
+                  ? `Decant de ${variant.size}`
+                  : `Frasco de ${variant.size}`
+              }}{{ quantity > 1 ? ` · ${quantity} unidades` : "" }}</span
+            >
+            <p class="price">
+              {{ money(variant.price * quantity) }} <small>COP</small>
+            </p>
           </div>
-          <button
-            class="button full"
-            :disabled="!variant.available"
-            @click="addSelectedVariant"
-          >
-            {{
-              !variant.available
-                ? "Presentación agotada"
-                : added
-                  ? "Añadir otra unidad"
-                  : "Añadir a mi bolsa"
-            }}
-            <span>＋</span>
-          </button>
+          <div class="purchase-actions">
+            <div class="quantity-picker" aria-label="Cantidad">
+              <button
+                type="button"
+                :disabled="quantity <= 1"
+                aria-label="Reducir cantidad"
+                @click="setQuantity(quantity - 1)"
+              >
+                −
+              </button>
+              <label
+                ><span>Cantidad</span
+                ><input
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  max="99"
+                  :value="quantity"
+                  @change="changeQuantity"
+              /></label>
+              <button
+                type="button"
+                :disabled="quantity >= 99"
+                aria-label="Aumentar cantidad"
+                @click="setQuantity(quantity + 1)"
+              >
+                ＋
+              </button>
+            </div>
+            <button
+              class="button add-to-cart"
+              :disabled="!variant.available"
+              @click="addSelectedVariant"
+            >
+              {{ addButtonLabel }}
+              <span>＋</span>
+            </button>
+          </div>
           <p v-if="added" class="added-notice" role="status">
-            Añadido a tu bolsa.
+            {{
+              addedQuantity === 0
+                ? "Ya tienes el máximo de 99 unidades en tu bolsa."
+                : addedQuantity === 1
+                  ? "Una unidad añadida a tu bolsa."
+                  : `${addedQuantity} unidades añadidas a tu bolsa.`
+            }}
             <NuxtLink class="text-link" to="/carrito">Ver bolsa</NuxtLink>
           </p>
           <p class="muted">
@@ -603,6 +658,74 @@ useHead({
   margin: 0;
   text-align: right;
 }
+.purchase-actions {
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr);
+  gap: 10px;
+}
+.quantity-picker {
+  display: grid;
+  grid-template-columns: 36px minmax(42px, 1fr) 36px;
+  min-height: 50px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+}
+.quantity-picker button {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 18px;
+}
+.quantity-picker button:first-child {
+  border-right: 1px solid var(--line);
+}
+.quantity-picker button:last-child {
+  border-left: 1px solid var(--line);
+}
+.quantity-picker button:disabled {
+  color: var(--line-strong);
+  cursor: not-allowed;
+}
+.quantity-picker label {
+  display: grid;
+  place-items: center;
+}
+.quantity-picker label span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.quantity-picker input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  appearance: textfield;
+}
+.quantity-picker input::-webkit-inner-spin-button,
+.quantity-picker input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+.add-to-cart {
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  padding-inline: 16px;
+}
 .aroma-description {
   margin: 0 0 26px;
 }
@@ -737,6 +860,21 @@ useHead({
   }
   .purchase-panel > .button {
     min-height: 52px;
+  }
+  .purchase-actions {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+  .quantity-picker {
+    grid-template-columns: 32px minmax(42px, 1fr) 32px;
+    min-height: 52px;
+  }
+  .quantity-picker input {
+    min-height: 50px;
+  }
+  .add-to-cart {
+    min-height: 52px;
+    padding-inline: 11px;
+    font-size: 10px;
   }
   .delivery-estimate {
     margin-top: 42px;
