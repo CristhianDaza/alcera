@@ -37,6 +37,7 @@ usePageSeo(
 );
 
 const whatsappUrl = computed(() => {
+  if (store.value.whatsappEnabled === false) return "";
   const number = store.value.whatsapp?.replace(/\D/g, "");
   if (!number) return "";
   const message = `Hola, me gustaría recibir asesoría sobre las fragancias de ${store.value.name}.`;
@@ -300,9 +301,14 @@ watch(finderOpen, (isOpen) => {
       <span class="eyebrow">¿NECESITAS AYUDA?</span>
       <h2>Hablemos por <em>WhatsApp.</em></h2>
       <p>
-        Cuéntanos qué aromas disfrutas, para qué ocasión lo buscas y tu
-        presupuesto. Te recomendamos opciones y coordinamos tu entrega.
+        Cuéntanos qué aromas usas, para qué ocasión lo buscas y tu presupuesto.
+        Te recomendamos opciones disponibles.
       </p>
+      <ul class="concierge-benefits" aria-label="Cómo te asesoramos">
+        <li>Respuesta personal</li>
+        <li>Recomendación según tus gustos</li>
+        <li>Coordinación de entrega</li>
+      </ul>
       <div class="concierge-actions">
         <a
           v-if="whatsappUrl"

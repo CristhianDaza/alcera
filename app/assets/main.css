@@ -887,7 +887,35 @@ button.hero-secondary-link {
   font-size: 14px;
   line-height: 1.8;
   color: var(--muted);
-  margin: 0 0 28px;
+  margin: 0 0 22px;
+}
+
+.concierge-benefits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px 0;
+  padding: 0;
+  margin: 0 0 30px;
+  list-style: none;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.concierge-benefits li {
+  display: flex;
+  align-items: center;
+}
+
+.concierge-benefits li:not(:last-child)::after {
+  width: 3px;
+  height: 3px;
+  margin: 0 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
 }
 
 .concierge-actions {
@@ -3000,8 +3028,7 @@ select {
   }
 
   .concierge-image {
-    order: -1;
-    height: 210px;
+    display: none;
   }
 
   .home-guide {
