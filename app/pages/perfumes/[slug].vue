@@ -47,11 +47,24 @@ const relatedProducts = computed(() =>
     ? selectRelatedProducts(catalog.products.value, p)
     : (fetchedPage?.related ?? []),
 );
+const sameBrandProducts = computed(() =>
+  relatedProducts.value.filter((product) => product.brand === p.brand),
+);
+const sameFamilyProducts = computed(() =>
+  relatedProducts.value.filter(
+    (product) =>
+      product.brand !== p.brand &&
+      product.family?.some((family) => p.family?.includes(family)),
+  ),
+);
 const selected = ref(
   p.variants.find((variant) => variant.available)?.id || p.variants[0]!.id,
 );
 const photo = ref(0);
 const added = ref(false);
+const recentlyViewed = ref<Product[]>([]);
+const recentlyViewedStorageKey = "esencia-recently-viewed";
+const recentlyViewedStorageLimit = 5;
 const variant = computed(() =>
   p.variants.find((item) => item.id === selected.value)!,
 );
@@ -66,7 +79,40 @@ function addSelectedVariant() {
   });
 }
 
+function isStoredProduct(value: unknown): value is Product {
+  if (!value || typeof value !== "object") return false;
+  const product = value as Partial<Product>;
+  return (
+    typeof product.id === "string" &&
+    typeof product.slug === "string" &&
+    typeof product.name === "string" &&
+    typeof product.brand === "string" &&
+    Array.isArray(product.images) &&
+    Array.isArray(product.variants)
+  );
+}
+
+function saveRecentlyViewed() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(recentlyViewedStorageKey) ?? "[]",
+    );
+    const previous = Array.isArray(saved) ? saved.filter(isStoredProduct) : [];
+    const history = [
+      p,
+      ...previous.filter((product) => product.id !== p.id),
+    ].slice(0, recentlyViewedStorageLimit);
+    localStorage.setItem(recentlyViewedStorageKey, JSON.stringify(history));
+    recentlyViewed.value = history
+      .filter((product) => product.id !== p.id)
+      .slice(0, 4);
+  } catch {
+    // El navegador puede bloquear el almacenamiento; la ficha sigue funcionando.
+  }
+}
+
 onMounted(() => {
+  saveRecentlyViewed();
   void trackAnalyticsEvent("view_item", {
     currency: "COP",
     value: variant.value.price,
@@ -339,6 +385,30 @@ useHead({
               }}<small>{{ item.available ? "Disponible" : "Agotado" }}</small>
             </button>
           </div>
+          <dl
+            v-if="
+              p.family?.length || p.concentration || p.duration || p.projection
+            "
+            class="decision-facts"
+            aria-label="Información para elegir esta fragancia"
+          >
+            <div v-if="p.family?.length">
+              <dt>Familia olfativa</dt>
+              <dd>{{ p.family.join(", ") }}</dd>
+            </div>
+            <div v-if="p.concentration">
+              <dt>Concentración</dt>
+              <dd>{{ p.concentration }}</dd>
+            </div>
+            <div v-if="p.duration">
+              <dt>Duración orientativa</dt>
+              <dd>{{ p.duration }}</dd>
+            </div>
+            <div v-if="p.projection">
+              <dt>Proyección orientativa</dt>
+              <dd>{{ p.projection }}</dd>
+            </div>
+          </dl>
           <p class="price">{{ money(variant.price) }} <small>COP</small></p>
           <button
             class="button full"
@@ -354,6 +424,11 @@ useHead({
             }}
             <span>＋</span>
           </button>
+          <ul class="purchase-reassurance" aria-label="Garantías de compra">
+            <li>Producto 100% original</li>
+            <li>Envíos a toda Colombia</li>
+            <li>Asesoría antes de comprar</li>
+          </ul>
           <p v-if="added" class="added-notice" role="status">
             Añadido a tu bolsa.
             <NuxtLink class="text-link" to="/carrito">Ver bolsa</NuxtLink>
@@ -387,17 +462,6 @@ useHead({
           </div>
         </section>
 
-        <dl v-if="p.duration || p.projection" class="performance">
-          <div v-if="p.duration">
-            <dt>Duración</dt>
-            <dd>{{ p.duration }}</dd>
-          </div>
-          <div v-if="p.projection">
-            <dt>Proyección</dt>
-            <dd>{{ p.projection }}</dd>
-          </div>
-        </dl>
-
         <section v-if="p.idealFor?.length" class="ideal-for">
           <h2 class="eyebrow">IDEAL PARA</h2>
           <ul>
@@ -426,20 +490,64 @@ useHead({
     </section>
 
     <aside
-      v-if="relatedProducts.length"
-      class="related-products"
-      aria-labelledby="related-title"
+      v-if="recentlyViewed.length"
+      class="recently-viewed"
+      aria-labelledby="recently-viewed-title"
     >
       <div class="section-heading">
         <div>
-          <span class="eyebrow">SIGUE DESCUBRIENDO</span>
-          <h2 id="related-title">También te pueden <em>interesar.</em></h2>
+          <span class="eyebrow">TU HISTORIAL</span>
+          <h2 id="recently-viewed-title">Vistos <em>recientemente.</em></h2>
         </div>
         <NuxtLink class="text-link" to="/perfumes">Ver colección</NuxtLink>
       </div>
-      <div class="product-grid">
+      <div class="product-grid recently-viewed-grid">
         <ProductCard
-          v-for="item in relatedProducts"
+          v-for="item in recentlyViewed"
+          :key="item.id"
+          :product="item"
+        />
+      </div>
+    </aside>
+
+    <aside
+      v-if="sameBrandProducts.length"
+      class="related-products"
+      aria-labelledby="same-brand-title"
+    >
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">DE LA MISMA MARCA</span>
+          <h2 id="same-brand-title">
+            Más de <em>{{ p.brand }}.</em>
+          </h2>
+        </div>
+        <NuxtLink class="text-link" to="/perfumes">Ver colección</NuxtLink>
+      </div>
+      <div class="product-grid recommendation-grid">
+        <ProductCard
+          v-for="item in sameBrandProducts"
+          :key="item.id"
+          :product="item"
+        />
+      </div>
+    </aside>
+
+    <aside
+      v-if="sameFamilyProducts.length"
+      class="related-products related-products--family"
+      aria-labelledby="same-family-title"
+    >
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">DE LA MISMA FAMILIA OLFATIVA</span>
+          <h2 id="same-family-title">Aromas con un aire <em>parecido.</em></h2>
+        </div>
+        <NuxtLink class="text-link" to="/perfumes">Ver colección</NuxtLink>
+      </div>
+      <div class="product-grid recommendation-grid">
+        <ProductCard
+          v-for="item in sameFamilyProducts"
           :key="item.id"
           :product="item"
         />
@@ -482,30 +590,52 @@ useHead({
   gap: 12px 20px;
   font-size: 12px;
 }
-.performance {
+.decision-facts {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1px;
-  margin-top: 27px;
+  margin: 22px 0 0;
   background: var(--line);
 }
-.performance div {
+.decision-facts div {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 15px;
+  padding: 13px 14px;
   background: var(--surface);
 }
-.performance dt {
+.decision-facts dt {
   color: var(--muted);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-.performance dd {
+.decision-facts dd {
   margin: 0;
   font-size: 13px;
   font-weight: 500;
+}
+.purchase-reassurance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 0;
+  padding: 0;
+  margin: 17px 0 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 10px;
+}
+.purchase-reassurance li {
+  display: flex;
+  align-items: center;
+}
+.purchase-reassurance li:not(:last-child)::after {
+  width: 3px;
+  height: 3px;
+  margin: 0 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
 }
 .ideal-for {
   margin-top: 27px;
@@ -544,7 +674,21 @@ useHead({
   padding-top: 60px;
   border-top: 1px solid var(--line);
 }
-.related-products .section-heading h2 {
+.related-products--family {
+  margin-top: 54px;
+  padding-top: 54px;
+}
+.recommendation-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.recently-viewed {
+  margin-top: 72px;
+}
+.recently-viewed-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.related-products .section-heading h2,
+.recently-viewed .section-heading h2 {
   font-size: 42px;
 }
 @media (max-width: 700px) {
@@ -553,12 +697,26 @@ useHead({
     padding: 24px;
   }
   .delivery-estimate h2,
-  .related-products .section-heading h2 {
+  .related-products .section-heading h2,
+  .recently-viewed .section-heading h2 {
     font-size: 31px;
+  }
+  .recently-viewed {
+    margin-top: 48px;
+  }
+  .recently-viewed-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .related-products {
     margin-top: 48px;
     padding-top: 42px;
+  }
+  .related-products--family {
+    margin-top: 42px;
+    padding-top: 42px;
+  }
+  .recommendation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 700px) {

@@ -6,6 +6,7 @@ import {
   siteBase,
 } from "#shared/seo";
 import { seoLandings } from "#shared/seo-landings";
+import { shoppingOccasions, type ShoppingOccasion } from "#shared/types";
 
 const route = useRoute();
 const router = useRouter();
@@ -47,6 +48,14 @@ const concentration = computed({
   get: () => queryText(route.query.concentration),
   set: (value) => updateQuery({ concentration: value }),
 });
+const occasion = computed({
+  get: () => queryText(route.query.occasion),
+  set: (value) => updateQuery({ occasion: value }),
+});
+const occasionLinks = shoppingOccasions.map((occasion) => ({
+  label: occasion,
+  to: { path: "/perfumes", query: { occasion } },
+}));
 const available = computed({
   get: () => route.query.available === "1",
   set: (value) => updateQuery({ available: value ? "1" : "" }),
@@ -140,6 +149,7 @@ const hasFilters = computed(() =>
     family.value ||
     brand.value ||
     concentration.value ||
+    occasion.value ||
     available.value,
   ),
 );
@@ -153,6 +163,7 @@ function clearFilters() {
       family: "",
       brand: "",
       concentration: "",
+      occasion: "",
       available: "",
       page: "",
     },
@@ -167,6 +178,8 @@ const filtered = computed(() => {
       (!family.value || p.family?.includes(family.value)) &&
       (!brand.value || p.brand === brand.value) &&
       (!concentration.value || p.concentration === concentration.value) &&
+      (!occasion.value ||
+        p.occasions?.includes(occasion.value as ShoppingOccasion)) &&
       (!available.value || p.variants.some((v) => v.available)),
   );
   const price = (p: (typeof list)[number]) =>
@@ -220,6 +233,7 @@ function trackCatalogView() {
     filter_family: family.value || undefined,
     filter_brand: brand.value || undefined,
     filter_concentration: concentration.value || undefined,
+    filter_occasion: occasion.value || undefined,
     items: paginatedProducts.value.map((product) => analyticsItem(product)),
   });
 }
@@ -352,6 +366,20 @@ useHead(() => ({
         >
       </div>
     </nav>
+    <nav
+      class="catalog-landings catalog-occasions"
+      aria-label="Compra según tu momento"
+    >
+      <strong>Compra según tu momento</strong>
+      <div>
+        <NuxtLink
+          v-for="occasionLink in occasionLinks"
+          :key="occasionLink.label"
+          :to="occasionLink.to"
+          >{{ occasionLink.label }}</NuxtLink
+        >
+      </div>
+    </nav>
     <div class="filters">
       <label class="search-label"
         >Buscar perfume<input
@@ -384,6 +412,14 @@ useHead(() => ({
         </select></label
       >
       <label
+        >Momento<select v-model="occasion">
+          <option value="">Todos</option>
+          <option v-for="item in shoppingOccasions" :key="item">{{
+            item
+          }}</option>
+        </select></label
+      >
+      <label
         >Ordenar<select v-model="sort">
           <option value="featured">Destacados</option>
           <option value="asc">Menor precio</option>
@@ -406,7 +442,7 @@ useHead(() => ({
       </div>
     </div>
     <div
-      v-if="category || family || brand || concentration"
+      v-if="category || family || brand || concentration || occasion"
       class="active-filters"
       aria-label="Filtros activos"
     >
@@ -437,6 +473,13 @@ useHead(() => ({
         :aria-label="`Quitar concentración ${concentration}`"
       >
         {{ concentration }} <span aria-hidden="true">×</span>
+      </button>
+      <button
+        v-if="occasion"
+        @click="occasion = ''"
+        :aria-label="`Quitar momento ${occasion}`"
+      >
+        {{ occasion }} <span aria-hidden="true">×</span>
       </button>
     </div>
     <p v-if="status === 'pending'" role="status">Descubriendo la colección…</p>
