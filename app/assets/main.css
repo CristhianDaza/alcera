@@ -170,6 +170,32 @@
   gap: 21px;
 }
 
+.menu-trigger {
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+}
+
+.menu-trigger svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+}
+
+.menu-trigger:hover {
+  border-color: var(--accent-soft);
+  background: var(--surface);
+}
+
 .theme-toggle {
   display: grid;
   place-items: center;
@@ -1328,6 +1354,50 @@ button.hero-secondary-link {
 .footer p {
   font-size: 11px;
   margin: 25px 0;
+}
+
+.footer-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.footer-socials a {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--ink);
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.footer-socials a:hover,
+.footer-socials a:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.footer-socials svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 1.7;
+}
+
+.footer-social-instagram {
+  fill: none !important;
+}
+
+.footer-social-dot {
+  fill: currentColor;
+  stroke: none;
 }
 
 .footer h2 {
@@ -3648,25 +3718,59 @@ main:focus {
   }
 
   .header {
+    position: relative;
     height: auto;
-    min-height: 128px;
-    padding-top: 14px;
-    padding-bottom: 7px;
+    min-height: 76px;
+    padding-top: 12px;
+    padding-bottom: 12px;
     gap: 8px;
+    flex-wrap: nowrap;
   }
 
   .header nav {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    display: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0;
-    justify-content: space-between;
+    padding: 8px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    box-shadow: 0 14px 28px #2117131c;
     font-size: 13px;
+    z-index: 90;
+  }
+
+  .header nav.is-open {
+    display: grid;
   }
 
   .header nav a {
+    width: 100%;
     padding: 8px 12px;
   }
 
   .header-actions {
-    gap: 12px;
+    gap: 0;
+  }
+
+  .header-actions .theme-toggle {
+    display: none;
+  }
+
+  .header > .hs-root {
+    margin-left: auto;
+  }
+
+  .hs-trigger {
+    width: 44px;
+    height: 44px;
+  }
+
+  .menu-trigger {
+    display: grid;
   }
 
   .bag {

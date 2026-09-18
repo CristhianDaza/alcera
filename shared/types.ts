@@ -52,6 +52,9 @@ export interface Settings {
   taxId: string;
   whatsapp: string;
   whatsappEnabled: boolean;
+  instagram: string;
+  facebook: string;
+  tiktok: string;
   telegram: string;
   telegramEnabled: boolean;
   tawkEnabled: boolean;

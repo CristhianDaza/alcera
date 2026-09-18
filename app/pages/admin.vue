@@ -610,6 +610,30 @@ function move(index: number, direction: number) {
               placeholder="Sin configurar"
               pattern="[1-9][0-9]{7,14}" /></label
           ><label
+            >Perfil de Instagram<input
+              v-model="storeForm.instagram"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://instagram.com/tu-perfil"
+              maxlength="2048" /></label
+          ><label
+            >Página de Facebook<input
+              v-model="storeForm.facebook"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://facebook.com/tu-página"
+              maxlength="2048" /></label
+          ><label
+            >Perfil de TikTok<input
+              v-model="storeForm.tiktok"
+              type="url"
+              inputmode="url"
+              autocomplete="url"
+              placeholder="https://tiktok.com/@tu-perfil"
+              maxlength="2048" /></label
+          ><label
             >Usuario de Telegram (sin @)<input
               v-model="storeForm.telegram"
               placeholder="Sin configurar"
