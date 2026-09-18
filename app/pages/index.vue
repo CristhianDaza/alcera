@@ -55,25 +55,37 @@ const familyList = [
     name: "Floral",
     to: "/familias/florales",
     tag: "Luminosa",
-    desc: "Rosa, jazmín y azahar.",
+    desc: "Romántica, luminosa y atemporal.",
+    image: "/images/family-floral.jpg",
+    imageSmall: "/images/family-floral-480.jpg",
+    alt: "Rosa y flores de jazmín sobre una superficie de piedra",
   },
   {
     name: "Amaderada",
     to: "/familias/amaderados",
     tag: "Profunda",
-    desc: "Cedro, sándalo y vetiver.",
+    desc: "Cálida, sofisticada y con carácter.",
+    image: "/images/family-woody.jpg",
+    imageSmall: "/images/family-woody-480.jpg",
+    alt: "Maderas de cedro y vetiver sobre una superficie oscura",
   },
   {
     name: "Cítrica",
     to: "/familias/citricos",
     tag: "Vibrante",
-    desc: "Bergamota, neroli y mandarina.",
+    desc: "Fresca, vibrante y llena de energía.",
+    image: "/images/family-citrus.jpg",
+    imageSmall: "/images/family-citrus-480.jpg",
+    alt: "Bergamota, limón y hojas verdes sobre piedra oscura",
   },
   {
     name: "Oriental",
     to: "/familias/orientales",
     tag: "Seductora",
-    desc: "Ámbar, vainilla y benjuí.",
+    desc: "Intensa, envolvente y seductora.",
+    image: "/images/family-oriental.jpg",
+    imageSmall: "/images/family-oriental-480.jpg",
+    alt: "Ámbar, vainilla y especias sobre una superficie color vino",
   },
 ];
 
@@ -198,6 +210,17 @@ watch(finderOpen, (isOpen) => {
         :to="item.to"
         class="family-card"
       >
+        <img
+          class="family-card-image"
+          :src="item.image"
+          :srcset="`${item.imageSmall} 480w, ${item.image} 720w`"
+          sizes="(max-width: 700px) 45vw, (max-width: 1050px) 42vw, 23vw"
+          :alt="item.alt"
+          loading="lazy"
+          decoding="async"
+          width="720"
+          height="1080"
+        />
         <div class="family-card-head">
           <span class="family-badge">{{ item.tag }}</span>
         </div>
