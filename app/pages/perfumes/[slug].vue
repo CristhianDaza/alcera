@@ -52,6 +52,9 @@ const selected = ref(
 );
 const photo = ref(0);
 const added = ref(false);
+const recentlyViewed = ref<Product[]>([]);
+const recentlyViewedStorageKey = "esencia-recently-viewed";
+const recentlyViewedStorageLimit = 5;
 const variant = computed(() =>
   p.variants.find((item) => item.id === selected.value)!,
 );
@@ -66,7 +69,40 @@ function addSelectedVariant() {
   });
 }
 
+function isStoredProduct(value: unknown): value is Product {
+  if (!value || typeof value !== "object") return false;
+  const product = value as Partial<Product>;
+  return (
+    typeof product.id === "string" &&
+    typeof product.slug === "string" &&
+    typeof product.name === "string" &&
+    typeof product.brand === "string" &&
+    Array.isArray(product.images) &&
+    Array.isArray(product.variants)
+  );
+}
+
+function saveRecentlyViewed() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(recentlyViewedStorageKey) ?? "[]",
+    );
+    const previous = Array.isArray(saved) ? saved.filter(isStoredProduct) : [];
+    const history = [
+      p,
+      ...previous.filter((product) => product.id !== p.id),
+    ].slice(0, recentlyViewedStorageLimit);
+    localStorage.setItem(recentlyViewedStorageKey, JSON.stringify(history));
+    recentlyViewed.value = history
+      .filter((product) => product.id !== p.id)
+      .slice(0, 4);
+  } catch {
+    // El navegador puede bloquear el almacenamiento; la ficha sigue funcionando.
+  }
+}
+
 onMounted(() => {
+  saveRecentlyViewed();
   void trackAnalyticsEvent("view_item", {
     currency: "COP",
     value: variant.value.price,
@@ -444,6 +480,27 @@ useHead({
     </section>
 
     <aside
+      v-if="recentlyViewed.length"
+      class="recently-viewed"
+      aria-labelledby="recently-viewed-title"
+    >
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">TU HISTORIAL</span>
+          <h2 id="recently-viewed-title">Vistos <em>recientemente.</em></h2>
+        </div>
+        <NuxtLink class="text-link" to="/perfumes">Ver colección</NuxtLink>
+      </div>
+      <div class="product-grid">
+        <ProductCard
+          v-for="item in recentlyViewed"
+          :key="item.id"
+          :product="item"
+        />
+      </div>
+    </aside>
+
+    <aside
       v-if="relatedProducts.length"
       class="related-products"
       aria-labelledby="related-title"
@@ -584,7 +641,11 @@ useHead({
   padding-top: 60px;
   border-top: 1px solid var(--line);
 }
-.related-products .section-heading h2 {
+.recently-viewed {
+  margin-top: 72px;
+}
+.related-products .section-heading h2,
+.recently-viewed .section-heading h2 {
   font-size: 42px;
 }
 @media (max-width: 700px) {
@@ -593,8 +654,12 @@ useHead({
     padding: 24px;
   }
   .delivery-estimate h2,
-  .related-products .section-heading h2 {
+  .related-products .section-heading h2,
+  .recently-viewed .section-heading h2 {
     font-size: 31px;
+  }
+  .recently-viewed {
+    margin-top: 48px;
   }
   .related-products {
     margin-top: 48px;
