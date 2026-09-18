@@ -267,12 +267,17 @@ watch(finderOpen, (isOpen) => {
   <section class="shell home-guide">
     <div class="home-guide__image">
       <img
-        src="/images/hero-perfumes-editorial-v2-768.webp"
-        alt="Composición de perfumería para acompañar la guía de fragancias"
+        src="/images/perfume-guide-editorial.jpg"
+        srcset="
+          /images/perfume-guide-editorial-640.jpg  640w,
+          /images/perfume-guide-editorial.jpg     1280w
+        "
+        sizes="(max-width: 700px) 100vw, 40vw"
+        alt="Libreta, atomizador e ingredientes para acompañar la guía de perfumes"
         loading="lazy"
         decoding="async"
-        width="768"
-        height="960"
+        width="1280"
+        height="720"
       />
     </div>
     <div class="home-guide__content">
