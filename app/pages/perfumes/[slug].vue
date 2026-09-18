@@ -339,6 +339,30 @@ useHead({
               }}<small>{{ item.available ? "Disponible" : "Agotado" }}</small>
             </button>
           </div>
+          <dl
+            v-if="
+              p.family?.length || p.concentration || p.duration || p.projection
+            "
+            class="decision-facts"
+            aria-label="Información para elegir esta fragancia"
+          >
+            <div v-if="p.family?.length">
+              <dt>Familia olfativa</dt>
+              <dd>{{ p.family.join(", ") }}</dd>
+            </div>
+            <div v-if="p.concentration">
+              <dt>Concentración</dt>
+              <dd>{{ p.concentration }}</dd>
+            </div>
+            <div v-if="p.duration">
+              <dt>Duración orientativa</dt>
+              <dd>{{ p.duration }}</dd>
+            </div>
+            <div v-if="p.projection">
+              <dt>Proyección orientativa</dt>
+              <dd>{{ p.projection }}</dd>
+            </div>
+          </dl>
           <p class="price">{{ money(variant.price) }} <small>COP</small></p>
           <button
             class="button full"
@@ -354,6 +378,11 @@ useHead({
             }}
             <span>＋</span>
           </button>
+          <ul class="purchase-reassurance" aria-label="Garantías de compra">
+            <li>Producto 100% original</li>
+            <li>Envíos a toda Colombia</li>
+            <li>Asesoría antes de comprar</li>
+          </ul>
           <p v-if="added" class="added-notice" role="status">
             Añadido a tu bolsa.
             <NuxtLink class="text-link" to="/carrito">Ver bolsa</NuxtLink>
@@ -386,17 +415,6 @@ useHead({
             </div>
           </div>
         </section>
-
-        <dl v-if="p.duration || p.projection" class="performance">
-          <div v-if="p.duration">
-            <dt>Duración</dt>
-            <dd>{{ p.duration }}</dd>
-          </div>
-          <div v-if="p.projection">
-            <dt>Proyección</dt>
-            <dd>{{ p.projection }}</dd>
-          </div>
-        </dl>
 
         <section v-if="p.idealFor?.length" class="ideal-for">
           <h2 class="eyebrow">IDEAL PARA</h2>
@@ -482,30 +500,52 @@ useHead({
   gap: 12px 20px;
   font-size: 12px;
 }
-.performance {
+.decision-facts {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1px;
-  margin-top: 27px;
+  margin: 22px 0 0;
   background: var(--line);
 }
-.performance div {
+.decision-facts div {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 15px;
+  padding: 13px 14px;
   background: var(--surface);
 }
-.performance dt {
+.decision-facts dt {
   color: var(--muted);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
-.performance dd {
+.decision-facts dd {
   margin: 0;
   font-size: 13px;
   font-weight: 500;
+}
+.purchase-reassurance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 0;
+  padding: 0;
+  margin: 17px 0 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 10px;
+}
+.purchase-reassurance li {
+  display: flex;
+  align-items: center;
+}
+.purchase-reassurance li:not(:last-child)::after {
+  width: 3px;
+  height: 3px;
+  margin: 0 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
 }
 .ideal-for {
   margin-top: 27px;
