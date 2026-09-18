@@ -706,9 +706,6 @@ function move(index: number, direction: number) {
                     >{{ p.brand }} ·
                     {{ p.variants.length }} presentaciones</small
                   ></span
-                ><span class="product-status"
-                  >{{ p.status === "published" ? "Activo" : "Inactivo" }} ·
-                  Editar</span
                 >
               </button>
               <button

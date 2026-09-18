@@ -2673,12 +2673,6 @@ select {
   color: var(--muted);
 }
 
-.product-status {
-  margin-left: auto;
-  font-size: 11px;
-  white-space: nowrap;
-}
-
 .editor {
   margin-top: 30px;
 }
@@ -3959,6 +3953,10 @@ main:focus {
   .guide-family-products__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px 14px;
+  }
+
+  .guide-family-products__grid > :nth-child(n + 3) {
+    display: none;
   }
 
   .guide-family,
