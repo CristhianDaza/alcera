@@ -2824,6 +2824,12 @@ select {
 .business-card {
   margin: 18px 0;
 }
+.supplier-create {
+  padding-block: 14px;
+}
+.supplier-create[open] {
+  padding-block: 20px;
+}
 .business-period {
   display: flex;
   flex-wrap: wrap;
@@ -2883,7 +2889,7 @@ select {
 }
 .business-line {
   display: grid;
-  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(110px, 1fr)) auto;
+  grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(100px, 1fr));
   gap: 10px;
   align-items: end;
   padding: 14px 0;
@@ -2891,6 +2897,10 @@ select {
 }
 .business-line label {
   min-width: 0;
+}
+.business-line > .text-link {
+  grid-column: 1 / -1;
+  justify-self: start;
 }
 .stack-form {
   display: grid;
@@ -2956,16 +2966,19 @@ select {
   color: var(--error) !important;
 }
 
-@media (max-width: 760px) {
-  .metric-grid,
-  .business-columns {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 900px) {
   .business-line {
     grid-template-columns: 1fr 1fr;
   }
   .business-line label:first-child {
     grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .metric-grid,
+  .business-columns {
+    grid-template-columns: 1fr;
   }
 }
 

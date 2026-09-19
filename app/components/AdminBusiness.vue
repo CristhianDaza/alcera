@@ -862,6 +862,22 @@ async function editSupplier(supplier: Supplier) {
     return "Proveedor actualizado.";
   });
 }
+type PurchaseFormLine = {
+  selection: string;
+  quantity: number;
+  unitCost: number;
+  discount: number;
+  saleUnitPrice?: number;
+};
+function purchaseLine(input: Partial<PurchaseFormLine> = {}): PurchaseFormLine {
+  return {
+    selection: input.selection ?? "",
+    quantity: input.quantity ?? 1,
+    unitCost: input.unitCost ?? 0,
+    discount: input.discount ?? 0,
+    saleUnitPrice: input.saleUnitPrice,
+  };
+}
 const purchaseForm = reactive({
   date: today(),
   supplierId: "",
@@ -873,7 +889,7 @@ const purchaseForm = reactive({
   freight: 0,
   allocateFreight: true,
   notes: "",
-  items: [{ selection: "", quantity: 1, unitCost: 0, discount: 0 }],
+  items: [purchaseLine()],
 });
 const purchaseFilters = reactive({ status: "", payment: "", from: "", to: "" });
 const filteredPurchases = computed(() =>
@@ -902,35 +918,24 @@ watch(
     if (!saleId) return;
     const sale = sales.value.find((item) => item.id === saleId);
     if (!sale) return;
-    const lines = new Map<
-      string,
-      {
-        selection: string;
-        quantity: number;
-        unitCost: number;
-        discount: number;
-      }
-    >();
-    for (const item of sale.items) {
-      const selection = `${item.productId}/${item.variantId}`;
+    const lines = sale.items.flatMap((item) => {
       const option = options.value.find(
         (candidate) =>
           candidate.productId === item.productId &&
           candidate.variantId === item.variantId,
       );
-      if (option?.inventoryMode !== "on_demand") continue;
-      const current = lines.get(selection);
-      if (current) current.quantity += item.quantity;
-      else
-        lines.set(selection, {
-          selection,
-          quantity: item.quantity,
-          unitCost: 0,
-          discount: 0,
-        });
-    }
-    purchaseForm.items.splice(0, purchaseForm.items.length, ...lines.values());
-    notice.value = lines.size
+      return option?.inventoryMode === "on_demand"
+        ? [
+            purchaseLine({
+              selection: `${item.productId}/${item.variantId}`,
+              quantity: item.quantity,
+              saleUnitPrice: item.unitPrice,
+            }),
+          ]
+        : [];
+    });
+    purchaseForm.items.splice(0, purchaseForm.items.length, ...lines);
+    notice.value = lines.length
       ? "Cargamos los productos por encargo de la venta. Completa el costo del proveedor."
       : "Esta venta no tiene productos por encargo para comprar.";
   },
@@ -2185,159 +2190,150 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
         <label>Desde<input v-model="purchaseFilters.from" type="date" /></label
         ><label>Hasta<input v-model="purchaseFilters.to" type="date" /></label>
       </div>
-      <div class="business-columns">
-        <details class="business-card">
-          <summary>Nuevo proveedor</summary>
-          <form class="stack-form" @submit.prevent="createSupplier">
-            <label>Nombre<input v-model="supplierForm.name" required /></label
-            ><label
-              >NIT / identificación<input v-model="supplierForm.taxId" /></label
-            ><label
-              >Persona de contacto<input
-                v-model="supplierForm.contact" /></label
-            ><label>Teléfono<input v-model="supplierForm.phone" /></label
-            ><label
-              >Correo<input v-model="supplierForm.email" type="email" /></label
-            ><label>Ciudad<input v-model="supplierForm.city" /></label
-            ><label
-              >Condiciones de pago<input
-                v-model="supplierForm.paymentTerms" /></label
-            ><label
-              >Notas<textarea
-                v-model="supplierForm.notes"
-                maxlength="2000"
-              ></textarea></label
-            ><button class="button" :disabled="busy">Guardar proveedor</button>
-          </form>
-        </details>
-        <details class="business-card" open>
-          <summary>Registrar compra</summary>
-          <form class="stack-form" @submit.prevent="createPurchase">
+      <details class="business-card supplier-create">
+        <summary>Nuevo proveedor</summary>
+        <form class="stack-form" @submit.prevent="createSupplier">
+          <label>Nombre<input v-model="supplierForm.name" required /></label
+          ><label
+            >NIT / identificación<input v-model="supplierForm.taxId" /></label
+          ><label
+            >Persona de contacto<input v-model="supplierForm.contact" /></label
+          ><label>Teléfono<input v-model="supplierForm.phone" /></label
+          ><label
+            >Correo<input v-model="supplierForm.email" type="email" /></label
+          ><label>Ciudad<input v-model="supplierForm.city" /></label
+          ><label
+            >Condiciones de pago<input
+              v-model="supplierForm.paymentTerms" /></label
+          ><label
+            >Notas<textarea
+              v-model="supplierForm.notes"
+              maxlength="2000"
+            ></textarea></label
+          ><button class="button" :disabled="busy">Guardar proveedor</button>
+        </form>
+      </details>
+      <details class="business-card" open>
+        <summary>Registrar compra</summary>
+        <form class="stack-form" @submit.prevent="createPurchase">
+          <label
+            >Fecha<input
+              v-model="purchaseForm.date"
+              type="date"
+              required /></label
+          ><label
+            >Proveedor registrado<select v-model="purchaseForm.supplierId">
+              <option value="">Otro</option>
+              <option
+                v-for="supplier in suppliers"
+                :key="supplier.id"
+                :value="supplier.id"
+              >
+                {{ supplier.name }}
+              </option>
+            </select></label
+          ><label
+            >Nombre del proveedor<input
+              v-model="purchaseForm.supplierName"
+              required /></label
+          ><label
+            >Venta bajo pedido relacionada<select
+              v-model="purchaseForm.sourceSaleId"
+            >
+              <option value="">Ninguna</option>
+              <option
+                v-for="sale in sales.filter(
+                  (item) => item.status === 'pending_purchase',
+                )"
+                :key="sale.id"
+                :value="sale.id"
+              >
+                {{ sale.number }} · {{ sale.customer?.name || "Sin cliente" }}
+              </option>
+            </select></label
+          >
+          <p v-if="purchaseForm.sourceSaleId" class="muted purchase-sale-note">
+            Se cargaron los productos y cantidades de esta venta. Completa el
+            costo del proveedor; añade otra línea solo si también vas a pedir
+            algo adicional.
+          </p>
+          <label
+            >Factura / referencia<input v-model="purchaseForm.invoice" /></label
+          ><label
+            >Pago<select v-model="purchaseForm.paymentStatus">
+              <option value="pending">Pendiente</option>
+              <option value="paid">Pagada</option>
+            </select></label
+          ><label v-if="purchaseForm.paymentStatus === 'paid'"
+            >Cuenta<select v-model="purchaseForm.account">
+              <option v-for="value in cashAccounts" :key="value" :value="value">
+                {{ labels[value] || value }}
+              </option>
+            </select></label
+          >
+          <div
+            v-for="(line, index) in purchaseForm.items"
+            :key="index"
+            class="business-line"
+          >
             <label
-              >Fecha<input
-                v-model="purchaseForm.date"
-                type="date"
+              >Presentación<select v-model="line.selection" required>
+                <option value="">Selecciona…</option>
+                <option
+                  v-for="item in options"
+                  :key="item.productId + item.variantId"
+                  :value="`${item.productId}/${item.variantId}`"
+                >
+                  {{ item.label }}
+                </option>
+              </select></label
+            ><label
+              >Cantidad<input
+                v-model.number="line.quantity"
+                type="number"
+                min="1"
                 required /></label
             ><label
-              >Proveedor registrado<select v-model="purchaseForm.supplierId">
-                <option value="">Otro</option>
-                <option
-                  v-for="supplier in suppliers"
-                  :key="supplier.id"
-                  :value="supplier.id"
-                >
-                  {{ supplier.name }}
-                </option>
-              </select></label
-            ><label
-              >Nombre del proveedor<input
-                v-model="purchaseForm.supplierName"
+              >Costo unitario COP<AdminMoneyInput
+                v-model="line.unitCost"
                 required /></label
             ><label
-              >Venta bajo pedido relacionada<select
-                v-model="purchaseForm.sourceSaleId"
-              >
-                <option value="">Ninguna</option>
-                <option
-                  v-for="sale in sales.filter(
-                    (item) => item.status === 'pending_purchase',
-                  )"
-                  :key="sale.id"
-                  :value="sale.id"
-                >
-                  {{ sale.number }} · {{ sale.customer?.name || "Sin cliente" }}
-                </option>
-              </select></label
-            >
-            <p
-              v-if="purchaseForm.sourceSaleId"
-              class="muted purchase-sale-note"
-            >
-              Se cargaron los productos y cantidades de esta venta. Completa el
-              costo del proveedor; añade otra línea solo si también vas a pedir
-              algo adicional.
-            </p>
-            <label
-              >Factura / referencia<input
-                v-model="purchaseForm.invoice" /></label
+              >Precio vendido COP<input
+                :value="
+                  line.saleUnitPrice === undefined
+                    ? '—'
+                    : money(line.saleUnitPrice)
+                "
+                readonly
+            /></label>
             ><label
-              >Pago<select v-model="purchaseForm.paymentStatus">
-                <option value="pending">Pendiente</option>
-                <option value="paid">Pagada</option>
-              </select></label
-            ><label v-if="purchaseForm.paymentStatus === 'paid'"
-              >Cuenta<select v-model="purchaseForm.account">
-                <option
-                  v-for="value in cashAccounts"
-                  :key="value"
-                  :value="value"
-                >
-                  {{ labels[value] || value }}
-                </option>
-              </select></label
-            >
-            <div
-              v-for="(line, index) in purchaseForm.items"
-              :key="index"
-              class="business-line"
-            >
-              <label
-                >Presentación<select v-model="line.selection" required>
-                  <option value="">Selecciona…</option>
-                  <option
-                    v-for="item in options"
-                    :key="item.productId + item.variantId"
-                    :value="`${item.productId}/${item.variantId}`"
-                  >
-                    {{ item.label }}
-                  </option>
-                </select></label
-              ><label
-                >Cantidad<input
-                  v-model.number="line.quantity"
-                  type="number"
-                  min="1"
-                  required /></label
-              ><label
-                >Costo unitario COP<AdminMoneyInput
-                  v-model="line.unitCost"
-                  required /></label
-              ><label
-                >Descuento total de la línea (COP)<AdminMoneyInput
-                  v-model="line.discount" /></label
-              ><button
-                v-if="purchaseForm.items.length > 1"
-                type="button"
-                class="text-link"
-                @click="purchaseForm.items.splice(index, 1)"
-              >
-                Quitar
-              </button>
-            </div>
-            <button
+              >Descuento total de la línea (COP)<AdminMoneyInput
+                v-model="line.discount" /></label
+            ><button
+              v-if="purchaseForm.items.length > 1"
               type="button"
               class="text-link"
-              @click="
-                purchaseForm.items.push({
-                  selection: '',
-                  quantity: 1,
-                  unitCost: 0,
-                  discount: 0,
-                })
-              "
+              @click="purchaseForm.items.splice(index, 1)"
             >
-              Añadir línea ＋</button
-            ><label
-              >Flete / otros costos COP<AdminMoneyInput
-                v-model="purchaseForm.freight" /></label
-            ><label class="check"
-              ><input v-model="purchaseForm.allocateFreight" type="checkbox" />
-              Repartir el flete entre los productos para calcular su costo
-              real</label
-            ><button class="button" :disabled="busy">Guardar compra</button>
-          </form>
-        </details>
-      </div>
+              Quitar
+            </button>
+          </div>
+          <button
+            type="button"
+            class="text-link"
+            @click="purchaseForm.items.push(purchaseLine())"
+          >
+            Añadir línea ＋</button
+          ><label
+            >Flete / otros costos COP<AdminMoneyInput
+              v-model="purchaseForm.freight" /></label
+          ><label class="check"
+            ><input v-model="purchaseForm.allocateFreight" type="checkbox" />
+            Repartir el flete entre los productos para calcular su costo
+            real</label
+          ><button class="button" :disabled="busy">Guardar compra</button>
+        </form>
+      </details>
       <details v-if="suppliers.length" class="business-card">
         <summary>Proveedores · {{ suppliers.length }}</summary>
         <div class="business-table-wrap">
