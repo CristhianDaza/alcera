@@ -49,7 +49,28 @@ type Section =
   | "expenses"
   | "cash"
   | "reports";
-const section = ref<Section>("summary");
+const businessSections: Section[] = [
+  "summary",
+  "sales",
+  "inventory",
+  "purchases",
+  "expenses",
+  "cash",
+  "reports",
+];
+const section = computed<Section>(() => {
+  const value = queryText(route.query.section) as Section;
+  return businessSections.includes(value) ? value : "summary";
+});
+function selectSection(value: Section) {
+  const query: Record<string, string | null | Array<string | null>> = {
+    ...route.query,
+  };
+  query.tab = "business";
+  query.section = value;
+  delete query.editor;
+  void router.push({ query });
+}
 const busy = ref(false),
   notice = ref("");
 const dashboard = ref<DashboardData | null>(null),
@@ -1437,7 +1458,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
         :key="item[0]"
         type="button"
         :aria-current="section === item[0] ? 'page' : undefined"
-        @click="section = item[0]"
+        @click="selectSection(item[0])"
       >
         {{ item[1] }}
       </button>

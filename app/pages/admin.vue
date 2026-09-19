@@ -63,8 +63,22 @@ const email = ref(""),
 const catalog = ref<Product[]>([]),
   storeForm = ref<Settings>({ ...useStore().value }),
   editor = ref<EditableProduct | null>(null);
-const tab = ref<"business" | "products" | "orders" | "settings">("business"),
-  productFilter = ref<"all" | Product["status"]>("all"),
+type AdminTab = "business" | "products" | "orders" | "settings";
+const adminTabs: AdminTab[] = ["business", "products", "orders", "settings"];
+const tab = computed<AdminTab>(() => {
+  const value = queryText(route.query.tab) as AdminTab;
+  return adminTabs.includes(value) ? value : "business";
+});
+function selectTab(value: AdminTab) {
+  const query: Record<string, string | null | Array<string | null>> = {
+    ...route.query,
+  };
+  query.tab = value;
+  if (value !== "business") delete query.section;
+  if (value !== "products") delete query.editor;
+  void router.push({ query });
+}
+const productFilter = ref<"all" | Product["status"]>("all"),
   productSearch = ref("");
 const normalize = (value: string) =>
   value
@@ -337,8 +351,16 @@ function edit(p?: Product) {
   idealFor.value = editor.value.idealFor.join(", ");
 }
 function openProduct(productId: string) {
-  tab.value = "products";
-  updateAdminQuery({ editor: productId });
+  const query: Record<string, string | null | Array<string | null>> = {
+    ...route.query,
+  };
+  query.tab = "products";
+  query.editor = productId;
+  delete query.section;
+  void router.push({ query });
+}
+function openOrders() {
+  selectTab("orders");
 }
 function openEditor(product?: Product) {
   edit(product);
@@ -568,7 +590,7 @@ function move(index: number, direction: number) {
           type="button"
           role="tab"
           :aria-selected="tab === 'business'"
-          @click="tab = 'business'"
+          @click="selectTab('business')"
         >
           Gestión
         </button>
@@ -576,7 +598,7 @@ function move(index: number, direction: number) {
           type="button"
           role="tab"
           :aria-selected="tab === 'products'"
-          @click="tab = 'products'"
+          @click="selectTab('products')"
         >
           Perfumes
         </button>
@@ -585,7 +607,7 @@ function move(index: number, direction: number) {
           type="button"
           role="tab"
           :aria-selected="tab === 'orders'"
-          @click="tab = 'orders'"
+          @click="selectTab('orders')"
         >
           Pedidos
         </button>
@@ -593,7 +615,7 @@ function move(index: number, direction: number) {
           type="button"
           role="tab"
           :aria-selected="tab === 'settings'"
-          @click="tab = 'settings'"
+          @click="selectTab('settings')"
         >
           Configuración
         </button>
@@ -602,7 +624,7 @@ function move(index: number, direction: number) {
         v-if="tab === 'business' && !demo"
         :get-headers="headers"
         :catalog="catalog"
-        @open-orders="tab = 'orders'"
+        @open-orders="openOrders"
         @open-product="openProduct"
       />
       <section v-else-if="tab === 'settings'" class="settings">
