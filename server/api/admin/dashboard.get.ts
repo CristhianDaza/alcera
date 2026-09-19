@@ -1,9 +1,9 @@
 import type {
   CashMovement,
   DashboardData,
+  Expense,
   Sale,
   SaleChannel,
-  SalePayment,
 } from "../../../shared/business";
 import type { Product } from "../../../shared/types";
 
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     getQuery(event) as Record<string, string | undefined>,
   );
   const db = database();
-  const [salesSnapshot, paymentSnapshot, cashSnapshot, productSnapshot] =
+  const [salesSnapshot, expenseSnapshot, cashSnapshot, productSnapshot] =
     await Promise.all([
       db
         .collection("sales")
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
         .where("createdAt", "<=", range.end)
         .get(),
       db
-        .collection("salePayments")
+        .collection("expenses")
         .where("date", ">=", range.start)
         .where("date", "<=", range.end)
         .get(),
@@ -31,10 +31,55 @@ export default defineEventHandler(async (event) => {
   const sales = salesSnapshot.docs
     .map((doc) => docData<Sale>(doc))
     .filter((sale) => sale.status !== "cancelled");
-  const payments = paymentSnapshot.docs.map((doc) => docData<SalePayment>(doc));
+  const expenses = expenseSnapshot.docs.map((doc) => docData<Expense>(doc));
   const cash = cashSnapshot.docs.map((doc) => docData<CashMovement>(doc));
   const products = productSnapshot.docs.map(
     (doc) => ({ id: doc.id, ...doc.data() }) as Product,
+  );
+  const periodCash = cash.filter(
+    (movement) => movement.date >= range.start && movement.date <= range.end,
+  );
+  const grossProfit = sales
+    .filter((sale) => !!sale.inventoryAppliedAt)
+    .reduce(
+      (sum, sale) =>
+        sum +
+        (sale.total - (sale.refundTotal ?? 0)) -
+        (sale.items.reduce(
+          (cost, item) => cost + item.quantity * item.unitCost,
+          0,
+        ) -
+          (sale.returnedCost ?? 0)),
+      0,
+    );
+  const expenseTotal = expenses
+    .filter((expense) => expense.status === "paid")
+    .reduce((sum, expense) => sum + expense.amount, 0);
+  const accountBalances = new Map<string, number>();
+  for (const movement of cash)
+    accountBalances.set(
+      movement.account,
+      (accountBalances.get(movement.account) ?? 0) +
+        (movement.direction === "in" ? movement.amount : -movement.amount),
+    );
+  const lowStockItems = products.flatMap((product) =>
+    product.variants.flatMap((variant) => {
+      const inventory = inventoryOf(variant);
+      const mode =
+        inventory.mode ?? (variant.type === "decant" ? "decant" : "stock");
+      return mode === "on_demand" ||
+        mode === "decant" ||
+        inventory.stock > inventory.minimumStock
+        ? []
+        : [
+            {
+              name: product.name,
+              size: variant.size,
+              stock: inventory.stock,
+              minimumStock: inventory.minimumStock,
+            },
+          ];
+    }),
   );
   const productQuantities = new Map<string, number>();
   const channelTotals = new Map<SaleChannel, number>();
@@ -52,20 +97,25 @@ export default defineEventHandler(async (event) => {
   const result: DashboardData = {
     from: range.from,
     to: range.to,
-    paidSales: payments.reduce((sum, payment) => sum + payment.amount, 0),
-    registeredSales: sales.reduce((sum, sale) => sum + sale.total, 0),
-    grossProfit: sales
-      .filter((sale) => !!sale.inventoryAppliedAt)
+    paidSales: periodCash
+      .filter((movement) =>
+        ["sale_payment", "sale_refund"].includes(movement.type),
+      )
       .reduce(
-        (sum, sale) =>
+        (sum, movement) =>
           sum +
-          sale.total -
-          sale.items.reduce(
-            (cost, item) => cost + item.quantity * item.unitCost,
-            0,
-          ),
+          (movement.type === "sale_refund"
+            ? -movement.amount
+            : movement.amount),
         0,
       ),
+    registeredSales: sales.reduce(
+      (sum, sale) => sum + sale.total - (sale.refundTotal ?? 0),
+      0,
+    ),
+    grossProfit,
+    expenseTotal,
+    netProfit: grossProfit - expenseTotal,
     cashBalance: cash.reduce(
       (sum, movement) =>
         sum +
@@ -73,14 +123,8 @@ export default defineEventHandler(async (event) => {
       0,
     ),
     receivable: sales.reduce((sum, sale) => sum + sale.balanceDue, 0),
-    lowStock: products
-      .flatMap((product) => product.variants)
-      .filter((variant) => {
-        const stock = inventoryOf(variant);
-        return stock.stock <= stock.minimumStock;
-      }).length,
-    recentMovements: cash
-      .filter((movement) => movement.date >= range.start)
+    lowStock: lowStockItems.length,
+    recentMovements: periodCash
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 8),
     topProducts: [...productQuantities]
@@ -90,6 +134,13 @@ export default defineEventHandler(async (event) => {
     salesByChannel: [...channelTotals]
       .map(([channel, total]) => ({ channel, total }))
       .sort((a, b) => b.total - a.total),
+    accountBalances: [...accountBalances]
+      .map(([account, balance]) => ({
+        account: account as CashMovement["account"],
+        balance,
+      }))
+      .sort((a, b) => a.account.localeCompare(b.account)),
+    lowStockItems,
   };
   return result;
 });

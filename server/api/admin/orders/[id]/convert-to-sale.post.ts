@@ -55,6 +55,7 @@ export default defineEventHandler(async (event) => {
         productId: item.productId,
         variantId: item.variantId,
         sku: product?.sku,
+        brand: product?.brand,
         name: item.name,
         size: item.size,
         quantity: item.quantity,
@@ -68,13 +69,19 @@ export default defineEventHandler(async (event) => {
     const totals = saleTotals(items, shippingCharged);
     const number = await nextNumber(tx, "V", new Date(order.createdAt));
     const at = nowIso();
+    const requiresPurchase = order.items.some((item) => {
+      const product = products.get(item.productId);
+      return (
+        inventoryOf(findVariant(product, item.variantId)).mode === "on_demand"
+      );
+    });
     const sale: Sale = {
       id: saleId,
       number,
       sourceOrderId: orderId,
       customer: order.customer,
       channel: body.channel,
-      status: "pending_payment",
+      status: requiresPurchase ? "pending_purchase" : "pending_payment",
       items,
       ...totals,
       shippingCharged,

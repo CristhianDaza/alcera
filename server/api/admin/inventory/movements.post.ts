@@ -33,6 +33,12 @@ export default defineEventHandler(async (event) => {
     const product = { id: snapshot.id, ...snapshot.data() } as Product;
     const variant = findVariant(product, body.variantId);
     const current = inventoryOf(variant);
+    if (variant.type === "decant" || current.mode === "decant")
+      throw createError({
+        statusCode: 409,
+        statusMessage:
+          "Los decants se controlan desde un frasco abierto y no mediante unidades manuales",
+      });
     const after = current.stock + body.quantityChange;
     if (after < 0)
       throw createError({

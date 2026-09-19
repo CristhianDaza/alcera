@@ -2,8 +2,10 @@ import { z } from "zod";
 
 export const saleStatuses = [
   "draft",
+  "pending_purchase",
   "pending_payment",
   "paid",
+  "shipped",
   "delivered",
   "cancelled",
 ] as const;
@@ -62,11 +64,13 @@ export type PaymentMethod = (typeof paymentMethods)[number];
 export type CashAccount = (typeof cashAccounts)[number];
 export type ExpenseCategory = (typeof expenseCategories)[number];
 export type InventoryMovementType = (typeof inventoryMovementTypes)[number];
+export type InventoryMode = "stock" | "on_demand" | "decant";
 
 export interface SaleItem {
   productId: string;
   variantId: string;
   sku?: string;
+  brand?: string;
   name: string;
   size: string;
   quantity: number;
@@ -89,12 +93,30 @@ export interface Sale {
   total: number;
   paidTotal: number;
   balanceDue: number;
+  refundTotal?: number;
+  returnedCost?: number;
   inventoryAppliedAt?: string;
   inventoryReversedAt?: string;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
   notes?: string;
+}
+export interface SaleReturn {
+  id: string;
+  saleId: string;
+  date: string;
+  items: Array<{
+    productId: string;
+    variantId: string;
+    quantity: number;
+    unitCost: number;
+  }>;
+  refundAmount: number;
+  costTotal: number;
+  reason: string;
+  createdAt: string;
+  createdBy: string;
 }
 export interface SalePayment {
   id: string;
@@ -122,6 +144,23 @@ export interface InventoryMovement {
   occurredAt: string;
   createdAt: string;
   createdBy: string;
+  quantityUnit?: "unit" | "ml";
+  sourceId?: string;
+}
+export interface DecantSource {
+  id: string;
+  productId: string;
+  variantId: string;
+  name: string;
+  size: string;
+  initialMl: number;
+  remainingMl: number;
+  costPerMl: number;
+  openedAt: string;
+  status: "open" | "empty" | "discarded";
+  notes?: string;
+  createdBy: string;
+  updatedAt: string;
 }
 export interface InventoryRow {
   productId: string;
@@ -136,6 +175,8 @@ export interface InventoryRow {
   averageCost: number;
   value: number;
   state: "out" | "low" | "available";
+  mode: InventoryMode;
+  decantPackagingCost: number;
 }
 export interface Supplier {
   id: string;
@@ -155,10 +196,11 @@ export interface Purchase {
   id: string;
   number: string;
   supplierId?: string;
+  sourceSaleId?: string;
   supplierName: string;
   date: string;
   invoice?: string;
-  status: "draft" | "confirmed";
+  status: "draft" | "confirmed" | "cancelled";
   paymentStatus: "pending" | "paid";
   items: Array<{
     productId: string;
@@ -171,6 +213,7 @@ export interface Purchase {
     total: number;
   }>;
   freight: number;
+  allocateFreight?: boolean;
   total: number;
   cashAccount?: CashAccount;
   notes?: string;
@@ -190,7 +233,7 @@ export interface Expense {
   paymentMethod?: PaymentMethod;
   cashAccount?: CashAccount;
   receipt?: string;
-  status: "paid" | "pending";
+  status: "paid" | "pending" | "reversed";
   cashMovementId?: string;
   createdAt: string;
   createdBy: string;
@@ -224,12 +267,36 @@ export interface DashboardData {
   paidSales: number;
   registeredSales: number;
   grossProfit: number;
+  expenseTotal: number;
+  netProfit: number;
   cashBalance: number;
   receivable: number;
   lowStock: number;
   recentMovements: CashMovement[];
   topProducts: Array<{ name: string; quantity: number }>;
   salesByChannel: Array<{ channel: SaleChannel; total: number }>;
+  accountBalances: Array<{ account: CashAccount; balance: number }>;
+  lowStockItems: Array<{
+    name: string;
+    size: string;
+    stock: number;
+    minimumStock: number;
+  }>;
+}
+export interface ReportData {
+  from: string;
+  to: string;
+  products: Array<{
+    name: string;
+    brand: string;
+    quantity: number;
+    revenue: number;
+    cost: number;
+    profit: number;
+  }>;
+  brands: Array<{ brand: string; revenue: number; profit: number }>;
+  channels: Array<{ channel: SaleChannel; revenue: number }>;
+  paymentMethods: Array<{ method: PaymentMethod; amount: number }>;
 }
 
 const id = z.string().regex(/^[a-zA-Z0-9-]{1,120}$/);
@@ -248,7 +315,7 @@ export const saleCreateSchema = z.object({
   occurredAt: iso,
   customer: optionalCustomer,
   channel: z.enum(saleChannels),
-  status: z.enum(["draft", "pending_payment"]),
+  status: z.enum(["draft", "pending_purchase", "pending_payment"]),
   items: z
     .array(
       z.object({
@@ -286,6 +353,14 @@ export const movementCreateSchema = z.object({
 export const inventorySettingsSchema = z.object({
   minimumStock: z.number().int().min(0).max(1_000_000),
   averageCost: money.optional(),
+  mode: z.enum(["stock", "on_demand", "decant"]).optional(),
+  decantPackagingCost: money.optional(),
+});
+export const decantSourceCreateSchema = z.object({
+  productId: id,
+  variantId: id,
+  usableMl: z.number().int().min(1).max(2_000).optional(),
+  notes: z.string().trim().max(1_000).optional(),
 });
 export const supplierCreateSchema = z.object({
   name: text,
@@ -300,6 +375,7 @@ export const supplierCreateSchema = z.object({
 export const purchaseCreateSchema = z
   .object({
     supplierId: id.optional(),
+    sourceSaleId: id.optional(),
     supplierName: text,
     date: iso,
     invoice: z.string().trim().max(200).optional(),
@@ -318,6 +394,7 @@ export const purchaseCreateSchema = z
       .min(1)
       .max(100),
     freight: money.default(0),
+    allocateFreight: z.boolean().default(false),
     notes: z.string().trim().max(2000).optional(),
   })
   .refine((v) => v.paymentStatus !== "paid" || !!v.cashAccount, {
@@ -379,3 +456,41 @@ export const weightedAverageCost = (
   stock + added === 0
     ? addedCost
     : Math.round((stock * cost + added * addedCost) / (stock + added));
+
+export function millilitersFromSize(size: string) {
+  const match = size.match(/(\d+(?:[.,]\d+)?)\s*ml/i);
+  return match ? Number(match[1]!.replace(",", ".")) : 0;
+}
+
+export function decantConsumption(
+  availableMl: number,
+  sizeMl: number,
+  quantity: number,
+) {
+  const usedMl = Math.round(sizeMl * quantity);
+  if (!Number.isFinite(usedMl) || usedMl <= 0)
+    throw new Error("Cantidad de decant inválida");
+  if (usedMl > availableMl)
+    throw new Error("No hay suficientes mililitros en el frasco abierto");
+  return { usedMl, remainingMl: availableMl - usedMl };
+}
+
+export const decantUnitCost = (
+  sizeMl: number,
+  costPerMl: number,
+  packagingCost: number,
+) => Math.round(sizeMl * costPerMl) + packagingCost;
+
+export function landedUnitCost(
+  lineTotal: number,
+  quantity: number,
+  freight: number,
+  merchandiseTotal: number,
+  allocateFreight: boolean,
+) {
+  const share =
+    allocateFreight && merchandiseTotal > 0
+      ? Math.round((freight * lineTotal) / merchandiseTotal)
+      : 0;
+  return Math.round((lineTotal + share) / quantity);
+}

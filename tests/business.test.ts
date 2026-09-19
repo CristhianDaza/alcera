@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   cashMovementCreateSchema,
+  decantConsumption,
+  decantUnitCost,
   expenseCreateSchema,
+  landedUnitCost,
+  millilitersFromSize,
   movementCreateSchema,
+  saleCreateSchema,
   saleTotals,
   weightedAverageCost,
 } from "../shared/business";
@@ -62,5 +67,42 @@ describe("business rules", () => {
         description: "Apertura",
       }).success,
     ).toBe(false);
+  });
+
+  it("controls an opened bottle in milliliters", () => {
+    expect(millilitersFromSize("Decant 5 ml")).toBe(5);
+    expect(decantConsumption(100, 5, 3)).toEqual({
+      usedMl: 15,
+      remainingMl: 85,
+    });
+    expect(() => decantConsumption(10, 5, 3)).toThrow(
+      "No hay suficientes mililitros",
+    );
+    expect(decantUnitCost(5, 4_000, 3_000)).toBe(23_000);
+  });
+
+  it("allocates purchase freight into landed unit cost", () => {
+    expect(landedUnitCost(200_000, 2, 30_000, 300_000, true)).toBe(110_000);
+    expect(landedUnitCost(200_000, 2, 30_000, 300_000, false)).toBe(100_000);
+  });
+
+  it("accepts sales pending procurement", () => {
+    expect(
+      saleCreateSchema.safeParse({
+        occurredAt: new Date().toISOString(),
+        channel: "website",
+        status: "pending_purchase",
+        items: [
+          {
+            productId: "p1",
+            variantId: "v1",
+            quantity: 1,
+            unitPrice: 300_000,
+            discount: 0,
+          },
+        ],
+        shippingCharged: 0,
+      }).success,
+    ).toBe(true);
   });
 });

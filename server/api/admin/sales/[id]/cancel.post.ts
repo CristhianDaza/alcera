@@ -40,6 +40,38 @@ export default defineEventHandler(async (event) => {
         )
       : [];
     const snapshots = await Promise.all(refs.map((ref) => tx.get(ref)));
+    const originalMovements = sale.inventoryAppliedAt
+      ? (
+          await tx.get(
+            db
+              .collection("inventoryMovements")
+              .where("referenceId", "==", saleId),
+          )
+        ).docs
+          .map((doc) => docData<InventoryMovement>(doc))
+          .filter(
+            (movement) =>
+              movement.type === "sale" && movement.quantityChange < 0,
+          )
+      : [];
+    const sourceIds = [
+      ...new Set(
+        originalMovements
+          .map((movement) => movement.sourceId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const sourceSnapshots = await Promise.all(
+      sourceIds.map((id) => tx.get(db.collection("decantSources").doc(id))),
+    );
+    const sources = new Map(
+      sourceSnapshots.map((snapshot) => [
+        snapshot.id,
+        docData<import("../../../../../shared/business").DecantSource>(
+          snapshot,
+        ),
+      ]),
+    );
     const products = new Map(
       snapshots.map((snapshot) => [
         snapshot.id,
@@ -47,6 +79,10 @@ export default defineEventHandler(async (event) => {
       ]),
     );
     const updatedProducts = new Map<string, Product>();
+    const updatedSources = new Map<
+      string,
+      import("../../../../../shared/business").DecantSource
+    >();
     const at = nowIso();
     const refundNumber =
       sale.paidTotal > 0 ? await nextNumber(tx, "M", new Date()) : undefined;
@@ -56,6 +92,55 @@ export default defineEventHandler(async (event) => {
           updatedProducts.get(item.productId) ?? products.get(item.productId);
         const variant = findVariant(product, item.variantId);
         const current = inventoryOf(variant);
+        const original = originalMovements.find(
+          (movement) =>
+            movement.variantId === item.variantId &&
+            movement.productId === item.productId &&
+            movement.quantityChange < 0,
+        );
+        if (original?.quantityUnit === "ml" && original.sourceId) {
+          const source =
+            updatedSources.get(original.sourceId) ??
+            sources.get(original.sourceId);
+          if (!source)
+            throw createError({
+              statusCode: 409,
+              statusMessage:
+                "No se encontró el frasco fuente del decant para reversar la venta",
+            });
+          const restoredMl = -original.quantityChange;
+          const nextSource = {
+            ...source,
+            remainingMl: source.remainingMl + restoredMl,
+            status: "open" as const,
+            updatedAt: at,
+          };
+          updatedSources.set(source.id, nextSource);
+          const movement: InventoryMovement = {
+            id: newId(),
+            productId: item.productId,
+            variantId: item.variantId,
+            type: "customer_return",
+            quantityChange: restoredMl,
+            quantityUnit: "ml",
+            sourceId: source.id,
+            unitCost: item.unitCost,
+            stockBefore: source.remainingMl,
+            stockAfter: nextSource.remainingMl,
+            referenceType: "sale",
+            referenceId: saleId,
+            reason: `Anulación ${sale.number}: ${body.reason}`,
+            occurredAt: at,
+            createdAt: at,
+            createdBy: admin.uid,
+          };
+          tx.set(
+            db.collection("inventoryMovements").doc(movement.id),
+            movement,
+          );
+          original.quantityChange = 0;
+          continue;
+        }
         updatedProducts.set(
           item.productId,
           replaceVariant(product!, item.variantId, {
@@ -89,6 +174,12 @@ export default defineEventHandler(async (event) => {
       for (const [productId, product] of updatedProducts)
         tx.update(db.collection("products").doc(productId), {
           variants: product.variants,
+        });
+      for (const source of updatedSources.values())
+        tx.update(db.collection("decantSources").doc(source.id), {
+          remainingMl: source.remainingMl,
+          status: source.status,
+          updatedAt: at,
         });
     }
     if (sale.paidTotal > 0) {

@@ -28,6 +28,7 @@ export default defineEventHandler(async (event) => {
       return {
         ...item,
         sku: product?.sku,
+        brand: product?.brand,
         name: product!.name,
         size: variant.size,
         unitCost: inventory.averageCost,
@@ -41,12 +42,25 @@ export default defineEventHandler(async (event) => {
         statusMessage: "Los descuentos superan el valor de la venta",
       });
     const at = nowIso();
+    const requiresPurchase = body.items.some((item) => {
+      const product = products.find(
+        (candidate) => candidate.id === item.productId,
+      );
+      return (
+        inventoryOf(findVariant(product, item.variantId)).mode === "on_demand"
+      );
+    });
     const sale: Sale = {
       id,
       number,
       customer: body.customer,
       channel: body.channel,
-      status: body.status,
+      status:
+        body.status === "draft"
+          ? "draft"
+          : requiresPurchase
+            ? "pending_purchase"
+            : body.status,
       items,
       ...totals,
       shippingCharged: body.shippingCharged,

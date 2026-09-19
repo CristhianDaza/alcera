@@ -1,4 +1,5 @@
 import {
+  landedUnitCost,
   weightedAverageCost,
   type CashMovement,
   type InventoryMovement,
@@ -35,12 +36,22 @@ export default defineEventHandler(async (event) => {
       cashNumber = await nextNumber(tx, "M", new Date(purchase.date));
     const at = nowIso();
     const updatedProducts = new Map<string, Product>();
+    const merchandiseTotal = purchase.items.reduce(
+      (sum, item) => sum + item.total,
+      0,
+    );
     for (const item of purchase.items) {
       const product =
         updatedProducts.get(item.productId) ?? products.get(item.productId);
       const variant = findVariant(product, item.variantId);
       const current = inventoryOf(variant);
-      const netUnitCost = Math.round(item.total / item.quantity);
+      const netUnitCost = landedUnitCost(
+        item.total,
+        item.quantity,
+        purchase.freight,
+        merchandiseTotal,
+        Boolean(purchase.allocateFreight),
+      );
       const averageCost = weightedAverageCost(
         current.stock,
         current.averageCost,

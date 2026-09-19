@@ -598,6 +598,7 @@ function move(index: number, direction: number) {
         v-if="tab === 'business' && !demo"
         :get-headers="headers"
         :catalog="catalog"
+        @open-orders="tab = 'orders'"
       />
       <section v-else-if="tab === 'settings'" class="settings">
         <h2>Configuración de la tienda</h2>

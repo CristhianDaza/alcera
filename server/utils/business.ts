@@ -65,11 +65,24 @@ export async function nextNumbers(
     };
   });
   const snapshots = await Promise.all(entries.map(({ ref }) => tx.get(ref)));
-  return entries.map(({ prefix, period, ref }, index) => {
-    const value = (snapshots[index]!.data()?.value ?? 0) + 1;
-    tx.set(ref, { value, updatedAt: nowIso() });
+  const values = new Map<string, number>();
+  const numbers = entries.map(({ prefix, period, ref }, index) => {
+    const key = `${prefix}-${period}`;
+    const value = (values.get(key) ?? snapshots[index]!.data()?.value ?? 0) + 1;
+    values.set(key, value);
     return `${prefix}-${period}-${String(value).padStart(4, "0")}`;
   });
+  for (const entry of entries.filter(
+    (candidate, index, all) =>
+      all.findIndex(
+        (item) =>
+          item.prefix === candidate.prefix && item.period === candidate.period,
+      ) === index,
+  )) {
+    const key = `${entry.prefix}-${entry.period}`;
+    tx.set(entry.ref, { value: values.get(key)!, updatedAt: nowIso() });
+  }
+  return numbers;
 }
 
 export function findVariant(
@@ -105,6 +118,8 @@ export function inventoryOf(variant: Variant) {
       minimumStock: 0,
       averageCost: 0,
       updatedAt: nowIso(),
+      mode: "stock" as const,
+      decantPackagingCost: 0,
     }
   );
 }

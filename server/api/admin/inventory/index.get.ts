@@ -30,6 +30,9 @@ export default defineEventHandler(async (event) => {
             : inventory.stock <= inventory.minimumStock
               ? "low"
               : "available",
+        mode:
+          inventory.mode ?? (variant.type === "decant" ? "decant" : "stock"),
+        decantPackagingCost: inventory.decantPackagingCost ?? 0,
       };
     });
   });

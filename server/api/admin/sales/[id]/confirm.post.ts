@@ -1,4 +1,13 @@
-import type { InventoryMovement, Sale } from "../../../../../shared/business";
+import type {
+  DecantSource,
+  InventoryMovement,
+  Sale,
+} from "../../../../../shared/business";
+import {
+  decantConsumption,
+  decantUnitCost,
+  millilitersFromSize,
+} from "../../../../../shared/business";
 import type { Product } from "../../../../../shared/types";
 
 export default defineEventHandler(async (event) => {
@@ -25,10 +34,18 @@ export default defineEventHandler(async (event) => {
         statusCode: 409,
         statusMessage: "Registra el pago total antes de confirmar",
       });
-    const refs = [...new Set(sale.items.map((item) => item.productId))].map(
-      (id) => db.collection("products").doc(id),
-    );
-    const snapshots = await Promise.all(refs.map((ref) => tx.get(ref)));
+    const productIds = [...new Set(sale.items.map((item) => item.productId))];
+    const refs = productIds.map((id) => db.collection("products").doc(id));
+    const [snapshots, sourceSnapshots] = await Promise.all([
+      Promise.all(refs.map((ref) => tx.get(ref))),
+      Promise.all(
+        productIds.map((productId) =>
+          tx.get(
+            db.collection("decantSources").where("productId", "==", productId),
+          ),
+        ),
+      ),
+    ]);
     const products = new Map(
       snapshots.map((snapshot) => [
         snapshot.id,
@@ -37,11 +54,77 @@ export default defineEventHandler(async (event) => {
     );
     const at = nowIso();
     const updatedProducts = new Map<string, Product>();
+    const sourcesByProduct = new Map(
+      productIds.map((productId, index) => [
+        productId,
+        sourceSnapshots[index]!.docs.map((doc) => docData<DecantSource>(doc))
+          .filter((source) => source.status === "open")
+          .sort((a, b) => a.openedAt.localeCompare(b.openedAt)),
+      ]),
+    );
+    const sourceUpdates = new Map<string, DecantSource>();
+    const movements: InventoryMovement[] = [];
     const items = sale.items.map((item) => {
       const product =
         updatedProducts.get(item.productId) ?? products.get(item.productId);
       const variant = findVariant(product, item.variantId);
       const current = inventoryOf(variant);
+      const decant = variant.type === "decant" || current.mode === "decant";
+      if (decant) {
+        const ml = millilitersFromSize(variant.size);
+        if (!Number.isFinite(ml) || ml <= 0)
+          throw createError({
+            statusCode: 400,
+            statusMessage: `La presentación ${variant.size} no tiene mililitros válidos`,
+          });
+        const neededMl = Math.round(ml * item.quantity);
+        const source = sourcesByProduct
+          .get(item.productId)
+          ?.find((candidate) => candidate.remainingMl >= neededMl);
+        if (!source)
+          throw createError({
+            statusCode: 409,
+            statusMessage: `Abre un frasco con al menos ${neededMl} ml disponibles para vender ${product!.name}`,
+          });
+        const sourceBefore = source.remainingMl;
+        source.remainingMl = decantConsumption(
+          source.remainingMl,
+          ml,
+          item.quantity,
+        ).remainingMl;
+        if (source.remainingMl === 0) source.status = "empty";
+        source.updatedAt = at;
+        sourceUpdates.set(source.id, source);
+        const unitCost = decantUnitCost(
+          ml,
+          source.costPerMl,
+          current.decantPackagingCost ?? 0,
+        );
+        movements.push({
+          id: newId(),
+          productId: item.productId,
+          variantId: item.variantId,
+          type: "sale",
+          quantityChange: -neededMl,
+          quantityUnit: "ml",
+          sourceId: source.id,
+          unitCost,
+          stockBefore: sourceBefore,
+          stockAfter: source.remainingMl,
+          referenceType: "sale",
+          referenceId: saleId,
+          reason: `Venta ${sale.number} · frasco abierto ${source.size}`,
+          occurredAt: at,
+          createdAt: at,
+          createdBy: admin.uid,
+        });
+        return { ...item, unitCost };
+      }
+      if (current.mode === "on_demand" && current.stock < item.quantity)
+        throw createError({
+          statusCode: 409,
+          statusMessage: `${product!.name} · ${variant.size} se vende bajo pedido. Confirma primero la compra y recepción.`,
+        });
       if (current.stock < item.quantity)
         throw createError({
           statusCode: 409,
@@ -59,9 +142,8 @@ export default defineEventHandler(async (event) => {
         item.productId,
         replaceVariant(product!, item.variantId, next),
       );
-      const movementId = newId();
-      const movement: InventoryMovement = {
-        id: movementId,
+      movements.push({
+        id: newId(),
         productId: item.productId,
         variantId: item.variantId,
         type: "sale",
@@ -75,14 +157,24 @@ export default defineEventHandler(async (event) => {
         occurredAt: at,
         createdAt: at,
         createdBy: admin.uid,
-      };
-      tx.set(db.collection("inventoryMovements").doc(movementId), movement);
+      });
       return { ...item, unitCost: current.averageCost };
     });
     for (const [productId, product] of updatedProducts)
       tx.update(db.collection("products").doc(productId), {
         variants: product.variants,
       });
+    for (const source of sourceUpdates.values())
+      tx.update(
+        db.collection("decantSources").doc(source.id),
+        firestoreData({
+          remainingMl: source.remainingMl,
+          status: source.status,
+          updatedAt: at,
+        }),
+      );
+    for (const movement of movements)
+      tx.set(db.collection("inventoryMovements").doc(movement.id), movement);
     const updated = {
       ...sale,
       items,

@@ -13,6 +13,10 @@ export interface InventorySettings {
   minimumStock: number;
   averageCost: number;
   updatedAt: string;
+  /** stock: unidades; on_demand: se compra antes de confirmar; decant: se sirve de un frasco abierto. */
+  mode?: "stock" | "on_demand" | "decant";
+  /** Costo por cada atomizador, etiqueta y empaque de un decant. */
+  decantPackagingCost?: number;
 }
 export interface ProductImage {
   publicId: string;
