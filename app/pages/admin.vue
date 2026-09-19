@@ -63,7 +63,7 @@ const email = ref(""),
 const catalog = ref<Product[]>([]),
   storeForm = ref<Settings>({ ...useStore().value }),
   editor = ref<EditableProduct | null>(null);
-const tab = ref<"products" | "orders" | "settings">("products"),
+const tab = ref<"business" | "products" | "orders" | "settings">("business"),
   productFilter = ref<"all" | Product["status"]>("all"),
   productSearch = ref("");
 const normalize = (value: string) =>
@@ -560,6 +560,15 @@ function move(index: number, direction: number) {
     <template v-else>
       <div class="admin-tabs" role="tablist" aria-label="Administración">
         <button
+          v-if="!demo"
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'business'"
+          @click="tab = 'business'"
+        >
+          Gestión
+        </button>
+        <button
           type="button"
           role="tab"
           :aria-selected="tab === 'products'"
@@ -585,7 +594,12 @@ function move(index: number, direction: number) {
           Configuración
         </button>
       </div>
-      <section v-if="tab === 'settings'" class="settings">
+      <AdminBusiness
+        v-if="tab === 'business' && !demo"
+        :get-headers="headers"
+        :catalog="catalog"
+      />
+      <section v-else-if="tab === 'settings'" class="settings">
         <h2>Configuración de la tienda</h2>
         <form class="admin-fields" @submit.prevent="saveSettings">
           <label

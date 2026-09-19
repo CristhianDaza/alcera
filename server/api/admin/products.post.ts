@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { v2 as cloudinary } from "cloudinary";
+import type { Product } from "../../../shared/types";
 import {
   clearPersistentCatalogSnapshots,
   upsertCatalogSnapshots,
@@ -146,6 +147,17 @@ export default defineEventHandler(async (event) => {
           statusMessage: "Ese enlace ya pertenece a otro perfume",
         });
       const previous = existing.data()?.slug;
+      if (existing.exists) {
+        const previousVariants = new Map<string, Product["variants"][number]>(
+          ((existing.data()?.variants ?? []) as Product["variants"]).map(
+            (variant) => [variant.id, variant],
+          ),
+        );
+        parsed.data.variants = parsed.data.variants.map((variant) => {
+          const inventory = previousVariants.get(variant.id)?.inventory;
+          return inventory ? { ...variant, inventory } : variant;
+        });
+      }
       if (previous && previous !== parsed.data.slug)
         tx.delete(db.collection("slugs").doc(previous));
       tx.set(slugRef, { productId: id });

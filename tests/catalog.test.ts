@@ -7,6 +7,7 @@ import {
   selectRelatedProducts,
 } from "../shared/catalog";
 import { demoProducts } from "../shared/demo";
+import { withoutPrivateInventory } from "../server/utils/catalog";
 
 const product = demoProducts[0]!;
 
@@ -114,5 +115,28 @@ describe("Prioridad comercial", () => {
     expect(
       products.sort(compareProductPriority).map((item) => item.id),
     ).toEqual(["vendido", "nuevo", "decant", "destacado", "normal"]);
+  });
+});
+
+describe("Privacidad del catálogo", () => {
+  it("no expone existencias ni costos en el producto público", () => {
+    const privateProduct = {
+      ...product,
+      variants: product.variants.map((variant) => ({
+        ...variant,
+        inventory: {
+          stock: 4,
+          minimumStock: 2,
+          averageCost: 150_000,
+          updatedAt: new Date().toISOString(),
+        },
+      })),
+    };
+
+    expect(
+      withoutPrivateInventory(privateProduct).variants.every(
+        (variant) => variant.inventory === undefined,
+      ),
+    ).toBe(true);
   });
 });

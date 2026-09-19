@@ -5,6 +5,14 @@ export interface Variant {
   available: boolean;
   /** Las variantes antiguas sin tipo se consideran frascos originales. */
   type?: "bottle" | "decant";
+  /** Datos privados de operación. Las variantes antiguas inician en cero. */
+  inventory?: InventorySettings;
+}
+export interface InventorySettings {
+  stock: number;
+  minimumStock: number;
+  averageCost: number;
+  updatedAt: string;
 }
 export interface ProductImage {
   publicId: string;

@@ -128,6 +128,30 @@ async function save() {
     saving.value = false;
   }
 }
+async function convertToSale() {
+  if (
+    !selected.value ||
+    !window.confirm(`¿Crear una venta desde la solicitud ${selected.value.id}?`)
+  )
+    return;
+  saving.value = true;
+  notice.value = "";
+  try {
+    const sale = await $fetch<{ number: string }>(
+      `/api/admin/orders/${selected.value.id}/convert-to-sale`,
+      {
+        method: "POST",
+        headers: await props.getHeaders(),
+        body: { channel: "website" },
+      },
+    );
+    notice.value = `Venta ${sale.number} creada. Ábrela en Gestión → Ventas para registrar el pago.`;
+  } catch (error) {
+    notice.value = errorMessage(error);
+  } finally {
+    saving.value = false;
+  }
+}
 onMounted(() => load());
 </script>
 <template>
@@ -226,6 +250,15 @@ onMounted(() => load());
             : money(selected.subtotal + selected.shipping)
         }}</strong>
       </p>
+      <button
+        v-if="!['cancelled', 'lost'].includes(selected.status)"
+        type="button"
+        class="button"
+        :disabled="saving"
+        @click="convertToSale"
+      >
+        Convertir en venta
+      </button>
       <form
         v-if="orderTransitions[selected.status].length"
         class="admin-fields"

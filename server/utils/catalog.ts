@@ -103,12 +103,23 @@ function normalizeProduct(value: Record<string, unknown>, id: string): Product {
   return { ...value, id, family, variants } as Product;
 }
 
+export function withoutPrivateInventory(product: Product): Product {
+  return {
+    ...product,
+    variants: product.variants.map(
+      ({ inventory: _inventory, ...variant }) => variant,
+    ),
+  };
+}
+
 function cacheCatalog(allProducts: Product[]) {
   const now = Date.now();
   allCatalogCache.value = structuredClone(allProducts);
   allCatalogCache.expiresAt = now + CATALOG_CACHE_MS;
   publishedCatalogCache.value = structuredClone(
-    allProducts.filter((product) => product.status === "published"),
+    allProducts
+      .filter((product) => product.status === "published")
+      .map(withoutPrivateInventory),
   );
   publishedCatalogCache.expiresAt = now + CATALOG_CACHE_MS;
 }
@@ -276,9 +287,9 @@ async function writeSnapshot(all: boolean, value: Product[]) {
 }
 
 async function writeBothSnapshots(allProducts: Product[]) {
-  const published = allProducts.filter(
-    (product) => product.status === "published",
-  );
+  const published = allProducts
+    .filter((product) => product.status === "published")
+    .map(withoutPrivateInventory);
   await Promise.all([
     writeSnapshot(true, allProducts),
     writeSnapshot(false, published),
@@ -296,9 +307,10 @@ async function queryProducts(all: boolean): Promise<Product[]> {
     products: snapshot.docs.length,
     scope: snapshotName(all),
   });
-  return snapshot.docs.map((document) =>
+  const result = snapshot.docs.map((document) =>
     normalizeProduct(document.data(), document.id),
   );
+  return all ? result : result.map(withoutPrivateInventory);
 }
 
 export function invalidateCatalogCache() {
