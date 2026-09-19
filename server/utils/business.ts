@@ -112,16 +112,16 @@ export function replaceVariant(
 }
 
 export function inventoryOf(variant: Variant) {
-  return (
-    variant.inventory ?? {
-      stock: 0,
-      minimumStock: 0,
-      averageCost: 0,
-      updatedAt: nowIso(),
-      mode: "stock" as const,
-      decantPackagingCost: 0,
-    }
-  );
+  const inventory = variant.inventory;
+  return {
+    stock: inventory?.stock ?? 0,
+    minimumStock: inventory?.minimumStock ?? 0,
+    averageCost: inventory?.averageCost ?? 0,
+    updatedAt: inventory?.updatedAt ?? nowIso(),
+    mode:
+      inventory?.mode ?? (variant.type === "decant" ? "decant" : "on_demand"),
+    decantPackagingCost: inventory?.decantPackagingCost ?? 0,
+  };
 }
 
 export function dateRange(query: Record<string, string | undefined>) {

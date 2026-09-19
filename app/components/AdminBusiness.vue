@@ -120,7 +120,7 @@ const options = computed(() =>
       price: variant.price,
       inventoryMode:
         variant.inventory?.mode ??
-        (variant.type === "decant" ? "decant" : "stock"),
+        (variant.type === "decant" ? "decant" : "on_demand"),
     })),
   ),
 );
@@ -475,13 +475,68 @@ const filteredInventory = computed(() =>
       (!inventoryBrand.value || row.brand === inventoryBrand.value),
   ),
 );
-watch([inventoryState, inventoryType, inventoryBrand], ([state, type, brand]) =>
-  syncFilters({
-    inventoryState: state,
-    inventoryType: type,
-    inventoryBrand: brand,
-  }),
+const inventoryPage = ref(1);
+const inventoryPageSize = 25;
+const inventoryTotalPages = computed(() =>
+  Math.max(1, Math.ceil(filteredInventory.value.length / inventoryPageSize)),
 );
+const paginatedInventory = computed(() => {
+  const start = (inventoryPage.value - 1) * inventoryPageSize;
+  return filteredInventory.value.slice(start, start + inventoryPageSize);
+});
+const inventoryPages = computed(() =>
+  paginationPages(inventoryTotalPages.value, inventoryPage.value),
+);
+const alertPage = ref(1);
+const alertPageSize = 8;
+const alertTotalPages = computed(() =>
+  Math.max(
+    1,
+    Math.ceil((dashboard.value?.lowStockItems.length ?? 0) / alertPageSize),
+  ),
+);
+const paginatedAlerts = computed(() => {
+  const start = (alertPage.value - 1) * alertPageSize;
+  return (dashboard.value?.lowStockItems ?? []).slice(
+    start,
+    start + alertPageSize,
+  );
+});
+const alertPages = computed(() =>
+  paginationPages(alertTotalPages.value, alertPage.value),
+);
+function paginationPages(total: number, current: number): (number | string)[] {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  const pages: (number | string)[] = [1];
+  if (current > 3) pages.push("...");
+  for (
+    let page = Math.max(2, current - 1);
+    page <= Math.min(total - 1, current + 1);
+    page++
+  ) {
+    pages.push(page);
+  }
+  if (current < total - 2) pages.push("...");
+  pages.push(total);
+  return pages;
+}
+watch(
+  [inventoryFilter, inventoryState, inventoryType, inventoryBrand],
+  ([, state, type, brand]) => {
+    inventoryPage.value = 1;
+    syncFilters({
+      inventoryState: state,
+      inventoryType: type,
+      inventoryBrand: brand,
+    });
+  },
+);
+watch(inventoryTotalPages, (total) => {
+  if (inventoryPage.value > total) inventoryPage.value = total;
+});
+watch(alertTotalPages, (total) => {
+  if (alertPage.value > total) alertPage.value = total;
+});
 const movementForm = reactive({
   selection: "",
   type: "adjustment",
@@ -1101,13 +1156,62 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           <p v-if="!dashboard.lowStockItems.length" class="muted">
             No hay alertas.
           </p>
-          <p
-            v-for="item in dashboard.lowStockItems"
-            :key="`${item.name}-${item.size}`"
-          >
+          <p v-for="item in paginatedAlerts" :key="`${item.name}-${item.size}`">
             {{ item.name }} · {{ item.size }}
             <strong>{{ item.stock }} / mínimo {{ item.minimumStock }}</strong>
           </p>
+          <nav
+            v-if="alertTotalPages > 1"
+            class="pagination admin-pagination"
+            aria-label="Paginación de alertas de inventario"
+          >
+            <span class="pagination-info" role="status">
+              Mostrando {{ (alertPage - 1) * alertPageSize + 1 }}–{{
+                Math.min(
+                  alertPage * alertPageSize,
+                  dashboard.lowStockItems.length,
+                )
+              }}
+              de {{ dashboard.lowStockItems.length }} alertas
+            </span>
+            <div class="pagination-controls">
+              <button
+                type="button"
+                class="text-link pagination-btn"
+                :disabled="alertPage <= 1"
+                @click="alertPage--"
+              >
+                ← Anterior
+              </button>
+              <div class="pagination-pages">
+                <template v-for="(page, index) in alertPages" :key="index">
+                  <span
+                    v-if="typeof page === 'string'"
+                    class="pagination-ellipsis"
+                    >{{ page }}</span
+                  >
+                  <button
+                    v-else
+                    type="button"
+                    class="pagination-page-btn"
+                    :class="{ active: page === alertPage }"
+                    :aria-current="page === alertPage ? 'page' : undefined"
+                    @click="alertPage = page"
+                  >
+                    {{ page }}
+                  </button>
+                </template>
+              </div>
+              <button
+                type="button"
+                class="text-link pagination-btn"
+                :disabled="alertPage >= alertTotalPages"
+                @click="alertPage++"
+              >
+                Siguiente →
+              </button>
+            </div>
+          </nav>
         </article>
         <article class="business-card">
           <h3>Movimientos recientes</h3>
@@ -1610,7 +1714,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in filteredInventory" :key="row.variantId">
+            <tr v-for="row in paginatedInventory" :key="row.variantId">
               <td>
                 <strong>{{ row.name }} · {{ row.size }}</strong
                 ><small
@@ -1625,7 +1729,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
               <td>
                 {{
                   row.mode === "on_demand"
-                    ? "Bajo pedido"
+                    ? "Por encargo"
                     : row.mode === "decant"
                       ? "Decant"
                       : "En stock"
@@ -1655,6 +1759,58 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           </tbody>
         </table>
       </div>
+      <nav
+        v-if="inventoryTotalPages > 1"
+        class="pagination admin-pagination"
+        aria-label="Paginación de inventario"
+      >
+        <span class="pagination-info" role="status">
+          Mostrando {{ (inventoryPage - 1) * inventoryPageSize + 1 }}–{{
+            Math.min(
+              inventoryPage * inventoryPageSize,
+              filteredInventory.length,
+            )
+          }}
+          de {{ filteredInventory.length }} presentaciones
+        </span>
+        <div class="pagination-controls">
+          <button
+            type="button"
+            class="text-link pagination-btn"
+            :disabled="inventoryPage <= 1"
+            @click="inventoryPage--"
+          >
+            ← Anterior
+          </button>
+          <div class="pagination-pages">
+            <template v-for="(page, index) in inventoryPages" :key="index">
+              <span
+                v-if="typeof page === 'string'"
+                class="pagination-ellipsis"
+                >{{ page }}</span
+              >
+              <button
+                v-else
+                type="button"
+                class="pagination-page-btn"
+                :class="{ active: page === inventoryPage }"
+                :aria-current="page === inventoryPage ? 'page' : undefined"
+                @click="inventoryPage = page"
+              >
+                {{ page }}
+              </button>
+            </template>
+          </div>
+          <button
+            type="button"
+            class="text-link pagination-btn"
+            :disabled="inventoryPage >= inventoryTotalPages"
+            @click="inventoryPage++"
+          >
+            Siguiente →
+          </button>
+        </div>
+      </nav>
       <article v-if="decantSources.length" class="business-card">
         <h3>Frascos abiertos para decants</h3>
         <div class="business-table-wrap">

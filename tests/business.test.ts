@@ -11,6 +11,7 @@ import {
   saleTotals,
   weightedAverageCost,
 } from "../shared/business";
+import { inventoryOf } from "../server/utils/business";
 
 describe("business rules", () => {
   it("calculates the sale total with per-line discounts and shipping", () => {
@@ -104,5 +105,15 @@ describe("business rules", () => {
         shippingCharged: 0,
       }).success,
     ).toBe(true);
+  });
+
+  it("uses on-demand inventory by default for a bottle", () => {
+    expect(
+      inventoryOf({
+        id: "v1",
+        size: "100 ml",
+        price: 300_000,
+      }).mode,
+    ).toBe("on_demand");
   });
 });

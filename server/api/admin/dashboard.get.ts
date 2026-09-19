@@ -66,7 +66,7 @@ export default defineEventHandler(async (event) => {
     product.variants.flatMap((variant) => {
       const inventory = inventoryOf(variant);
       const mode =
-        inventory.mode ?? (variant.type === "decant" ? "decant" : "stock");
+        inventory.mode ?? (variant.type === "decant" ? "decant" : "on_demand");
       return mode === "on_demand" ||
         mode === "decant" ||
         inventory.stock > inventory.minimumStock
