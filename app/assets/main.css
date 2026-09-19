@@ -2898,6 +2898,16 @@ select {
 .business-line label {
   min-width: 0;
 }
+.decant-availability {
+  display: block;
+  margin-top: 7px;
+  color: #39734f;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.decant-availability.is-warning {
+  color: var(--error);
+}
 .business-line > .text-link {
   grid-column: 1 / -1;
   justify-self: start;

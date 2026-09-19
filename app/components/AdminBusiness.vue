@@ -3,6 +3,7 @@ import { money } from "#shared/commerce";
 import {
   cashAccounts,
   expenseCategories,
+  millilitersFromSize,
   paymentMethods,
   saleChannels,
   saleStatuses,
@@ -157,16 +158,26 @@ function submitActionModal() {
 }
 const options = computed(() =>
   props.catalog.flatMap((product) =>
-    product.variants.map((variant) => ({
-      productId: product.id,
-      variantId: variant.id,
-      label: `${product.name} · ${variant.size}`,
-      price: variant.price,
-      inventoryMode:
+    product.variants.map((variant) => {
+      const inventoryMode =
         variant.inventory?.mode ??
-        (variant.type === "decant" ? "decant" : "on_demand"),
-    })),
+        (variant.type === "decant" ? "decant" : "on_demand");
+      const isDecant = variant.type === "decant" || inventoryMode === "decant";
+      return {
+        productId: product.id,
+        variantId: variant.id,
+        label: `${product.name} · ${variant.size} · ${isDecant ? "Decant" : "Frasco completo"}`,
+        purchaseLabel: `${product.name} · ${variant.size}`,
+        price: variant.price,
+        size: variant.size,
+        inventoryMode,
+        isDecant,
+      };
+    }),
   ),
+);
+const purchaseOptions = computed(() =>
+  options.value.filter((item) => !item.isDecant),
 );
 
 async function api<T>(url: string, options: Parameters<typeof $fetch>[1] = {}) {
@@ -184,7 +195,12 @@ async function load(target = section.value) {
         query: dashboardPeriod,
       });
     if (target === "sales") {
-      sales.value = await api<Sale[]>("/api/admin/sales");
+      const [result, sources] = await Promise.all([
+        api<Sale[]>("/api/admin/sales"),
+        api<DecantSource[]>("/api/admin/inventory/decant-sources"),
+      ]);
+      sales.value = result;
+      decantSources.value = sources;
       salesCursor.value =
         sales.value.length === 50 ? (sales.value.at(-1)?.id ?? "") : "";
     }
@@ -247,6 +263,42 @@ const saleForm = reactive({
   notes: "",
   items: [{ selection: "", quantity: 1, unitPrice: 0, discount: 0 }],
 });
+function decantSaleInfo(line: { selection: string; quantity: number }) {
+  const option = options.value.find(
+    (item) => `${item.productId}/${item.variantId}` === line.selection,
+  );
+  if (!option?.isDecant) return null;
+  const mlPerUnit = millilitersFromSize(option.size);
+  if (!Number.isFinite(mlPerUnit) || mlPerUnit <= 0)
+    return {
+      message:
+        "No se pudieron identificar los mililitros de esta presentación.",
+      warning: true,
+    };
+  const requiredMl = mlPerUnit * Math.max(1, Number(line.quantity) || 1);
+  const sources = decantSources.value
+    .filter(
+      (source) =>
+        source.productId === option.productId && source.status === "open",
+    )
+    .sort((a, b) => a.openedAt.localeCompare(b.openedAt));
+  const source = sources.find((item) => item.remainingMl >= requiredMl);
+  if (source)
+    return {
+      message: `Se usarán ${requiredMl} ml del frasco abierto de ${source.size}; le quedarán ${source.remainingMl - requiredMl} ml.`,
+      warning: false,
+    };
+  const availableMl = sources.reduce(
+    (total, item) => total + item.remainingMl,
+    0,
+  );
+  return {
+    message: availableMl
+      ? `No hay un frasco abierto con los ${requiredMl} ml necesarios. Hay ${availableMl} ml disponibles entre los frascos abiertos.`
+      : `No hay un frasco abierto para este decant. Abre uno con al menos ${requiredMl} ml desde Inventario.`,
+    warning: true,
+  };
+}
 const saleFilters = reactive({
   query: queryText(route.query.saleQuery),
   status: queryText(route.query.saleStatus),
@@ -1585,7 +1637,14 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 >
                   {{ item.label }}
                 </option>
-              </select></label
+              </select>
+              <small
+                v-if="decantSaleInfo(line)"
+                class="decant-availability"
+                :class="{ 'is-warning': decantSaleInfo(line)?.warning }"
+              >
+                {{ decantSaleInfo(line)?.message }}
+              </small></label
             ><label
               >Cantidad<input
                 v-model.number="line.quantity"
@@ -2280,11 +2339,11 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
               >Presentación<select v-model="line.selection" required>
                 <option value="">Selecciona…</option>
                 <option
-                  v-for="item in options"
+                  v-for="item in purchaseOptions"
                   :key="item.productId + item.variantId"
                   :value="`${item.productId}/${item.variantId}`"
                 >
-                  {{ item.label }}
+                  {{ item.purchaseLabel }}
                 </option>
               </select></label
             ><label
