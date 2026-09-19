@@ -336,6 +336,10 @@ function edit(p?: Product) {
   baseNotes.value = editor.value.olfactoryPyramid.base.join(", ");
   idealFor.value = editor.value.idealFor.join(", ");
 }
+function openProduct(productId: string) {
+  tab.value = "products";
+  updateAdminQuery({ editor: productId });
+}
 function openEditor(product?: Product) {
   edit(product);
   updateAdminQuery({ editor: product?.id ?? "new" });
@@ -599,6 +603,7 @@ function move(index: number, direction: number) {
         :get-headers="headers"
         :catalog="catalog"
         @open-orders="tab = 'orders'"
+        @open-product="openProduct"
       />
       <section v-else-if="tab === 'settings'" class="settings">
         <h2>Configuración de la tienda</h2>
@@ -923,9 +928,10 @@ function move(index: number, direction: number) {
         </div>
         <h3>Presentaciones</h3>
         <p class="muted admin-help">
-          Marca como decant las presentaciones que se envasan desde este
-          perfume. Esas opciones aparecerán automáticamente en la página
-          Decants.
+          Para vender decants, añade una presentación por cada medida, por
+          ejemplo 5 ml y 10 ml. Marca cada una como Decant y asigna su precio de
+          venta individual. Solo aparecerán en Ventas cuando haya un frasco
+          abierto de este mismo perfume.
         </p>
         <div
           v-for="(v, i) in editor?.variants"

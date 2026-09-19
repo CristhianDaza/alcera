@@ -2891,12 +2891,57 @@ select {
   display: grid;
   grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(100px, 1fr));
   gap: 10px;
-  align-items: end;
+  align-items: start;
   padding: 14px 0;
   border-bottom: 1px solid var(--line);
 }
 .business-line label {
   min-width: 0;
+}
+.sale-picker {
+  position: relative;
+  min-width: 0;
+}
+.sale-picker label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.sale-picker-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 310px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--paper);
+  box-shadow: 0 14px 30px #21171324;
+}
+.sale-picker-hint,
+.sale-picker-empty {
+  margin: 7px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.sale-picker-option {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  padding: 10px 8px;
+  text-align: left;
+  font-size: 12px;
+}
+.sale-picker-option:hover,
+.sale-picker-option:focus-visible {
+  background: var(--surface);
+  outline: none;
 }
 .decant-availability {
   display: block;
@@ -2995,7 +3040,7 @@ select {
   .business-line {
     grid-template-columns: 1fr 1fr;
   }
-  .business-line label:first-child {
+  .business-line > :first-child {
     grid-column: 1 / -1;
   }
 }

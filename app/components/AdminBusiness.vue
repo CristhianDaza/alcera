@@ -26,7 +26,10 @@ const props = defineProps<{
   getHeaders: () => Promise<{ Authorization: string }>;
   catalog: Product[];
 }>();
-const emit = defineEmits<{ openOrders: [] }>();
+const emit = defineEmits<{
+  openOrders: [];
+  openProduct: [productId: string];
+}>();
 const route = useRoute();
 const router = useRouter();
 const queryText = (value: unknown) => (typeof value === "string" ? value : "");
@@ -179,6 +182,16 @@ const options = computed(() =>
 const purchaseOptions = computed(() =>
   options.value.filter((item) => !item.isDecant),
 );
+const saleOptions = computed(() =>
+  options.value.filter(
+    (item) =>
+      !item.isDecant ||
+      decantSources.value.some(
+        (source) =>
+          source.productId === item.productId && source.status === "open",
+      ),
+  ),
+);
 
 async function api<T>(url: string, options: Parameters<typeof $fetch>[1] = {}) {
   return await $fetch<T>(url, {
@@ -253,6 +266,24 @@ async function loadMoreSales() {
   }
 }
 
+type SaleFormLine = {
+  selection: string;
+  query: string;
+  pickerOpen: boolean;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+};
+function saleLine(input: Partial<SaleFormLine> = {}): SaleFormLine {
+  return {
+    selection: input.selection ?? "",
+    query: input.query ?? "",
+    pickerOpen: input.pickerOpen ?? false,
+    quantity: input.quantity ?? 1,
+    unitPrice: input.unitPrice ?? 0,
+    discount: input.discount ?? 0,
+  };
+}
 const saleForm = reactive({
   date: today(),
   customerName: "",
@@ -261,8 +292,32 @@ const saleForm = reactive({
   channel: "physical",
   shipping: 0,
   notes: "",
-  items: [{ selection: "", quantity: 1, unitPrice: 0, discount: 0 }],
+  items: [saleLine()],
 });
+const normalizePicker = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es")
+    .trim();
+function saleMatches(line: SaleFormLine) {
+  const term = normalizePicker(line.query);
+  const matches = term
+    ? saleOptions.value.filter((item) =>
+        normalizePicker(item.label).includes(term),
+      )
+    : saleOptions.value.filter((item) => item.isDecant);
+  return matches.slice(0, 10);
+}
+function selectSaleOption(
+  line: SaleFormLine,
+  option: (typeof saleOptions.value)[number],
+) {
+  line.selection = `${option.productId}/${option.variantId}`;
+  line.query = option.label;
+  line.unitPrice = option.price;
+  line.pickerOpen = false;
+}
 function decantSaleInfo(line: { selection: string; quantity: number }) {
   const option = options.value.find(
     (item) => `${item.productId}/${item.variantId}` === line.selection,
@@ -421,12 +476,6 @@ watch(
     }),
   { deep: true },
 );
-function useCatalogPrice(line: (typeof saleForm.items)[number]) {
-  const match = options.value.find(
-    (item) => `${item.productId}/${item.variantId}` === line.selection,
-  );
-  if (match) line.unitPrice = match.price;
-}
 async function createSale() {
   if (saleForm.items.some((item) => !item.selection)) return;
   await perform(async () => {
@@ -473,7 +522,7 @@ async function createSale() {
       channel: "physical",
       shipping: 0,
       notes: "",
-      items: [{ selection: "", quantity: 1, unitPrice: 0, discount: 0 }],
+      items: [saleLine()],
     });
     await load("sales");
     return "Venta registrada.";
@@ -1623,29 +1672,51 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
             :key="index"
             class="business-line wide"
           >
-            <label
-              >Presentación<select
-                v-model="line.selection"
-                required
-                @change="useCatalogPrice(line)"
-              >
-                <option value="">Selecciona…</option>
-                <option
-                  v-for="item in options"
+            <div class="sale-picker">
+              <label
+                >Presentación<input
+                  v-model="line.query"
+                  type="search"
+                  autocomplete="off"
+                  placeholder="Busca perfume, tamaño o decant…"
+                  @focus="line.pickerOpen = true"
+                  @blur="line.pickerOpen = false"
+                  @keydown.esc="line.pickerOpen = false"
+                  @input="
+                    line.selection = '';
+                    line.pickerOpen = true;
+                  "
+              /></label>
+              <div v-if="line.pickerOpen" class="sale-picker-menu">
+                <p class="sale-picker-hint">
+                  {{
+                    line.query
+                      ? "Resultados de búsqueda"
+                      : "Decants disponibles. Escribe para buscar un frasco completo."
+                  }}
+                </p>
+                <button
+                  v-for="item in saleMatches(line)"
                   :key="item.productId + item.variantId"
-                  :value="`${item.productId}/${item.variantId}`"
+                  type="button"
+                  class="sale-picker-option"
+                  @mousedown.prevent="selectSaleOption(line, item)"
                 >
                   {{ item.label }}
-                </option>
-              </select>
+                </button>
+                <p v-if="!saleMatches(line).length" class="sale-picker-empty">
+                  No hay coincidencias.
+                </p>
+              </div>
               <small
                 v-if="decantSaleInfo(line)"
                 class="decant-availability"
                 :class="{ 'is-warning': decantSaleInfo(line)?.warning }"
               >
                 {{ decantSaleInfo(line)?.message }}
-              </small></label
-            ><label
+              </small>
+            </div>
+            <label
               >Cantidad<input
                 v-model.number="line.quantity"
                 type="number"
@@ -1670,14 +1741,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           <button
             type="button"
             class="text-link"
-            @click="
-              saleForm.items.push({
-                selection: '',
-                quantity: 1,
-                unitPrice: 0,
-                discount: 0,
-              })
-            "
+            @click="saleForm.items.push(saleLine())"
           >
             Añadir línea ＋</button
           ><label class="wide"
@@ -2178,6 +2242,13 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                     @click="adjustDecantSource(source)"
                   >
                     Ajustar ml
+                  </button>
+                  <button
+                    type="button"
+                    class="text-link"
+                    @click="emit('openProduct', source.productId)"
+                  >
+                    Configurar 5 / 10 ml
                   </button>
                 </td>
               </tr>
