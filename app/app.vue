@@ -9,6 +9,10 @@ import {
 const store = useStore();
 const { data } = await useFetch("/api/settings");
 if (data.value) store.value = data.value;
+const { data: decantsAvailable } = await useFetch<boolean>(
+  "/api/products/decants-available",
+  { default: () => false },
+);
 const { count } = useCart();
 const demo = String(useRuntimeConfig().public.demo) === "true";
 const route = useRoute();
@@ -58,14 +62,16 @@ useHead(() => ({
     },
   ],
 }));
-const navigation = [
+const navigation = computed(() => [
   { label: "Colección", category: "", to: "/perfumes" },
   { label: "Mujer", category: "Mujer", to: "/categorias/mujer" },
   { label: "Hombre", category: "Hombre", to: "/categorias/hombre" },
   { label: "Unisex", category: "Unisex", to: "/categorias/unisex" },
-  { label: "Decants", category: null, to: "/decants" },
+  ...(decantsAvailable.value
+    ? [{ label: "Decants", category: null, to: "/decants" }]
+    : []),
   { label: "Guía", category: null, to: "/guia-de-perfumes" },
-];
+]);
 const activeCategory = computed(() =>
   /^\/perfumes\/?$/.test(route.path)
     ? route.query.category || ""
@@ -77,7 +83,7 @@ const activeCategory = computed(() =>
           ? "Unisex"
           : null,
 );
-function isNavigationCurrent(item: (typeof navigation)[number]) {
+function isNavigationCurrent(item: (typeof navigation.value)[number]) {
   return item.category === null
     ? route.path === item.to
     : activeCategory.value === item.category;
