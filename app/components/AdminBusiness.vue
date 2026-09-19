@@ -1796,7 +1796,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 <td>{{ item.quantity }}</td>
                 <td>{{ money(item.lineTotal) }}</td>
                 <td>{{ money(item.unitCost * item.quantity) }}</td>
-                <td>
+                <td class="row-actions table-actions">
                   <button
                     v-if="
                       saleDetail.sale.inventoryAppliedAt &&
@@ -2011,7 +2011,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
               <td>{{ row.minimumStock }}</td>
               <td>{{ money(row.averageCost) }}</td>
               <td>{{ money(row.value) }}</td>
-              <td>
+              <td class="row-actions table-actions inventory-actions">
                 <button
                   class="text-link"
                   type="button"
@@ -2111,7 +2111,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                         : "Descartado"
                   }}
                 </td>
-                <td>
+                <td class="row-actions table-actions">
                   <button
                     v-if="source.status !== 'discarded'"
                     type="button"
@@ -2365,7 +2365,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 <td>
                   {{ supplier.paymentTerms || "Sin condiciones registradas" }}
                 </td>
-                <td>
+                <td class="row-actions table-actions">
                   <button
                     type="button"
                     class="text-link"
@@ -2413,7 +2413,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                   purchase.paymentStatus === "paid" ? "Pagada" : "Por pagar"
                 }}</small>
               </td>
-              <td>
+              <td class="row-actions purchase-actions">
                 <button
                   v-if="purchase.status === 'draft'"
                   class="text-link"
@@ -2580,7 +2580,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                       : "Pendiente"
                 }}
               </td>
-              <td>
+              <td class="row-actions table-actions">
                 <button
                   v-if="item.status === 'pending'"
                   class="text-link"

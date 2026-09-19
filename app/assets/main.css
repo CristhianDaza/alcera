@@ -2940,6 +2940,21 @@ select {
   flex-wrap: wrap;
   gap: 10px;
 }
+.purchase-actions {
+  min-width: 235px;
+  align-items: center;
+}
+.table-actions {
+  min-width: 150px;
+  align-items: center;
+}
+.table-actions .text-link,
+.purchase-actions .text-link {
+  white-space: nowrap;
+}
+.inventory-actions {
+  min-width: 205px;
+}
 .status-pill {
   display: inline-block;
   padding: 5px 9px;
