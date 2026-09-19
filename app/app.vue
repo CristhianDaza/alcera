@@ -140,7 +140,7 @@ watch(
     </div>
     <header class="header shell">
       <NuxtLink class="brand-link" to="/"
-        ><BrandMark :name="store.name"
+        ><BrandMark :name="store.name" compact-on-mobile
       /></NuxtLink>
       <nav
         id="header-navigation"
@@ -148,6 +148,7 @@ watch(
         aria-label="Principal"
         @click="mobileMenuOpen = false"
       >
+        <span class="mobile-nav-title">Explorar</span>
         <NuxtLink
           v-for="item in navigation"
           :key="item.label"
@@ -165,19 +166,6 @@ watch(
         </NuxtLink>
       </nav>
       <HeaderSearch />
-      <button
-        class="menu-trigger"
-        type="button"
-        aria-controls="header-navigation"
-        :aria-expanded="mobileMenuOpen"
-        :aria-label="mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'"
-        @click="mobileMenuOpen = !mobileMenuOpen"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path v-if="!mobileMenuOpen" d="M4 7h16M4 12h16M4 17h16" />
-          <path v-else d="m6 6 12 12M18 6 6 18" />
-        </svg>
-      </button>
       <div class="header-actions">
         <ThemeToggle /><NuxtLink
           to="/carrito"
@@ -201,6 +189,19 @@ watch(
           ></NuxtLink
         >
       </div>
+      <button
+        class="menu-trigger"
+        type="button"
+        aria-controls="header-navigation"
+        :aria-expanded="mobileMenuOpen"
+        :aria-label="mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'"
+        @click="mobileMenuOpen = !mobileMenuOpen"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path v-if="!mobileMenuOpen" d="M4 7h16M4 12h16M4 17h16" />
+          <path v-else d="m6 6 12 12M18 6 6 18" />
+        </svg>
+      </button>
     </header>
     <main id="main" tabindex="-1"><NuxtPage /></main>
     <footer class="footer">
