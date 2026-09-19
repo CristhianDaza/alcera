@@ -111,6 +111,50 @@ const labels: Record<string, string> = {
   adjustment: "Ajuste",
   sale_refund: "Devolución de venta",
 };
+type ActionModalField = {
+  key: string;
+  label: string;
+  value: string;
+  type?: "text" | "number" | "select";
+  options?: Array<{ value: string; label: string }>;
+  required?: boolean;
+  min?: number;
+  step?: number;
+  help?: string;
+};
+type ActionModal = {
+  title: string;
+  description?: string;
+  confirmLabel: string;
+  fields: ActionModalField[];
+  resolve: (values: Record<string, string> | null) => void;
+};
+const actionModal = ref<ActionModal | null>(null);
+const accountOptions = cashAccounts.map((account) => ({
+  value: account,
+  label: labels[account] || account,
+}));
+function requestActionModal(input: Omit<ActionModal, "resolve">) {
+  return new Promise<Record<string, string> | null>((resolve) => {
+    actionModal.value = {
+      ...input,
+      fields: input.fields.map((field) => ({ ...field })),
+      resolve,
+    };
+  });
+}
+function closeActionModal() {
+  actionModal.value?.resolve(null);
+  actionModal.value = null;
+}
+function submitActionModal() {
+  if (!actionModal.value) return;
+  const modal = actionModal.value;
+  modal.resolve(
+    Object.fromEntries(modal.fields.map((field) => [field.key, field.value])),
+  );
+  actionModal.value = null;
+}
 const options = computed(() =>
   props.catalog.flatMap((product) =>
     product.variants.map((variant) => ({
@@ -243,29 +287,52 @@ async function openSale(sale: Sale) {
 }
 async function returnSaleItem(item: Sale["items"][number]) {
   if (!saleDetail.value) return;
-  const quantity = window.prompt(
-    `Cantidad a devolver de ${item.name} · ${item.size}`,
-    "1",
-  );
-  if (!quantity) return;
-  const refund = window.prompt(
-    "Dinero que se devolverá al cliente (COP; 0 si no aplica)",
-    String(item.unitPrice * Number(quantity)),
-  );
-  if (refund === null) return;
-  const reason = window.prompt(
-    "Motivo de la devolución",
-    "Devolución del cliente",
-  );
-  if (!reason) return;
-  let refundAccount: string | undefined;
-  if (Number(refund) > 0) {
-    const account = window.prompt(
-      "Cuenta del reembolso: cash, nequi, bancolombia, daviplata, card u other",
-      "cash",
-    );
-    if (!account || !cashAccounts.includes(account as never)) return;
-    refundAccount = account;
+  const values = await requestActionModal({
+    title: "Registrar devolución",
+    description: `${item.name} · ${item.size}`,
+    confirmLabel: "Registrar devolución",
+    fields: [
+      {
+        key: "quantity",
+        label: "Unidades a devolver",
+        value: "1",
+        type: "number",
+        min: 1,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "refund",
+        label: "Dinero a devolver (COP)",
+        value: String(item.unitPrice),
+        type: "number",
+        min: 0,
+        step: 1,
+        required: true,
+        help: "Escribe 0 si no entregarás dinero al cliente.",
+      },
+      {
+        key: "refundAccount",
+        label: "Cuenta del reembolso",
+        value: "cash",
+        type: "select",
+        options: accountOptions,
+        help: "Solo se usa si hay dinero para devolver.",
+      },
+      {
+        key: "reason",
+        label: "Motivo",
+        value: "Devolución del cliente",
+        required: true,
+      },
+    ],
+  });
+  if (!values) return;
+  const quantity = Number(values.quantity);
+  const refund = Number(values.refund);
+  if (!Number.isInteger(quantity) || quantity < 1 || refund < 0) {
+    notice.value = "Revisa las unidades y el valor del reembolso.";
+    return;
   }
   const saleId = saleDetail.value.sale.id;
   await perform(async () => {
@@ -277,12 +344,12 @@ async function returnSaleItem(item: Sale["items"][number]) {
           {
             productId: item.productId,
             variantId: item.variantId,
-            quantity: Number(quantity),
+            quantity,
           },
         ],
-        refundAmount: Number(refund),
-        refundAccount,
-        reason,
+        refundAmount: refund,
+        refundAccount: refund > 0 ? values.refundAccount : undefined,
+        reason: values.reason,
       },
     });
     await load("sales");
@@ -430,24 +497,42 @@ async function shipSale(sale: Sale) {
   });
 }
 async function cancelSale(sale: Sale) {
-  const reason = window.prompt("Motivo obligatorio de la anulación:");
-  if (!reason) return;
-  let refundAccount: string | undefined;
-  if (sale.paidTotal > 0) {
-    const selected = window.prompt(
-      `Se registrará una devolución de ${money(sale.paidTotal)}. Escribe la cuenta: cash, nequi, bancolombia, daviplata, card u other`,
-      "cash",
-    );
-    if (!selected || !cashAccounts.includes(selected as never)) {
-      notice.value = "Cuenta de devolución inválida.";
-      return;
-    }
-    refundAccount = selected;
-  }
+  const values = await requestActionModal({
+    title: "Anular venta",
+    description:
+      sale.paidTotal > 0
+        ? `Se registrará una devolución de ${money(sale.paidTotal)}.`
+        : "La venta quedará anulada y el inventario se restaurará si ya se había descontado.",
+    confirmLabel: "Anular venta",
+    fields: [
+      {
+        key: "reason",
+        label: "Motivo de la anulación",
+        value: "",
+        required: true,
+      },
+      ...(sale.paidTotal > 0
+        ? [
+            {
+              key: "refundAccount",
+              label: "Cuenta para la devolución",
+              value: "cash",
+              type: "select" as const,
+              options: accountOptions,
+              required: true,
+            },
+          ]
+        : []),
+    ],
+  });
+  if (!values) return;
   await perform(async () => {
     await api(`/api/admin/sales/${sale.id}/cancel`, {
       method: "POST",
-      body: { reason, refundAccount },
+      body: {
+        reason: values.reason,
+        refundAccount: sale.paidTotal > 0 ? values.refundAccount : undefined,
+      },
     });
     await load("sales");
     return "Venta anulada, inventario restaurado y devolución registrada cuando aplicaba.";
@@ -565,37 +650,75 @@ async function createMovement() {
   });
 }
 async function configureStock(row: InventoryRow) {
-  const minimum = window.prompt("Stock mínimo", String(row.minimumStock));
-  if (minimum === null) return;
-  const cost = window.prompt(
-    "Costo promedio unitario (COP)",
-    String(row.averageCost),
-  );
-  if (cost === null) return;
-  const mode = window.prompt("Modo: stock, on_demand o decant", row.mode);
-  if (!mode || !["stock", "on_demand", "decant"].includes(mode)) {
-    notice.value = "El modo debe ser stock, on_demand o decant.";
+  const values = await requestActionModal({
+    title: "Configurar inventario",
+    description: `${row.name} · ${row.size}`,
+    confirmLabel: "Guardar configuración",
+    fields: [
+      {
+        key: "minimum",
+        label: "Stock mínimo",
+        value: String(row.minimumStock),
+        type: "number",
+        min: 0,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "cost",
+        label: "Costo promedio unitario (COP)",
+        value: String(row.averageCost),
+        type: "number",
+        min: 0,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "mode",
+        label: "Modalidad",
+        value: row.mode,
+        type: "select",
+        options: [
+          { value: "on_demand", label: "Por encargo" },
+          { value: "stock", label: "Con existencias" },
+          { value: "decant", label: "Decant" },
+        ],
+        required: true,
+      },
+      {
+        key: "packaging",
+        label: "Costo de atomizador, etiqueta y empaque (COP)",
+        value: String(row.decantPackagingCost),
+        type: "number",
+        min: 0,
+        step: 1,
+        help: "Solo aplica si seleccionas Decant.",
+      },
+    ],
+  });
+  if (!values) return;
+  const minimum = Number(values.minimum);
+  const cost = Number(values.cost);
+  if (
+    !Number.isInteger(minimum) ||
+    minimum < 0 ||
+    !Number.isInteger(cost) ||
+    cost < 0
+  ) {
+    notice.value = "El mínimo y el costo deben ser valores válidos.";
     return;
   }
-  const packaging =
-    mode === "decant"
-      ? window.prompt(
-          "Costo de atomizador, etiqueta y empaque por decant (COP)",
-          String(row.decantPackagingCost),
-        )
-      : null;
-  if (packaging === null && mode === "decant") return;
   await perform(async () => {
     await api(
       `/api/admin/inventory/${row.productId}/${row.variantId}/settings`,
       {
         method: "PATCH",
         body: {
-          minimumStock: Number(minimum),
-          averageCost: Number(cost),
-          mode,
+          minimumStock: minimum,
+          averageCost: cost,
+          mode: values.mode,
           decantPackagingCost:
-            mode === "decant" ? Number(packaging) : undefined,
+            values.mode === "decant" ? Number(values.packaging) : undefined,
         },
       },
     );
@@ -605,18 +728,30 @@ async function configureStock(row: InventoryRow) {
 }
 async function openDecantSource(row: InventoryRow) {
   const suggested = row.size.match(/\d+/)?.[0] ?? "";
-  const usableMl = window.prompt(
-    `Mililitros utilizables de ${row.name} · ${row.size}`,
-    suggested,
-  );
-  if (usableMl === null) return;
+  const values = await requestActionModal({
+    title: "Abrir frasco para decants",
+    description: `${row.name} · ${row.size}`,
+    confirmLabel: "Abrir frasco",
+    fields: [
+      {
+        key: "usableMl",
+        label: "Mililitros utilizables",
+        value: suggested,
+        type: "number",
+        min: 1,
+        step: 1,
+        required: true,
+      },
+    ],
+  });
+  if (!values || Number(values.usableMl) < 1) return;
   await perform(async () => {
     await api("/api/admin/inventory/decant-sources", {
       method: "POST",
       body: {
         productId: row.productId,
         variantId: row.variantId,
-        usableMl: Number(usableMl) || undefined,
+        usableMl: Number(values.usableMl),
       },
     });
     await load("inventory");
@@ -624,25 +759,49 @@ async function openDecantSource(row: InventoryRow) {
   });
 }
 async function adjustDecantSource(source: DecantSource) {
-  const change = window.prompt(
-    "Cambio en mililitros (usa negativo para muestra, pérdida o corrección)",
-    "-1",
-  );
-  if (!change) return;
-  const type = window.prompt(
-    "Tipo: sample, damage_loss o adjustment",
-    "adjustment",
-  );
-  if (!type || !["sample", "damage_loss", "adjustment"].includes(type)) return;
-  const reason = window.prompt(
-    "Motivo del ajuste",
-    "Conteo del frasco abierto",
-  );
-  if (!reason) return;
+  const values = await requestActionModal({
+    title: "Ajustar frasco abierto",
+    description: `${source.name} · ${source.size} · quedan ${source.remainingMl} ml`,
+    confirmLabel: "Guardar ajuste",
+    fields: [
+      {
+        key: "change",
+        label: "Cambio en mililitros",
+        value: "-1",
+        type: "number",
+        step: 1,
+        required: true,
+        help: "Usa un valor negativo para restar mililitros.",
+      },
+      {
+        key: "type",
+        label: "Tipo de movimiento",
+        value: "adjustment",
+        type: "select",
+        options: [
+          { value: "adjustment", label: "Ajuste" },
+          { value: "sample", label: "Muestra / regalo" },
+          { value: "damage_loss", label: "Daño o pérdida" },
+        ],
+        required: true,
+      },
+      {
+        key: "reason",
+        label: "Motivo",
+        value: "Conteo del frasco abierto",
+        required: true,
+      },
+    ],
+  });
+  if (!values || !Number(values.change)) return;
   await perform(async () => {
     await api(`/api/admin/inventory/decant-sources/${source.id}/adjust`, {
       method: "POST",
-      body: { quantityChange: Number(change), type, reason },
+      body: {
+        quantityChange: Number(values.change),
+        type: values.type,
+        reason: values.reason,
+      },
     });
     await load("inventory");
     return "Mililitros del frasco actualizados.";
@@ -684,16 +843,20 @@ async function createSupplier() {
   });
 }
 async function editSupplier(supplier: Supplier) {
-  const name = window.prompt("Nombre del proveedor", supplier.name);
-  if (!name) return;
-  const phone = window.prompt("Teléfono", supplier.phone ?? "");
-  if (phone === null) return;
-  const city = window.prompt("Ciudad", supplier.city ?? "");
-  if (city === null) return;
+  const values = await requestActionModal({
+    title: "Editar proveedor",
+    confirmLabel: "Guardar proveedor",
+    fields: [
+      { key: "name", label: "Nombre", value: supplier.name, required: true },
+      { key: "phone", label: "Teléfono", value: supplier.phone ?? "" },
+      { key: "city", label: "Ciudad", value: supplier.city ?? "" },
+    ],
+  });
+  if (!values) return;
   await perform(async () => {
     await api(`/api/admin/suppliers/${supplier.id}`, {
       method: "PATCH",
-      body: { name, phone, city },
+      body: values,
     });
     await load("purchases");
     return "Proveedor actualizado.";
@@ -769,10 +932,13 @@ async function createPurchase() {
   });
 }
 async function confirmPurchase(purchase: Purchase) {
-  if (
-    !window.confirm(`¿Confirmar ${purchase.number}? Aumentará el inventario.`)
-  )
-    return;
+  const values = await requestActionModal({
+    title: "Confirmar compra",
+    description: `${purchase.number}. Las unidades entrarán al inventario.`,
+    confirmLabel: "Confirmar compra",
+    fields: [],
+  });
+  if (!values) return;
   await perform(async () => {
     await api(`/api/admin/purchases/${purchase.id}/confirm`, {
       method: "POST",
@@ -782,38 +948,69 @@ async function confirmPurchase(purchase: Purchase) {
   });
 }
 async function payPurchase(purchase: Purchase) {
-  const account = window.prompt(
-    "Cuenta de salida: cash, nequi, bancolombia, daviplata, card u other",
-    "cash",
-  );
-  if (!account || !cashAccounts.includes(account as never)) return;
+  const values = await requestActionModal({
+    title: "Pagar compra",
+    description: `${purchase.number} · ${money(purchase.total)}`,
+    confirmLabel: "Registrar pago",
+    fields: [
+      {
+        key: "account",
+        label: "Cuenta de salida",
+        value: "cash",
+        type: "select",
+        options: accountOptions,
+        required: true,
+      },
+    ],
+  });
+  if (!values) return;
   await perform(async () => {
     await api(`/api/admin/purchases/${purchase.id}/pay`, {
       method: "POST",
-      body: { date: new Date().toISOString(), cashAccount: account },
+      body: { date: new Date().toISOString(), cashAccount: values.account },
     });
     await load("purchases");
     return "Pago de compra registrado en caja.";
   });
 }
 async function cancelPurchase(purchase: Purchase) {
-  const reason = window.prompt(
-    "Motivo de cancelación o devolución al proveedor",
-  );
-  if (!reason) return;
-  let refundAccount: string | undefined;
-  if (purchase.status === "confirmed" && purchase.paymentStatus === "paid") {
-    const account = window.prompt(
-      "Cuenta que recibe la devolución: cash, nequi, bancolombia, daviplata, card u other",
-      "cash",
-    );
-    if (!account || !cashAccounts.includes(account as never)) return;
-    refundAccount = account;
-  }
+  const receivesRefund =
+    purchase.status === "confirmed" && purchase.paymentStatus === "paid";
+  const values = await requestActionModal({
+    title: "Cancelar compra",
+    description: receivesRefund
+      ? "Se restaurará el dinero de la compra en la cuenta seleccionada."
+      : "Se crearán los movimientos necesarios para revertir la compra.",
+    confirmLabel: "Cancelar compra",
+    fields: [
+      {
+        key: "reason",
+        label: "Motivo de cancelación o devolución",
+        value: "",
+        required: true,
+      },
+      ...(receivesRefund
+        ? [
+            {
+              key: "refundAccount",
+              label: "Cuenta que recibe la devolución",
+              value: "cash",
+              type: "select" as const,
+              options: accountOptions,
+              required: true,
+            },
+          ]
+        : []),
+    ],
+  });
+  if (!values) return;
   await perform(async () => {
     await api(`/api/admin/purchases/${purchase.id}/cancel`, {
       method: "POST",
-      body: { reason, refundAccount },
+      body: {
+        reason: values.reason,
+        refundAccount: receivesRefund ? values.refundAccount : undefined,
+      },
     });
     await load("purchases");
     return "Compra cancelada con sus movimientos de reverso.";
@@ -900,18 +1097,29 @@ async function selectExpenseReceipt(event: Event) {
   });
 }
 async function payExpense(expense: Expense) {
-  const account = window.prompt(
-    "Cuenta de salida: cash, nequi, bancolombia, daviplata, card u other",
-    "cash",
-  );
-  if (!account || !cashAccounts.includes(account as never)) return;
+  const values = await requestActionModal({
+    title: "Pagar gasto",
+    description: `${expense.description} · ${money(expense.amount)}`,
+    confirmLabel: "Registrar pago",
+    fields: [
+      {
+        key: "account",
+        label: "Cuenta de salida",
+        value: "cash",
+        type: "select",
+        options: accountOptions,
+        required: true,
+      },
+    ],
+  });
+  if (!values) return;
   await perform(async () => {
     await api(`/api/admin/expenses/${expense.id}/pay`, {
       method: "POST",
       body: {
         date: new Date().toISOString(),
         paymentMethod: "cash",
-        cashAccount: account,
+        cashAccount: values.account,
       },
     });
     await load("expenses");
@@ -919,21 +1127,42 @@ async function payExpense(expense: Expense) {
   });
 }
 async function reverseExpense(expense: Expense) {
-  const reason = window.prompt("Motivo del reverso");
-  if (!reason) return;
-  let cashAccount: string | undefined;
-  if (expense.status === "paid") {
-    const account = window.prompt(
-      "Cuenta que recibe el reverso: cash, nequi, bancolombia, daviplata, card u other",
-      expense.cashAccount ?? "cash",
-    );
-    if (!account || !cashAccounts.includes(account as never)) return;
-    cashAccount = account;
-  }
+  const isPaid = expense.status === "paid";
+  const values = await requestActionModal({
+    title: "Reversar gasto",
+    description: isPaid
+      ? "El dinero regresará a la cuenta que selecciones."
+      : "El gasto pendiente quedará reversado.",
+    confirmLabel: "Reversar gasto",
+    fields: [
+      {
+        key: "reason",
+        label: "Motivo del reverso",
+        value: "",
+        required: true,
+      },
+      ...(isPaid
+        ? [
+            {
+              key: "cashAccount",
+              label: "Cuenta que recibe el reverso",
+              value: expense.cashAccount ?? "cash",
+              type: "select" as const,
+              options: accountOptions,
+              required: true,
+            },
+          ]
+        : []),
+    ],
+  });
+  if (!values) return;
   await perform(async () => {
     await api(`/api/admin/expenses/${expense.id}/reverse`, {
       method: "POST",
-      body: { reason, cashAccount },
+      body: {
+        reason: values.reason,
+        cashAccount: isPaid ? values.cashAccount : undefined,
+      },
     });
     await load("expenses");
     return "Gasto reversado sin borrar su auditoría.";
@@ -2615,4 +2844,77 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
       </div>
     </template>
   </section>
+  <Teleport to="body">
+    <div
+      v-if="actionModal"
+      class="business-modal-backdrop"
+      @click.self="closeActionModal"
+    >
+      <section
+        class="business-modal"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="actionModal.title"
+      >
+        <div class="section-heading">
+          <div>
+            <h2>{{ actionModal.title }}</h2>
+            <p v-if="actionModal.description" class="muted">
+              {{ actionModal.description }}
+            </p>
+          </div>
+          <button
+            type="button"
+            class="text-link"
+            aria-label="Cerrar"
+            @click="closeActionModal"
+          >
+            Cerrar
+          </button>
+        </div>
+        <form
+          class="admin-fields compact-form"
+          @submit.prevent="submitActionModal"
+        >
+          <label
+            v-for="field in actionModal.fields"
+            :key="field.key"
+            class="wide"
+          >
+            {{ field.label }}
+            <select
+              v-if="field.type === 'select'"
+              v-model="field.value"
+              :required="field.required"
+            >
+              <option
+                v-for="option in field.options"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+            <input
+              v-else
+              v-model="field.value"
+              :type="field.type ?? 'text'"
+              :required="field.required"
+              :min="field.min"
+              :step="field.step"
+            />
+            <small v-if="field.help">{{ field.help }}</small>
+          </label>
+          <div class="row-actions wide business-modal-actions">
+            <button type="button" class="text-link" @click="closeActionModal">
+              Cancelar
+            </button>
+            <button class="button" :disabled="busy">
+              {{ actionModal.confirmLabel }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </Teleport>
 </template>
