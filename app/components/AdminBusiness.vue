@@ -896,6 +896,45 @@ watch(
       purchaseForm.supplierName;
   },
 );
+watch(
+  () => purchaseForm.sourceSaleId,
+  (saleId) => {
+    if (!saleId) return;
+    const sale = sales.value.find((item) => item.id === saleId);
+    if (!sale) return;
+    const lines = new Map<
+      string,
+      {
+        selection: string;
+        quantity: number;
+        unitCost: number;
+        discount: number;
+      }
+    >();
+    for (const item of sale.items) {
+      const selection = `${item.productId}/${item.variantId}`;
+      const option = options.value.find(
+        (candidate) =>
+          candidate.productId === item.productId &&
+          candidate.variantId === item.variantId,
+      );
+      if (option?.inventoryMode !== "on_demand") continue;
+      const current = lines.get(selection);
+      if (current) current.quantity += item.quantity;
+      else
+        lines.set(selection, {
+          selection,
+          quantity: item.quantity,
+          unitCost: 0,
+          discount: 0,
+        });
+    }
+    purchaseForm.items.splice(0, purchaseForm.items.length, ...lines.values());
+    notice.value = lines.size
+      ? "Cargamos los productos por encargo de la venta. Completa el costo del proveedor."
+      : "Esta venta no tiene productos por encargo para comprar.";
+  },
+);
 async function createPurchase() {
   if (purchaseForm.items.some((item) => !item.selection)) return;
   await perform(async () => {
@@ -2209,7 +2248,16 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                   {{ sale.number }} · {{ sale.customer?.name || "Sin cliente" }}
                 </option>
               </select></label
-            ><label
+            >
+            <p
+              v-if="purchaseForm.sourceSaleId"
+              class="muted purchase-sale-note"
+            >
+              Se cargaron los productos y cantidades de esta venta. Completa el
+              costo del proveedor; añade otra línea solo si también vas a pedir
+              algo adicional.
+            </p>
+            <label
               >Factura / referencia<input
                 v-model="purchaseForm.invoice" /></label
             ><label
