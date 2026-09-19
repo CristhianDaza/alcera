@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
 import { money } from "#shared/commerce";
-import { catalogVariants, isDecantVariant } from "#shared/catalog";
+import {
+  catalogVariants,
+  isDecantVariant,
+  productHasDecants,
+} from "#shared/catalog";
 
 const props = defineProps<{
   product: Product;
@@ -19,6 +23,7 @@ const relevantVariants = computed(() =>
 const availableVariants = computed(() =>
   relevantVariants.value.filter((variant) => variant.available),
 );
+const hasDecants = computed(() => productHasDecants(props.product));
 const cardBadge = computed(() => {
   if (!availableVariants.value.length)
     return { label: "Agotado", tone: "sold-out" };
@@ -84,14 +89,16 @@ function trackProductSelection() {
         width="650"
         height="800"
       />
-      <span
-        v-if="cardBadge"
-        class="product-status"
-        :class="`product-status--${cardBadge.tone}`"
-        >{{ cardBadge.label }}</span
-      >
+      <div v-if="cardBadge || hasDecants" class="product-badges">
+        <span
+          v-if="cardBadge"
+          class="product-status"
+          :class="`product-status--${cardBadge.tone}`"
+          >{{ cardBadge.label }}</span
+        >
+        <span v-if="hasDecants" class="decant-tag">Decants</span>
+      </div>
       <span class="product-tag">{{ product.brand }}</span>
-      <span v-if="variantType === 'decant'" class="decant-tag">DECANT</span>
     </div>
     <div class="product-card__details">
       <div class="product-meta">
@@ -157,16 +164,31 @@ function trackProductSelection() {
   opacity: 0;
   transition: opacity 0.25s ease;
 }
-.decant-tag {
+.product-badges {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
-  padding: 6px 9px;
-  background: var(--ink);
-  color: var(--paper);
+  z-index: 2;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+}
+.product-badges .product-status,
+.product-badges .decant-tag {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  padding: 4px 8px;
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.decant-tag {
+  background: var(--ink);
+  color: var(--paper);
 }
 
 @media (hover: hover) {
