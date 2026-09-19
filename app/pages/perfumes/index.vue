@@ -7,7 +7,7 @@ import {
 } from "#shared/seo";
 import { seoLandings } from "#shared/seo-landings";
 import { shoppingOccasions, type ShoppingOccasion } from "#shared/types";
-import { catalogVariants } from "#shared/catalog";
+import { catalogVariants, compareProductPriority } from "#shared/catalog";
 
 const route = useRoute();
 const router = useRouter();
@@ -194,7 +194,7 @@ const filtered = computed(() => {
       ? price(a) - price(b)
       : sort.value === "desc"
         ? price(b) - price(a)
-        : Number(b.featured) - Number(a.featured),
+        : compareProductPriority(a, b),
   );
 });
 const page = computed({

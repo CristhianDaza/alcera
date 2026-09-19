@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isDecantVariant,
   catalogVariants,
+  compareProductPriority,
   productHasDecants,
   selectRelatedProducts,
 } from "../shared/catalog";
@@ -79,5 +80,39 @@ describe("Decants", () => {
     expect(productHasDecants(withDecants)).toBe(true);
     expect(productHasDecants(withDecants, true)).toBe(false);
     expect(catalogVariants(withDecants).every(isDecantVariant)).toBe(false);
+  });
+});
+
+describe("Prioridad comercial", () => {
+  it("muestra más vendidos, novedades y decants antes que destacados", () => {
+    const bottleOnly = {
+      ...product,
+      variants: product.variants.filter((variant) => !isDecantVariant(variant)),
+    };
+    const products = [
+      { ...bottleOnly, id: "normal", featured: false },
+      { ...bottleOnly, id: "destacado", featured: true },
+      {
+        ...bottleOnly,
+        id: "decant",
+        featured: false,
+        variants: [
+          ...bottleOnly.variants,
+          {
+            id: "decant-prioridad",
+            size: "5 ml",
+            price: 30000,
+            available: true,
+            type: "decant" as const,
+          },
+        ],
+      },
+      { ...bottleOnly, id: "nuevo", featured: false, newArrival: true },
+      { ...bottleOnly, id: "vendido", featured: false, bestSeller: true },
+    ];
+
+    expect(
+      products.sort(compareProductPriority).map((item) => item.id),
+    ).toEqual(["vendido", "nuevo", "decant", "destacado", "normal"]);
   });
 });

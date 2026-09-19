@@ -19,6 +19,18 @@ export function catalogVariants(product: Product) {
   return bottles.length ? bottles : product.variants;
 }
 
+export function productPriority(product: Product) {
+  if (product.bestSeller) return 4;
+  if (product.newArrival) return 3;
+  if (productHasDecants(product, true)) return 2;
+  if (product.featured) return 1;
+  return 0;
+}
+
+export function compareProductPriority(a: Product, b: Product) {
+  return productPriority(b) - productPriority(a);
+}
+
 export function selectRelatedProducts(catalog: Product[], product: Product) {
   const otherProducts = catalog.filter((item) => item.id !== product.id);
   const sameBrand = otherProducts

@@ -1,5 +1,5 @@
+import { compareProductPriority } from "#shared/catalog";
+
 export default defineEventHandler(async () =>
-  (await products())
-    .sort((a, b) => Number(b.featured) - Number(a.featured))
-    .slice(0, 12),
+  (await products()).sort(compareProductPriority).slice(0, 12),
 );
