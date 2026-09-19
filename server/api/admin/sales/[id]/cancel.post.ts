@@ -1,9 +1,11 @@
 import { z } from "zod";
 import {
   cashAccounts,
+  remainingSaleItemQuantities,
   type CashMovement,
   type InventoryMovement,
   type Sale,
+  type SaleReturn,
 } from "../../../../../shared/business";
 import type { Product } from "../../../../../shared/types";
 
@@ -54,6 +56,13 @@ export default defineEventHandler(async (event) => {
               movement.type === "sale" && movement.quantityChange < 0,
           )
       : [];
+    const previousReturns = sale.inventoryAppliedAt
+      ? (
+          await tx.get(
+            db.collection("saleReturns").where("saleId", "==", saleId),
+          )
+        ).docs.map((doc) => docData<SaleReturn>(doc))
+      : [];
     const sourceIds = [
       ...new Set(
         originalMovements
@@ -87,7 +96,57 @@ export default defineEventHandler(async (event) => {
     const refundNumber =
       sale.paidTotal > 0 ? await nextNumber(tx, "M", new Date()) : undefined;
     if (sale.inventoryAppliedAt && !sale.inventoryReversedAt) {
-      for (const item of sale.items) {
+      for (const original of originalMovements.filter(
+        (movement) => movement.quantityUnit === "ml" && movement.sourceId,
+      )) {
+        const source =
+          updatedSources.get(original.sourceId!) ??
+          sources.get(original.sourceId!);
+        if (!source)
+          throw createError({
+            statusCode: 409,
+            statusMessage:
+              "No se encontró el frasco fuente del decant para reversar la venta",
+          });
+        const restoredMl = -original.quantityChange;
+        if (source.remainingMl + restoredMl > source.initialMl)
+          throw createError({
+            statusCode: 409,
+            statusMessage:
+              "El frasco abierto fue ajustado después de la venta y no puede restaurarse automáticamente",
+          });
+        const nextSource = {
+          ...source,
+          remainingMl: source.remainingMl + restoredMl,
+          status: "open" as const,
+          updatedAt: at,
+        };
+        updatedSources.set(source.id, nextSource);
+        const movement: InventoryMovement = {
+          id: newId(),
+          productId: original.productId,
+          variantId: original.variantId,
+          type: "customer_return",
+          quantityChange: restoredMl,
+          quantityUnit: "ml",
+          sourceId: source.id,
+          unitCost: original.unitCost,
+          stockBefore: source.remainingMl,
+          stockAfter: nextSource.remainingMl,
+          referenceType: "sale",
+          referenceId: saleId,
+          reason: `Anulación ${sale.number}: ${body.reason}`,
+          occurredAt: at,
+          createdAt: at,
+          createdBy: admin.uid,
+        };
+        tx.set(db.collection("inventoryMovements").doc(movement.id), movement);
+      }
+      for (const { item, quantity } of remainingSaleItemQuantities(
+        sale.items,
+        previousReturns,
+      )) {
+        if (quantity === 0) continue;
         const product =
           updatedProducts.get(item.productId) ?? products.get(item.productId);
         const variant = findVariant(product, item.variantId);
@@ -96,58 +155,17 @@ export default defineEventHandler(async (event) => {
           (movement) =>
             movement.variantId === item.variantId &&
             movement.productId === item.productId &&
-            movement.quantityChange < 0,
+            movement.quantityChange < 0 &&
+            movement.quantityUnit !== "ml",
         );
-        if (original?.quantityUnit === "ml" && original.sourceId) {
-          const source =
-            updatedSources.get(original.sourceId) ??
-            sources.get(original.sourceId);
-          if (!source)
-            throw createError({
-              statusCode: 409,
-              statusMessage:
-                "No se encontró el frasco fuente del decant para reversar la venta",
-            });
-          const restoredMl = -original.quantityChange;
-          const nextSource = {
-            ...source,
-            remainingMl: source.remainingMl + restoredMl,
-            status: "open" as const,
-            updatedAt: at,
-          };
-          updatedSources.set(source.id, nextSource);
-          const movement: InventoryMovement = {
-            id: newId(),
-            productId: item.productId,
-            variantId: item.variantId,
-            type: "customer_return",
-            quantityChange: restoredMl,
-            quantityUnit: "ml",
-            sourceId: source.id,
-            unitCost: item.unitCost,
-            stockBefore: source.remainingMl,
-            stockAfter: nextSource.remainingMl,
-            referenceType: "sale",
-            referenceId: saleId,
-            reason: `Anulación ${sale.number}: ${body.reason}`,
-            occurredAt: at,
-            createdAt: at,
-            createdBy: admin.uid,
-          };
-          tx.set(
-            db.collection("inventoryMovements").doc(movement.id),
-            movement,
-          );
-          original.quantityChange = 0;
-          continue;
-        }
+        if (!original) continue;
         updatedProducts.set(
           item.productId,
           replaceVariant(product!, item.variantId, {
             ...variant,
             inventory: {
               ...current,
-              stock: current.stock + item.quantity,
+              stock: current.stock + quantity,
               updatedAt: at,
             },
           }),
@@ -158,10 +176,10 @@ export default defineEventHandler(async (event) => {
           productId: item.productId,
           variantId: item.variantId,
           type: "customer_return",
-          quantityChange: item.quantity,
+          quantityChange: quantity,
           unitCost: item.unitCost,
           stockBefore: current.stock,
-          stockAfter: current.stock + item.quantity,
+          stockAfter: current.stock + quantity,
           referenceType: "sale",
           referenceId: saleId,
           reason: `Anulación ${sale.number}: ${body.reason}`,

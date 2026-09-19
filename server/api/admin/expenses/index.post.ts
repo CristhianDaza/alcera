@@ -27,6 +27,7 @@ export default defineEventHandler(async (event) => {
       ...body,
       cashMovementId: cashId,
       createdAt: at,
+      updatedAt: at,
       createdBy: admin.uid,
     };
     tx.set(db.collection("expenses").doc(id), firestoreData(expense));

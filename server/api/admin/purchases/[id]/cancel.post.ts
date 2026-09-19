@@ -1,9 +1,11 @@
 import { z } from "zod";
 import {
   cashAccounts,
+  landedUnitCost,
   type CashMovement,
   type InventoryMovement,
   type Purchase,
+  weightedAverageCostAfterRemoval,
 } from "../../../../../shared/business";
 import type { Product } from "../../../../../shared/types";
 
@@ -28,8 +30,7 @@ export default defineEventHandler(async (event) => {
       });
     const purchase = docData<Purchase>(snapshot);
     if (purchase.status === "cancelled") return purchase;
-    const cashWasApplied =
-      purchase.status === "confirmed" && purchase.paymentStatus === "paid";
+    const cashWasApplied = Boolean(purchase.cashMovementId);
     if (cashWasApplied && !body.refundAccount)
       throw createError({
         statusCode: 409,
@@ -57,6 +58,10 @@ export default defineEventHandler(async (event) => {
     const at = nowIso();
     if (purchase.status === "confirmed") {
       const updated = new Map<string, Product>();
+      const merchandiseTotal = purchase.items.reduce(
+        (sum, item) => sum + item.total,
+        0,
+      );
       for (const item of purchase.items) {
         const product =
           updated.get(item.productId) ?? products.get(item.productId);
@@ -68,11 +73,28 @@ export default defineEventHandler(async (event) => {
             statusMessage: `No se puede reversar: ya no están disponibles ${item.quantity} unidades de ${item.name} · ${item.size}`,
           });
         const after = inventory.stock - item.quantity;
+        const netUnitCost = landedUnitCost(
+          item.total,
+          item.quantity,
+          purchase.freight,
+          merchandiseTotal,
+          Boolean(purchase.allocateFreight),
+        );
         updated.set(
           item.productId,
           replaceVariant(product!, item.variantId, {
             ...variant,
-            inventory: { ...inventory, stock: after, updatedAt: at },
+            inventory: {
+              ...inventory,
+              stock: after,
+              averageCost: weightedAverageCostAfterRemoval(
+                inventory.stock,
+                inventory.averageCost,
+                item.quantity,
+                netUnitCost,
+              ),
+              updatedAt: at,
+            },
           }),
         );
         const movement: InventoryMovement = {
@@ -81,7 +103,7 @@ export default defineEventHandler(async (event) => {
           variantId: item.variantId,
           type: "supplier_return",
           quantityChange: -item.quantity,
-          unitCost: item.unitCost,
+          unitCost: netUnitCost,
           stockBefore: inventory.stock,
           stockAfter: after,
           referenceType: "purchase",

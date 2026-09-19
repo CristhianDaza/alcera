@@ -33,10 +33,11 @@ export default defineEventHandler(async (event) => {
         statusCode: 409,
         statusMessage: "El pedido ya fue convertido en venta",
       });
-    if (["cancelled", "lost"].includes(order.status))
+    if (order.status !== "awaiting_payment")
       throw createError({
         statusCode: 409,
-        statusMessage: "No se puede convertir un pedido cancelado o perdido",
+        statusMessage:
+          "Confirma disponibilidad y envío antes de convertir el pedido en venta",
       });
     const refs = [...new Set(order.items.map((item) => item.productId))].map(
       (id) => db.collection("products").doc(id),

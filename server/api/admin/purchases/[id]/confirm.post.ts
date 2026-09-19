@@ -21,6 +21,11 @@ export default defineEventHandler(async (event) => {
       });
     const purchase = docData<Purchase>(purchaseSnapshot);
     if (purchase.confirmedAt) return purchase;
+    if (purchase.status === "cancelled")
+      throw createError({
+        statusCode: 409,
+        statusMessage: "Una compra cancelada no puede confirmarse",
+      });
     const refs = [...new Set(purchase.items.map((item) => item.productId))].map(
       (id) => db.collection("products").doc(id),
     );
@@ -32,7 +37,9 @@ export default defineEventHandler(async (event) => {
       ]),
     );
     let cashNumber: string | undefined;
-    if (purchase.paymentStatus === "paid")
+    const shouldCreateCashMovement =
+      purchase.paymentStatus === "paid" && !purchase.cashMovementId;
+    if (shouldCreateCashMovement)
       cashNumber = await nextNumber(tx, "M", new Date(purchase.date));
     const at = nowIso();
     const updatedProducts = new Map<string, Product>();
@@ -93,8 +100,10 @@ export default defineEventHandler(async (event) => {
       tx.update(db.collection("products").doc(productId), {
         variants: product.variants,
       });
-    if (purchase.paymentStatus === "paid") {
+    let cashMovementId = purchase.cashMovementId;
+    if (shouldCreateCashMovement) {
       const cashId = newId();
+      cashMovementId = cashId;
       const cash: CashMovement = {
         id: cashId,
         number: cashNumber!,
@@ -114,8 +123,18 @@ export default defineEventHandler(async (event) => {
     tx.update(purchaseRef, {
       status: "confirmed",
       confirmedAt: at,
+      ...(cashMovementId
+        ? { cashMovementId, paidAt: purchase.paidAt ?? at }
+        : {}),
       updatedAt: at,
     });
-    return { ...purchase, status: "confirmed", confirmedAt: at, updatedAt: at };
+    return {
+      ...purchase,
+      status: "confirmed",
+      confirmedAt: at,
+      cashMovementId,
+      paidAt: cashMovementId ? (purchase.paidAt ?? at) : purchase.paidAt,
+      updatedAt: at,
+    };
   });
 });

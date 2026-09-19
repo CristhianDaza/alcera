@@ -84,7 +84,13 @@ const dashboard = ref<DashboardData | null>(null),
   expenses = ref<Expense[]>([]),
   cash = ref<CashMovement[]>([]);
 const reports = ref<ReportData | null>(null);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 const monthStart = () => `${today().slice(0, 8)}01`;
 const localIso = (date: string) => `${date}T12:00:00.000Z`;
 const dashboardPeriod = reactive({ from: monthStart(), to: today() });
@@ -220,6 +226,17 @@ async function api<T>(url: string, options: Parameters<typeof $fetch>[1] = {}) {
     headers: await props.getHeaders(),
   } as never);
 }
+function salesQuery(cursor = "") {
+  return {
+    query: saleFilters.query,
+    status: saleFilters.status,
+    channel: saleFilters.channel,
+    paymentMethod: saleFilters.paymentMethod,
+    from: saleFilters.from,
+    to: saleFilters.to,
+    cursor,
+  };
+}
 async function load(target = section.value) {
   busy.value = true;
   notice.value = "";
@@ -230,7 +247,7 @@ async function load(target = section.value) {
       });
     if (target === "sales") {
       const [result, sources] = await Promise.all([
-        api<Sale[]>("/api/admin/sales"),
+        api<Sale[]>("/api/admin/sales", { query: salesQuery() }),
         api<DecantSource[]>("/api/admin/inventory/decant-sources"),
       ]);
       sales.value = result;
@@ -272,7 +289,7 @@ async function loadMoreSales() {
   busy.value = true;
   try {
     const result = await api<Sale[]>("/api/admin/sales", {
-      query: { cursor: salesCursor.value },
+      query: salesQuery(salesCursor.value),
     });
     sales.value.push(
       ...result.filter(
@@ -379,6 +396,7 @@ const saleFilters = reactive({
   query: queryText(route.query.saleQuery),
   status: queryText(route.query.saleStatus),
   channel: queryText(route.query.saleChannel),
+  paymentMethod: queryText(route.query.salePaymentMethod),
   from: queryText(route.query.saleFrom),
   to: queryText(route.query.saleTo),
 });
@@ -407,6 +425,8 @@ const saleDetail = ref<{
   payments: SalePayment[];
   returns: SaleReturn[];
 } | null>(null);
+let salesFilterTimer = 0;
+onBeforeUnmount(() => window.clearTimeout(salesFilterTimer));
 async function openSale(sale: Sale) {
   await perform(async () => {
     saleDetail.value = await api(`/api/admin/sales/${sale.id}`);
@@ -432,7 +452,7 @@ async function returnSaleItem(item: Sale["items"][number]) {
       {
         key: "refund",
         label: "Dinero a devolver (COP)",
-        value: String(item.unitPrice),
+        value: String(Math.round(item.lineTotal / item.quantity)),
         type: "number",
         min: 0,
         step: 1,
@@ -487,14 +507,20 @@ async function returnSaleItem(item: Sale["items"][number]) {
 }
 watch(
   saleFilters,
-  (value) =>
+  (value) => {
     syncFilters({
       saleQuery: value.query,
       saleStatus: value.status,
       saleChannel: value.channel,
+      salePaymentMethod: value.paymentMethod,
       saleFrom: value.from,
       saleTo: value.to,
-    }),
+    });
+    if (section.value === "sales") {
+      window.clearTimeout(salesFilterTimer);
+      salesFilterTimer = window.setTimeout(() => load("sales"), 300);
+    }
+  },
   { deep: true },
 );
 async function createSale() {
@@ -749,6 +775,7 @@ const movementForm = reactive({
   type: "adjustment",
   quantityChange: 1,
   unitCost: 0,
+  reference: "conteo físico",
   reason: "inventario inicial",
 });
 async function createMovement() {
@@ -763,10 +790,15 @@ async function createMovement() {
         type: movementForm.type,
         quantityChange: Number(movementForm.quantityChange),
         unitCost: movementForm.unitCost ? Number(movementForm.unitCost) : null,
+        reference: movementForm.reference,
         reason: movementForm.reason,
         occurredAt: new Date().toISOString(),
       },
     });
+    movementForm.quantityChange = 1;
+    movementForm.unitCost = 0;
+    movementForm.reference = "";
+    movementForm.reason = "";
     await load("inventory");
     return "Movimiento de inventario registrado.";
   });
@@ -1093,6 +1125,19 @@ async function createPurchase() {
         }),
       },
     });
+    Object.assign(purchaseForm, {
+      date: today(),
+      supplierId: "",
+      sourceSaleId: "",
+      supplierName: "",
+      invoice: "",
+      paymentStatus: "pending",
+      account: "cash",
+      freight: 0,
+      allocateFreight: true,
+      notes: "",
+      items: [purchaseLine()],
+    });
     await load("purchases");
     return "Compra guardada como borrador.";
   });
@@ -1225,6 +1270,17 @@ async function createExpense() {
         receipt: expenseForm.receipt || undefined,
       },
     });
+    Object.assign(expenseForm, {
+      date: today(),
+      description: "",
+      category: "shipping",
+      amount: 0,
+      supplier: "",
+      status: "paid",
+      method: "cash",
+      account: "cash",
+      receipt: "",
+    });
     await load("expenses");
     return "Gasto registrado.";
   });
@@ -1342,6 +1398,14 @@ const cashForm = reactive({
   amount: 0,
   description: "",
 });
+watch(
+  () => cashForm.type,
+  (type) => {
+    if (["opening_balance", "capital"].includes(type))
+      cashForm.direction = "in";
+    if (type === "withdrawal") cashForm.direction = "out";
+  },
+);
 const cashFilters = reactive({ account: "", from: "", to: "" });
 const filteredCash = computed(() =>
   cash.value.filter(
@@ -1375,6 +1439,8 @@ async function createCashMovement() {
         amount: Number(cashForm.amount),
       },
     });
+    cashForm.amount = 0;
+    cashForm.description = "";
     await load("cash");
     return "Movimiento de caja registrado.";
   });
@@ -1796,6 +1862,14 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
             </option>
           </select></label
         >
+        <label
+          >Medio de pago<select v-model="saleFilters.paymentMethod">
+            <option value="">Todos</option>
+            <option v-for="value in paymentMethods" :key="value" :value="value">
+              {{ labels[value] || value }}
+            </option>
+          </select></label
+        >
         <label>Desde<input v-model="saleFilters.from" type="date" /></label>
         <label>Hasta<input v-model="saleFilters.to" type="date" /></label>
       </div>
@@ -1809,6 +1883,9 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           </button>
         </p>
       </details>
+      <p v-if="!filteredSales.length && !busy" class="empty-notice">
+        No hay ventas que coincidan con esta selección.
+      </p>
       <div class="business-table-wrap">
         <table class="business-table">
           <thead>
@@ -1944,7 +2021,9 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                   <button
                     v-if="
                       saleDetail.sale.inventoryAppliedAt &&
-                      ['paid', 'delivered'].includes(saleDetail.sale.status)
+                      ['paid', 'shipped', 'delivered'].includes(
+                        saleDetail.sale.status,
+                      )
                     "
                     type="button"
                     class="text-link"
@@ -2074,6 +2153,12 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           ><label
             >Costo unitario COP<AdminMoneyInput
               v-model="movementForm.unitCost" /></label
+          ><label
+            >Referencia<input
+              v-model="movementForm.reference"
+              required
+              maxlength="200"
+              placeholder="Conteo, documento o responsable" /></label
           ><label class="wide"
             >Motivo<input
               v-model="movementForm.reason"
@@ -2117,6 +2202,9 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           </select></label
         >
       </div>
+      <p v-if="!filteredInventory.length && !busy" class="empty-notice">
+        No hay presentaciones que coincidan con esta selección.
+      </p>
       <div class="business-table-wrap">
         <table class="business-table">
           <thead>
@@ -2530,6 +2618,9 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           </table>
         </div>
       </details>
+      <p v-if="!filteredPurchases.length && !busy" class="empty-notice">
+        No hay compras que coincidan con esta selección.
+      </p>
       <div class="business-table-wrap">
         <table class="business-table">
           <thead>
@@ -2654,7 +2745,6 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           >Estado<select v-model="expenseForm.status">
             <option value="paid">Pagado</option>
             <option value="pending">Pendiente</option>
-            <option value="reversed">Reversado</option>
           </select></label
         ><label v-if="expenseForm.status === 'paid'"
           >Medio<select v-model="expenseForm.method">
@@ -2703,6 +2793,9 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
         <label>Desde<input v-model="expenseFilters.from" type="date" /></label
         ><label>Hasta<input v-model="expenseFilters.to" type="date" /></label>
       </div>
+      <p v-if="!filteredExpenses.length && !busy" class="empty-notice">
+        No hay gastos que coincidan con esta selección.
+      </p>
       <div class="business-table-wrap">
         <table class="business-table">
           <tbody>
@@ -2911,7 +3004,14 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
         <label
           >Fecha<input v-model="cashForm.date" type="date" required /></label
         ><label
-          >Movimiento<select v-model="cashForm.direction">
+          >Movimiento<select
+            v-model="cashForm.direction"
+            :disabled="
+              ['opening_balance', 'capital', 'withdrawal'].includes(
+                cashForm.type,
+              )
+            "
+          >
             <option value="in">Entrada</option>
             <option value="out">Salida</option>
           </select></label
@@ -3011,6 +3111,9 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
         <label>Desde<input v-model="cashFilters.from" type="date" /></label
         ><label>Hasta<input v-model="cashFilters.to" type="date" /></label>
       </div>
+      <p v-if="!filteredCash.length && !busy" class="empty-notice">
+        No hay movimientos que coincidan con esta selección.
+      </p>
       <div class="business-table-wrap">
         <table class="business-table">
           <thead>

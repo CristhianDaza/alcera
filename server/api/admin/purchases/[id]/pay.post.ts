@@ -26,6 +26,11 @@ export default defineEventHandler(async (event) => {
       });
     const purchase = docData<Purchase>(snapshot);
     if (purchase.paymentStatus === "paid") return purchase;
+    if (purchase.status === "cancelled")
+      throw createError({
+        statusCode: 409,
+        statusMessage: "Una compra cancelada no admite pagos",
+      });
     const [number] = await nextNumbers(tx, [
       { prefix: "M", date: new Date(body.date) },
     ]);
@@ -48,6 +53,7 @@ export default defineEventHandler(async (event) => {
     tx.update(ref, {
       paymentStatus: "paid",
       cashAccount: body.cashAccount,
+      cashMovementId: cash.id,
       paidAt: at,
       updatedAt: at,
     });
@@ -55,6 +61,8 @@ export default defineEventHandler(async (event) => {
       ...purchase,
       paymentStatus: "paid" as const,
       cashAccount: body.cashAccount,
+      cashMovementId: cash.id,
+      paidAt: at,
       updatedAt: at,
     };
   });

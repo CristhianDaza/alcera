@@ -101,6 +101,8 @@ export interface Sale {
   updatedAt: string;
   createdBy: string;
   notes?: string;
+  /** Solo se agrega en respuestas de listado cuando se filtra por medio de pago. */
+  paymentMethods?: PaymentMethod[];
 }
 export interface SaleReturn {
   id: string;
@@ -140,6 +142,7 @@ export interface InventoryMovement {
   stockAfter: number;
   referenceType: "sale" | "purchase" | "manual" | "return";
   referenceId?: string;
+  reference?: string;
   reason: string;
   occurredAt: string;
   createdAt: string;
@@ -218,6 +221,8 @@ export interface Purchase {
   cashAccount?: CashAccount;
   notes?: string;
   confirmedAt?: string;
+  paidAt?: string;
+  cashMovementId?: string;
   createdAt: string;
   updatedAt: string;
   createdBy: string;
@@ -236,6 +241,7 @@ export interface Expense {
   status: "paid" | "pending" | "reversed";
   cashMovementId?: string;
   createdAt: string;
+  updatedAt: string;
   createdBy: string;
 }
 export interface CashMovement {
@@ -318,13 +324,18 @@ export const saleCreateSchema = z.object({
   status: z.enum(["draft", "pending_purchase", "pending_payment"]),
   items: z
     .array(
-      z.object({
-        productId: id,
-        variantId: id,
-        quantity: z.number().int().min(1).max(999),
-        unitPrice: money,
-        discount: money.default(0),
-      }),
+      z
+        .object({
+          productId: id,
+          variantId: id,
+          quantity: z.number().int().min(1).max(999),
+          unitPrice: money,
+          discount: money.default(0),
+        })
+        .refine((item) => item.discount <= item.quantity * item.unitPrice, {
+          message: "El descuento no puede superar el valor de la línea",
+          path: ["discount"],
+        }),
     )
     .min(1)
     .max(100),
@@ -347,6 +358,7 @@ export const movementCreateSchema = z.object({
     .int()
     .refine((value) => value !== 0),
   unitCost: money.nullable().default(null),
+  reference: z.string().trim().min(1).max(200),
   reason: text,
   occurredAt: iso,
 });
@@ -417,20 +429,34 @@ export const expenseCreateSchema = z
     (v) => v.status !== "paid" || (!!v.paymentMethod && !!v.cashAccount),
     { message: "Indica medio y cuenta de pago" },
   );
-export const cashMovementCreateSchema = z.object({
-  date: iso,
-  direction: z.enum(["in", "out"]),
-  type: z.enum([
-    "opening_balance",
-    "capital",
-    "withdrawal",
-    "adjustment",
-    "other",
-  ]),
-  account: z.enum(cashAccounts),
-  amount: z.number().int().positive().max(1_000_000_000),
-  description: text,
-});
+export const cashMovementCreateSchema = z
+  .object({
+    date: iso,
+    direction: z.enum(["in", "out"]),
+    type: z.enum([
+      "opening_balance",
+      "capital",
+      "withdrawal",
+      "adjustment",
+      "other",
+    ]),
+    account: z.enum(cashAccounts),
+    amount: z.number().int().positive().max(1_000_000_000),
+    description: text,
+  })
+  .refine(
+    (value) =>
+      !["opening_balance", "capital"].includes(value.type) ||
+      value.direction === "in",
+    {
+      message: "Los saldos iniciales y aportes deben ser entradas",
+      path: ["direction"],
+    },
+  )
+  .refine((value) => value.type !== "withdrawal" || value.direction === "out", {
+    message: "Los retiros deben ser salidas",
+    path: ["direction"],
+  });
 
 export const saleTotals = (
   items: Array<{ quantity: number; unitPrice: number; discount: number }>,
@@ -447,6 +473,31 @@ export const saleTotals = (
     total: subtotal - discountTotal + shipping,
   };
 };
+
+export function remainingSaleItemQuantities(
+  items: SaleItem[],
+  returns: SaleReturn[],
+) {
+  const returned = new Map<string, number>();
+  for (const entry of returns)
+    for (const item of entry.items) {
+      const key = `${item.productId}/${item.variantId}`;
+      returned.set(key, (returned.get(key) ?? 0) + item.quantity);
+    }
+  const remaining = new Map<string, { item: SaleItem; quantity: number }>();
+  for (const item of items) {
+    const key = `${item.productId}/${item.variantId}`;
+    const current = remaining.get(key);
+    remaining.set(key, {
+      item: current?.item ?? item,
+      quantity: (current?.quantity ?? 0) + item.quantity,
+    });
+  }
+  return [...remaining].map(([key, value]) => ({
+    ...value,
+    quantity: Math.max(0, value.quantity - (returned.get(key) ?? 0)),
+  }));
+}
 export const weightedAverageCost = (
   stock: number,
   cost: number,
@@ -456,6 +507,20 @@ export const weightedAverageCost = (
   stock + added === 0
     ? addedCost
     : Math.round((stock * cost + added * addedCost) / (stock + added));
+
+export const weightedAverageCostAfterRemoval = (
+  stock: number,
+  cost: number,
+  removed: number,
+  removedCost: number,
+) => {
+  const remaining = stock - removed;
+  if (remaining <= 0) return 0;
+  return Math.max(
+    0,
+    Math.round((stock * cost - removed * removedCost) / remaining),
+  );
+};
 
 export function millilitersFromSize(size: string) {
   const match = size.match(/(\d+(?:[.,]\d+)?)\s*ml/i);

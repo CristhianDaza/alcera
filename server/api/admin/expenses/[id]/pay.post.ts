@@ -28,6 +28,11 @@ export default defineEventHandler(async (event) => {
       });
     const expense = docData<Expense>(snapshot);
     if (expense.status === "paid") return expense;
+    if (expense.status === "reversed")
+      throw createError({
+        statusCode: 409,
+        statusMessage: "Un gasto reversado no admite pagos",
+      });
     const [number] = await nextNumbers(tx, [
       { prefix: "M", date: new Date(body.date) },
     ]);
@@ -53,12 +58,16 @@ export default defineEventHandler(async (event) => {
       cashAccount: body.cashAccount,
       cashMovementId: cash.id,
       paidAt: at,
+      updatedAt: at,
     });
     return {
       ...expense,
       status: "paid" as const,
       paymentMethod: body.paymentMethod,
       cashAccount: body.cashAccount,
+      cashMovementId: cash.id,
+      paidAt: at,
+      updatedAt: at,
     };
   });
 });

@@ -251,7 +251,7 @@ onMounted(() => load());
         }}</strong>
       </p>
       <button
-        v-if="!['cancelled', 'lost'].includes(selected.status)"
+        v-if="selected.status === 'awaiting_payment'"
         type="button"
         class="button"
         :disabled="saving"
@@ -259,6 +259,10 @@ onMounted(() => load());
       >
         Convertir en venta
       </button>
+      <p v-else-if="selected.status === 'pending'" class="muted">
+        Confirma primero la disponibilidad y el valor del envío. Después podrás
+        convertir la solicitud en venta.
+      </p>
       <form
         v-if="orderTransitions[selected.status].length"
         class="admin-fields"

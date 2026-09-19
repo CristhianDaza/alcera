@@ -82,11 +82,12 @@ export default defineEventHandler(async (event) => {
     const updatedProducts = new Map<string, Product>();
     let costTotal = 0;
     const returnedItems = body.items.map((requested) => {
-      const sold = sale.items.find(
+      const soldLines = sale.items.filter(
         (item) =>
           item.productId === requested.productId &&
           item.variantId === requested.variantId,
       );
+      const sold = soldLines[0];
       if (!sold)
         throw createError({
           statusCode: 400,
@@ -100,7 +101,11 @@ export default defineEventHandler(async (event) => {
             item.variantId === requested.variantId,
         )
         .reduce((sum, item) => sum + item.quantity, 0);
-      if (requested.quantity + alreadyReturned > sold.quantity)
+      const soldQuantity = soldLines.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+      );
+      if (requested.quantity + alreadyReturned > soldQuantity)
         throw createError({
           statusCode: 409,
           statusMessage: `La devolución supera lo vendido de ${sold.name}`,

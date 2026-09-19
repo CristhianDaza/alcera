@@ -7,11 +7,13 @@ import {
   landedUnitCost,
   millilitersFromSize,
   movementCreateSchema,
+  remainingSaleItemQuantities,
   saleCreateSchema,
   saleTotals,
   weightedAverageCost,
+  weightedAverageCostAfterRemoval,
 } from "../shared/business";
-import { inventoryOf } from "../server/utils/business";
+import { dateRange, inventoryOf } from "../server/utils/business";
 
 describe("business rules", () => {
   it("calculates the sale total with per-line discounts and shipping", () => {
@@ -29,6 +31,30 @@ describe("business rules", () => {
   it("calculates a rounded weighted average cost", () => {
     expect(weightedAverageCost(3, 100_000, 2, 130_000)).toBe(112_000);
     expect(weightedAverageCost(0, 0, 4, 87_500)).toBe(87_500);
+    expect(weightedAverageCostAfterRemoval(5, 112_000, 2, 130_000)).toBe(
+      100_000,
+    );
+    expect(weightedAverageCostAfterRemoval(2, 130_000, 2, 130_000)).toBe(0);
+  });
+
+  it("does not allow a line discount greater than its value", () => {
+    expect(
+      saleCreateSchema.safeParse({
+        occurredAt: new Date().toISOString(),
+        channel: "physical",
+        status: "pending_payment",
+        items: [
+          {
+            productId: "p1",
+            variantId: "v1",
+            quantity: 1,
+            unitPrice: 20_000,
+            discount: 20_001,
+          },
+        ],
+        shippingCharged: 5_000,
+      }).success,
+    ).toBe(false);
   });
 
   it("rejects zero inventory movements", () => {
@@ -39,6 +65,7 @@ describe("business rules", () => {
         type: "adjustment",
         quantityChange: 0,
         unitCost: null,
+        reference: "conteo físico",
         reason: "Conteo físico",
         occurredAt: new Date().toISOString(),
       }).success,
@@ -68,6 +95,62 @@ describe("business rules", () => {
         description: "Apertura",
       }).success,
     ).toBe(false);
+    expect(
+      cashMovementCreateSchema.safeParse({
+        date: new Date().toISOString(),
+        direction: "in",
+        type: "withdrawal",
+        account: "cash",
+        amount: 10_000,
+        description: "Retiro propietario",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("uses complete Bogota calendar days for report ranges", () => {
+    expect(dateRange({ from: "2026-09-01", to: "2026-09-19" })).toMatchObject({
+      start: "2026-09-01T05:00:00.000Z",
+      end: "2026-09-20T04:59:59.999Z",
+    });
+  });
+
+  it("subtracts previous returns when a sale is cancelled", () => {
+    const item = {
+      productId: "p1",
+      variantId: "v1",
+      name: "Perfume",
+      size: "100 ml",
+      quantity: 2,
+      unitPrice: 100_000,
+      unitCost: 60_000,
+      discount: 0,
+      lineTotal: 200_000,
+    };
+    expect(
+      remainingSaleItemQuantities(
+        [item, { ...item, quantity: 1, lineTotal: 100_000 }],
+        [
+          {
+            id: "r1",
+            saleId: "s1",
+            date: new Date().toISOString(),
+            items: [
+              {
+                productId: "p1",
+                variantId: "v1",
+                quantity: 1,
+                unitCost: 60_000,
+              },
+            ],
+            refundAmount: 100_000,
+            costTotal: 60_000,
+            reason: "Devolución",
+            createdAt: new Date().toISOString(),
+            createdBy: "admin",
+          },
+        ],
+      ),
+    ).toEqual([{ item, quantity: 2 }]);
   });
 
   it("controls an opened bottle in milliliters", () => {

@@ -57,7 +57,8 @@ export default defineEventHandler(async (event) => {
       status: "reversed",
       reversedAt: at,
       reversalReason: body.reason,
+      updatedAt: at,
     });
-    return { ...expense, status: "reversed" as const };
+    return { ...expense, status: "reversed" as const, updatedAt: at };
   });
 });

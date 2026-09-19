@@ -124,14 +124,25 @@ export function inventoryOf(variant: Variant) {
   };
 }
 
+export function bogotaDate(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function followingDate(value: string) {
+  const date = new Date(`${value}T12:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
 export function dateRange(query: Record<string, string | undefined>) {
-  const now = new Date();
-  const from =
-    query.from ||
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-      .toISOString()
-      .slice(0, 10);
-  const to = query.to || now.toISOString().slice(0, 10);
+  const today = bogotaDate();
+  const from = query.from || `${today.slice(0, 8)}01`;
+  const to = query.to || today;
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(from) ||
     !/^\d{4}-\d{2}-\d{2}$/.test(to) ||
@@ -144,7 +155,8 @@ export function dateRange(query: Record<string, string | undefined>) {
   return {
     from,
     to,
-    start: `${from}T00:00:00.000Z`,
-    end: `${to}T23:59:59.999Z`,
+    // Colombia no usa horario de verano: medianoche local equivale a 05:00 UTC.
+    start: `${from}T05:00:00.000Z`,
+    end: `${followingDate(to)}T04:59:59.999Z`,
   };
 }
