@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
+import { catalogVariants } from "#shared/catalog";
 
 type Budget = "under250" | "250to450" | "over450";
 type Answers = {

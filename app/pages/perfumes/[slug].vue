@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { productSearchName, siteBase, serializeSchema } from "#shared/seo";
-import { money } from "#shared/commerce";
-import { selectRelatedProducts } from "#shared/catalog";
+import { money, variantLabel } from "#shared/commerce";
+import { isDecantVariant, selectRelatedProducts } from "#shared/catalog";
 import type { Product } from "#shared/types";
 import { seoLanding, seoLandingForFilter } from "#shared/seo-landings";
 
@@ -57,25 +57,57 @@ const sameFamilyProducts = computed(() =>
       product.family?.some((family) => p.family?.includes(family)),
   ),
 );
+const requestedDecant = route.query.formato === "decant";
+const preferredVariants = requestedDecant
+  ? p.variants.filter(isDecantVariant)
+  : p.variants;
 const selected = ref(
-  p.variants.find((variant) => variant.available)?.id || p.variants[0]!.id,
+  preferredVariants.find((item) => item.available)?.id ||
+    preferredVariants[0]?.id ||
+    p.variants.find((item) => item.available)?.id ||
+    p.variants[0]!.id,
 );
 const photo = ref(0);
 const added = ref(false);
 const recentlyViewed = ref<Product[]>([]);
 const recentlyViewedStorageKey = "esencia-recently-viewed";
 const recentlyViewedStorageLimit = 5;
+const quantity = ref(1);
+const addedQuantity = ref(0);
 const variant = computed(() =>
   p.variants.find((item) => item.id === selected.value)!,
 );
+const bottleVariants = computed(() =>
+  p.variants.filter((item) => !isDecantVariant(item)),
+);
+const decantVariants = computed(() => p.variants.filter(isDecantVariant));
+const addButtonLabel = computed(() => {
+  if (!variant.value.available) return "Presentación agotada";
+  if (added.value)
+    return quantity.value > 1
+      ? `Añadir otras ${quantity.value} unidades`
+      : "Añadir otra unidad";
+  return quantity.value > 1
+    ? `Añadir ${quantity.value} unidades`
+    : "Añadir a mi bolsa";
+});
 const { add } = useCart();
+function setQuantity(value: number) {
+  quantity.value = Math.min(99, Math.max(1, Math.trunc(value) || 1));
+  added.value = false;
+}
+function changeQuantity(event: Event) {
+  setQuantity(Number((event.target as HTMLInputElement).value));
+}
 function addSelectedVariant() {
-  add(p, variant.value);
+  const amount = add(p, variant.value, quantity.value);
+  addedQuantity.value = amount;
   added.value = true;
+  if (!amount) return;
   void trackAnalyticsEvent("add_to_cart", {
     currency: "COP",
-    value: variant.value.price,
-    items: [analyticsItem(p, variant.value)],
+    value: variant.value.price * amount,
+    items: [{ ...analyticsItem(p, variant.value), quantity: amount }],
   });
 }
 
@@ -230,7 +262,7 @@ useHead({
         ],
         offers: p.variants.map((item) => ({
           "@type": "Offer",
-          name: p.name + " " + item.size,
+          name: p.name + " " + variantLabel(item),
           seller: { "@id": base + "/#organization" },
           sku: (p.sku || p.id) + "-" + item.id,
           price: item.price,
@@ -370,19 +402,116 @@ useHead({
 
         <div class="purchase-panel">
           <h2>Elige tu presentación</h2>
-          <div class="variants">
-            <button
-              v-for="item in p.variants"
-              :key="item.id"
-              :class="{ selected: selected === item.id }"
-              :aria-pressed="selected === item.id"
-              @click="
-                selected = item.id;
-                added = false;
-              "
+          <p class="purchase-guidance">
+            Selecciona el formato y tamaño que prefieras.
+          </p>
+          <div class="variant-groups">
+            <section v-if="bottleVariants.length" class="variant-group">
+              <h3>Frasco original</h3>
+              <div class="variants">
+                <button
+                  v-for="item in bottleVariants"
+                  :key="item.id"
+                  :class="{
+                    selected: selected === item.id,
+                    unavailable: !item.available,
+                  }"
+                  :aria-pressed="selected === item.id"
+                  :aria-label="`${variantLabel(item)}, ${item.available ? 'disponible' : 'agotado'}`"
+                  @click="
+                    selected = item.id;
+                    added = false;
+                  "
+                >
+                  <span>{{ item.size }}</span>
+                  <small>{{ item.available ? "Disponible" : "Agotado" }}</small>
+                  <span
+                    v-if="selected === item.id"
+                    class="variant-check"
+                    aria-hidden="true"
+                    >✓</span
+                  >
+                </button>
+              </div>
+            </section>
+            <section v-if="decantVariants.length" class="variant-group">
+              <h3>Decants</h3>
+              <p>El perfume original, reenvasado en un formato práctico.</p>
+              <div class="variants">
+                <button
+                  v-for="item in decantVariants"
+                  :key="item.id"
+                  :class="{
+                    selected: selected === item.id,
+                    unavailable: !item.available,
+                  }"
+                  :aria-pressed="selected === item.id"
+                  :aria-label="`${variantLabel(item)}, ${item.available ? 'disponible' : 'agotado'}`"
+                  @click="
+                    selected = item.id;
+                    added = false;
+                  "
+                >
+                  <span>{{ item.size }}</span>
+                  <small>{{ item.available ? "Disponible" : "Agotado" }}</small>
+                  <span
+                    v-if="selected === item.id"
+                    class="variant-check"
+                    aria-hidden="true"
+                    >✓</span
+                  >
+                </button>
+              </div>
+            </section>
+          </div>
+          <div class="purchase-summary">
+            <span
+              >{{
+                isDecantVariant(variant)
+                  ? `Decant de ${variant.size}`
+                  : `Frasco de ${variant.size}`
+              }}{{ quantity > 1 ? ` · ${quantity} unidades` : "" }}</span
             >
-              {{ item.size
-              }}<small>{{ item.available ? "Disponible" : "Agotado" }}</small>
+            <p class="price">
+              {{ money(variant.price * quantity) }} <small>COP</small>
+            </p>
+          </div>
+          <div class="purchase-actions">
+            <div class="quantity-picker" aria-label="Cantidad">
+              <button
+                type="button"
+                :disabled="quantity <= 1"
+                aria-label="Reducir cantidad"
+                @click="setQuantity(quantity - 1)"
+              >
+                −
+              </button>
+              <label
+                ><span>Cantidad</span
+                ><input
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  max="99"
+                  :value="quantity"
+                  @change="changeQuantity"
+              /></label>
+              <button
+                type="button"
+                :disabled="quantity >= 99"
+                aria-label="Aumentar cantidad"
+                @click="setQuantity(quantity + 1)"
+              >
+                ＋
+              </button>
+            </div>
+            <button
+              class="button add-to-cart"
+              :disabled="!variant.available"
+              @click="addSelectedVariant"
+            >
+              {{ addButtonLabel }}
+              <span>＋</span>
             </button>
           </div>
           <dl
@@ -409,28 +538,19 @@ useHead({
               <dd>{{ p.projection }}</dd>
             </div>
           </dl>
-          <p class="price">{{ money(variant.price) }} <small>COP</small></p>
-          <button
-            class="button full"
-            :disabled="!variant.available"
-            @click="addSelectedVariant"
-          >
-            {{
-              !variant.available
-                ? "Presentación agotada"
-                : added
-                  ? "Añadir otra unidad"
-                  : "Añadir a mi bolsa"
-            }}
-            <span>＋</span>
-          </button>
           <ul class="purchase-reassurance" aria-label="Garantías de compra">
             <li>Producto 100% original</li>
             <li>Envíos a toda Colombia</li>
             <li>Asesoría antes de comprar</li>
           </ul>
           <p v-if="added" class="added-notice" role="status">
-            Añadido a tu bolsa.
+            {{
+              addedQuantity === 0
+                ? "Ya tienes el máximo de 99 unidades en tu bolsa."
+                : addedQuantity === 1
+                  ? "Una unidad añadida a tu bolsa."
+                  : `${addedQuantity} unidades añadidas a tu bolsa.`
+            }}
             <NuxtLink class="text-link" to="/carrito">Ver bolsa</NuxtLink>
           </p>
           <p class="muted">
@@ -557,6 +677,163 @@ useHead({
 </template>
 
 <style scoped>
+.purchase-panel {
+  position: relative;
+}
+.purchase-guidance {
+  margin: -7px 0 20px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.variant-groups {
+  display: grid;
+  gap: 20px;
+}
+.variant-group + .variant-group {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.variant-group h3 {
+  margin: 0 0 4px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.variant-group > p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.purchase-panel .variants {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 9px;
+}
+.purchase-panel .variants button {
+  position: relative;
+  min-width: 0;
+  min-height: 66px;
+  padding: 12px 34px 12px 13px;
+  text-align: left;
+}
+.purchase-panel .variants button > span:first-child {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+.purchase-panel .variants small {
+  color: var(--muted);
+}
+.purchase-panel .variants button:not(.selected) {
+  background: color-mix(in srgb, var(--paper) 35%, transparent);
+}
+.purchase-panel .variants .unavailable:not(.selected) {
+  opacity: 0.58;
+}
+.purchase-panel .variants .selected {
+  padding: 11px 33px 11px 12px;
+  box-shadow: inset 0 0 0 1px var(--accent-soft);
+}
+.variant-check {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  transform: translateY(-50%);
+}
+.purchase-summary {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 0 17px;
+}
+.purchase-summary > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.purchase-summary .price {
+  margin: 0;
+  text-align: right;
+}
+.purchase-actions {
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr);
+  gap: 10px;
+}
+.quantity-picker {
+  display: grid;
+  grid-template-columns: 36px minmax(42px, 1fr) 36px;
+  min-height: 50px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+}
+.quantity-picker button {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 18px;
+}
+.quantity-picker button:first-child {
+  border-right: 1px solid var(--line);
+}
+.quantity-picker button:last-child {
+  border-left: 1px solid var(--line);
+}
+.quantity-picker button:disabled {
+  color: var(--line-strong);
+  cursor: not-allowed;
+}
+.quantity-picker label {
+  display: grid;
+  place-items: center;
+}
+.quantity-picker label span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.quantity-picker input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  appearance: textfield;
+}
+.quantity-picker input::-webkit-inner-spin-button,
+.quantity-picker input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+.add-to-cart {
+  width: 100%;
+  min-width: 0;
+  min-height: 50px;
+  padding-inline: 16px;
+}
 .aroma-description {
   margin: 0 0 26px;
 }
@@ -692,6 +969,57 @@ useHead({
   font-size: 42px;
 }
 @media (max-width: 700px) {
+  .purchase-panel {
+    padding: 18px;
+  }
+  .purchase-panel > h2 {
+    margin-bottom: 13px;
+    font-size: 24px;
+  }
+  .purchase-guidance {
+    max-width: 240px;
+    margin-bottom: 22px;
+  }
+  .purchase-panel .variants {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .purchase-panel .variants button {
+    min-height: 70px;
+    padding: 12px 30px 12px 11px;
+  }
+  .purchase-panel .variants .selected {
+    padding: 11px 29px 11px 10px;
+  }
+  .variant-check {
+    right: 9px;
+  }
+  .purchase-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .purchase-summary .price {
+    font-size: 32px;
+    text-align: left;
+  }
+  .purchase-panel > .button {
+    min-height: 52px;
+  }
+  .purchase-actions {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+  .quantity-picker {
+    grid-template-columns: 32px minmax(42px, 1fr) 32px;
+    min-height: 52px;
+  }
+  .quantity-picker input {
+    min-height: 50px;
+  }
+  .add-to-cart {
+    min-height: 52px;
+    padding-inline: 11px;
+    font-size: 10px;
+  }
   .delivery-estimate {
     margin-top: 42px;
     padding: 24px;

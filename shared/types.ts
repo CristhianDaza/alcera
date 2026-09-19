@@ -3,6 +3,8 @@ export interface Variant {
   size: string;
   price: number;
   available: boolean;
+  /** Las variantes antiguas sin tipo se consideran frascos originales. */
+  type?: "bottle" | "decant";
 }
 export interface ProductImage {
   publicId: string;

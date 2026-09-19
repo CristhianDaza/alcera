@@ -7,6 +7,7 @@ import {
 } from "#shared/seo";
 import { seoLandings } from "#shared/seo-landings";
 import { shoppingOccasions, type ShoppingOccasion } from "#shared/types";
+import { catalogVariants, compareProductPriority } from "#shared/catalog";
 
 const route = useRoute();
 const router = useRouter();
@@ -180,11 +181,11 @@ const filtered = computed(() => {
       (!concentration.value || p.concentration === concentration.value) &&
       (!occasion.value ||
         p.occasions?.includes(occasion.value as ShoppingOccasion)) &&
-      (!available.value || p.variants.some((v) => v.available)),
+      (!available.value || catalogVariants(p).some((v) => v.available)),
   );
   const price = (p: (typeof list)[number]) =>
     Math.min(
-      ...p.variants
+      ...catalogVariants(p)
         .filter((v) => !available.value || v.available)
         .map((v) => v.price),
     );
@@ -193,7 +194,7 @@ const filtered = computed(() => {
       ? price(a) - price(b)
       : sort.value === "desc"
         ? price(b) - price(a)
-        : Number(b.featured) - Number(a.featured),
+        : compareProductPriority(a, b),
   );
 });
 const page = computed({
@@ -414,9 +415,9 @@ useHead(() => ({
       <label
         >Momento<select v-model="occasion">
           <option value="">Todos</option>
-          <option v-for="item in shoppingOccasions" :key="item">{{
-            item
-          }}</option>
+          <option v-for="item in shoppingOccasions" :key="item">
+            {{ item }}
+          </option>
         </select></label
       >
       <label

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
+import { compareProductPriority } from "#shared/catalog";
 
 const catalog = useCatalogStore();
 const {
@@ -22,7 +23,7 @@ const router = useRouter();
 const selection = computed(() =>
   [...(products.value ?? [])]
     .filter((product) => product.variants.some((variant) => variant.available))
-    .sort((a, b) => Number(b.featured) - Number(a.featured))
+    .sort(compareProductPriority)
     .slice(0, 4),
 );
 const store = useStore();

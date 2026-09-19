@@ -277,6 +277,7 @@ function edit(p?: Product) {
         ...structuredClone(toRaw(p)),
         variants: p.variants.map((v) => ({
           ...v,
+          type: v.type === "decant" ? "decant" : "bottle",
           size: v.size.replace(/\D/g, ""),
         })),
         olfactoryPyramid: {
@@ -316,7 +317,13 @@ function edit(p?: Product) {
         concentration: "",
         images: [],
         variants: [
-          { id: crypto.randomUUID(), size: "", price: 0, available: true },
+          {
+            id: crypto.randomUUID(),
+            size: "",
+            price: 0,
+            available: true,
+            type: "bottle",
+          },
         ],
         status: "published",
         featured: false,
@@ -900,6 +907,11 @@ function move(index: number, direction: number) {
           </label>
         </div>
         <h3>Presentaciones</h3>
+        <p class="muted admin-help">
+          Marca como decant las presentaciones que se envasan desde este
+          perfume. Esas opciones aparecerán automáticamente en la página
+          Decants.
+        </p>
         <div
           v-for="(v, i) in editor?.variants"
           :key="v.id"
@@ -923,6 +935,11 @@ function move(index: number, direction: number) {
               inputmode="numeric"
               required
               placeholder="50.000" /></label
+          ><label
+            >Tipo<select v-model="v.type">
+              <option value="bottle">Frasco original</option>
+              <option value="decant">Decant</option>
+            </select></label
           ><label class="check"
             ><input v-model="v.available" type="checkbox" /> Disponible</label
           ><button
@@ -944,6 +961,7 @@ function move(index: number, direction: number) {
               size: '',
               price: 0,
               available: true,
+              type: 'bottle',
             })
           "
         >

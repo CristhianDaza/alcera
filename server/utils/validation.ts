@@ -90,6 +90,7 @@ export const productSchema = z.object({
         size: text,
         price: z.number().int().positive().max(100000000),
         available: z.boolean(),
+        type: z.enum(["bottle", "decant"]).optional().default("bottle"),
       }),
     )
     .min(1)

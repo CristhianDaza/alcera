@@ -175,7 +175,8 @@ export function analyticsItem(product: Product, variant?: Variant) {
     item_brand: product.brand,
     item_category: product.category,
     item_category2: product.family?.join(", ") || undefined,
-    item_variant: variant?.size,
+    item_variant:
+      variant?.type === "decant" ? `Decant · ${variant.size}` : variant?.size,
     price: variant?.price,
   };
 }

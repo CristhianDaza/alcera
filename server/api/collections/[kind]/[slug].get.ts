@@ -1,5 +1,6 @@
 import { seoLanding } from "#shared/seo-landings";
 import { catalogPage } from "#shared/seo";
+import { compareProductPriority } from "#shared/catalog";
 
 export default defineEventHandler(async (event) => {
   const landing = seoLanding(
@@ -36,7 +37,7 @@ export default defineEventHandler(async (event) => {
                 sensitivity: "base",
               }) === 0,
     )
-    .sort((a, b) => Number(b.featured) - Number(a.featured));
+    .sort(compareProductPriority);
   const pageSize = 12;
   const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
   if (page > totalPages)

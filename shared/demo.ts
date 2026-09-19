@@ -87,6 +87,24 @@ export const demoProducts: Product[] = [
       price: Number(row[6]) + 135000,
       available: i !== 2,
     },
+    ...(i < 4
+      ? [
+          {
+            id: "decant-5ml",
+            size: "5 ml",
+            price: 32000 + i * 3000,
+            available: true,
+            type: "decant" as const,
+          },
+          {
+            id: "decant-10ml",
+            size: "10 ml",
+            price: 55000 + i * 5000,
+            available: i !== 3,
+            type: "decant" as const,
+          },
+        ]
+      : []),
   ],
   status: "published",
   featured: i < 4,
