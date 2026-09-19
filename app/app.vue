@@ -209,6 +209,13 @@ watch(
         </svg>
       </button>
     </header>
+    <button
+      v-if="mobileMenuOpen"
+      class="mobile-menu-backdrop"
+      type="button"
+      aria-label="Cerrar menú"
+      @click="mobileMenuOpen = false"
+    />
     <main id="main" tabindex="-1"><NuxtPage /></main>
     <footer class="footer">
       <div class="shell footer-grid">

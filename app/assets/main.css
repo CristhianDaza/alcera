@@ -196,6 +196,10 @@
   background: var(--surface);
 }
 
+.mobile-menu-backdrop {
+  display: none;
+}
+
 .theme-toggle {
   display: grid;
   place-items: center;
@@ -3124,6 +3128,7 @@ select {
 
   .header {
     position: relative;
+    z-index: 100;
     height: 112px;
     flex-wrap: wrap;
     gap: 10px;
@@ -3950,6 +3955,18 @@ main:focus {
 
   .header nav.is-open {
     display: grid;
+  }
+
+  .mobile-menu-backdrop {
+    position: fixed;
+    z-index: 90;
+    display: block;
+    inset: 0;
+    border: 0;
+    background: rgb(23 15 13 / 52%);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    cursor: default;
   }
 
   .header nav a {
