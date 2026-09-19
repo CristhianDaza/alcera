@@ -410,15 +410,15 @@ useHead({
               <h3>Frasco original</h3>
               <div class="variants">
                 <button
-                    v-for="item in bottleVariants"
-                    :key="item.id"
-                    :class="{
+                  v-for="item in bottleVariants"
+                  :key="item.id"
+                  :class="{
                     selected: selected === item.id,
                     unavailable: !item.available,
                   }"
-                    :aria-pressed="selected === item.id"
-                    :aria-label="`${variantLabel(item)}, ${item.available ? 'disponible' : 'agotado'}`"
-                    @click="
+                  :aria-pressed="selected === item.id"
+                  :aria-label="`${variantLabel(item)}, ${item.available ? 'disponible' : 'agotado'}`"
+                  @click="
                     selected = item.id;
                     added = false;
                   "
@@ -426,10 +426,10 @@ useHead({
                   <span>{{ item.size }}</span>
                   <small>{{ item.available ? "Disponible" : "Agotado" }}</small>
                   <span
-                      v-if="selected === item.id"
-                      class="variant-check"
-                      aria-hidden="true"
-                  >✓</span
+                    v-if="selected === item.id"
+                    class="variant-check"
+                    aria-hidden="true"
+                    >✓</span
                   >
                 </button>
               </div>
@@ -439,15 +439,15 @@ useHead({
               <p>El perfume original, reenvasado en un formato práctico.</p>
               <div class="variants">
                 <button
-                    v-for="item in decantVariants"
-                    :key="item.id"
-                    :class="{
+                  v-for="item in decantVariants"
+                  :key="item.id"
+                  :class="{
                     selected: selected === item.id,
                     unavailable: !item.available,
                   }"
-                    :aria-pressed="selected === item.id"
-                    :aria-label="`${variantLabel(item)}, ${item.available ? 'disponible' : 'agotado'}`"
-                    @click="
+                  :aria-pressed="selected === item.id"
+                  :aria-label="`${variantLabel(item)}, ${item.available ? 'disponible' : 'agotado'}`"
+                  @click="
                     selected = item.id;
                     added = false;
                   "
@@ -455,10 +455,10 @@ useHead({
                   <span>{{ item.size }}</span>
                   <small>{{ item.available ? "Disponible" : "Agotado" }}</small>
                   <span
-                      v-if="selected === item.id"
-                      class="variant-check"
-                      aria-hidden="true"
-                  >✓</span
+                    v-if="selected === item.id"
+                    class="variant-check"
+                    aria-hidden="true"
+                    >✓</span
                   >
                 </button>
               </div>
@@ -466,10 +466,10 @@ useHead({
           </div>
           <div class="purchase-summary">
             <span
-            >{{
+              >{{
                 isDecantVariant(variant)
-                    ? `Decant de ${variant.size}`
-                    : `Frasco de ${variant.size}`
+                  ? `Decant de ${variant.size}`
+                  : `Frasco de ${variant.size}`
               }}{{ quantity > 1 ? ` · ${quantity} unidades` : "" }}</span
             >
             <p class="price">
@@ -479,16 +479,16 @@ useHead({
           <div class="purchase-actions">
             <div class="quantity-picker" aria-label="Cantidad">
               <button
-                  type="button"
-                  :disabled="quantity <= 1"
-                  aria-label="Reducir cantidad"
-                  @click="setQuantity(quantity - 1)"
+                type="button"
+                :disabled="quantity <= 1"
+                aria-label="Reducir cantidad"
+                @click="setQuantity(quantity - 1)"
               >
                 −
               </button>
               <label
-              ><span>Cantidad</span
-              ><input
+                ><span>Cantidad</span
+                ><input
                   type="number"
                   inputmode="numeric"
                   min="1"
@@ -497,18 +497,18 @@ useHead({
                   @change="changeQuantity"
               /></label>
               <button
-                  type="button"
-                  :disabled="quantity >= 99"
-                  aria-label="Aumentar cantidad"
-                  @click="setQuantity(quantity + 1)"
+                type="button"
+                :disabled="quantity >= 99"
+                aria-label="Aumentar cantidad"
+                @click="setQuantity(quantity + 1)"
               >
                 ＋
               </button>
             </div>
             <button
-                class="button add-to-cart"
-                :disabled="!variant.available"
-                @click="addSelectedVariant"
+              class="button add-to-cart"
+              :disabled="!variant.available"
+              @click="addSelectedVariant"
             >
               {{ addButtonLabel }}
               <span>＋</span>
@@ -538,21 +538,6 @@ useHead({
               <dd>{{ p.projection }}</dd>
             </div>
           </dl>
-          <p class="price">{{ money(variant.price) }} <small>COP</small></p>
-          <button
-            class="button full"
-            :disabled="!variant.available"
-            @click="addSelectedVariant"
-          >
-            {{
-              !variant.available
-                ? "Presentación agotada"
-                : added
-                  ? "Añadir otra unidad"
-                  : "Añadir a mi bolsa"
-            }}
-            <span>＋</span>
-          </button>
           <ul class="purchase-reassurance" aria-label="Garantías de compra">
             <li>Producto 100% original</li>
             <li>Envíos a toda Colombia</li>

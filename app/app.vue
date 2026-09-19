@@ -82,11 +82,6 @@ function isNavigationCurrent(item: (typeof navigation)[number]) {
     ? route.path === item.to
     : activeCategory.value === item.category;
 }
-function isNavigationActive(item: (typeof navigation)[number]) {
-  return item.to === "/decants"
-    ? route.path === "/decants"
-    : activeCategory.value === item.category;
-}
 const { openPreferences } = useCookieConsent();
 const mobileMenuOpen = ref(false);
 const contactWhatsappUrl = computed(() => {
@@ -116,14 +111,13 @@ const facebookUrl = computed(() =>
 const tiktokUrl = computed(() =>
   socialProfileUrl(store.value.tiktok, ["tiktok.com"]),
 );
-const hasFooterSocials = computed(
-  () =>
-    Boolean(
-      contactWhatsappUrl.value ||
-        instagramUrl.value ||
-        facebookUrl.value ||
-        tiktokUrl.value,
-    ),
+const hasFooterSocials = computed(() =>
+  Boolean(
+    contactWhatsappUrl.value ||
+    instagramUrl.value ||
+    facebookUrl.value ||
+    tiktokUrl.value,
+  ),
 );
 watch(
   () => route.fullPath,
@@ -163,8 +157,8 @@ watch(
         >
           <a
             :href="href || item.to"
-            :class="{ 'is-current': isNavigationActive(item) }"
-            :aria-current="isNavigationActive(item) ? 'page' : undefined"
+            :class="{ 'is-current': isNavigationCurrent(item) }"
+            :aria-current="isNavigationCurrent(item) ? 'page' : undefined"
             @click="navigate"
             >{{ item.label }}</a
           >
@@ -233,7 +227,9 @@ watch(
               title="WhatsApp"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M20.1 3.9A11.3 11.3 0 0 0 12.1.6C5.86.6.79 5.67.79 11.9c0 2 .52 3.94 1.5 5.65L.7 23.4l6-1.57a11.26 11.26 0 0 0 5.4 1.37h.01c6.23 0 11.3-5.07 11.3-11.3 0-3.02-1.18-5.86-3.31-8ZM12.1 21.3h-.01a9.38 9.38 0 0 1-4.78-1.31l-.34-.2-3.56.93.95-3.46-.22-.35A9.37 9.37 0 0 1 2.7 11.9c0-5.18 4.22-9.4 9.41-9.4 2.51 0 4.86.98 6.63 2.75a9.34 9.34 0 0 1 2.74 6.65c0 5.18-4.21 9.4-9.38 9.4Zm5.15-7.02c-.28-.14-1.65-.81-1.9-.9-.26-.1-.44-.14-.63.14-.18.28-.72.9-.88 1.08-.16.19-.32.21-.6.07-1.64-.81-2.72-1.45-3.8-3.31-.29-.5.3-.45.81-1.5.1-.18.01-.34-.06-.47-.07-.14-.63-1.51-.86-2.06-.23-.55-.46-.47-.63-.48h-.54c-.18 0-.47.07-.72.34-.25.28-.94.92-.94 2.23s.97 2.58 1.1 2.76c.14.18 1.91 2.92 4.64 4.1.65.28 1.16.45 1.55.58.65.2 1.24.17 1.7.1.52-.08 1.65-.68 1.88-1.34.23-.65.23-1.2.16-1.33-.07-.12-.25-.2-.53-.34Z" />
+                <path
+                  d="M20.1 3.9A11.3 11.3 0 0 0 12.1.6C5.86.6.79 5.67.79 11.9c0 2 .52 3.94 1.5 5.65L.7 23.4l6-1.57a11.26 11.26 0 0 0 5.4 1.37h.01c6.23 0 11.3-5.07 11.3-11.3 0-3.02-1.18-5.86-3.31-8ZM12.1 21.3h-.01a9.38 9.38 0 0 1-4.78-1.31l-.34-.2-3.56.93.95-3.46-.22-.35A9.37 9.37 0 0 1 2.7 11.9c0-5.18 4.22-9.4 9.41-9.4 2.51 0 4.86.98 6.63 2.75a9.34 9.34 0 0 1 2.74 6.65c0 5.18-4.21 9.4-9.38 9.4Zm5.15-7.02c-.28-.14-1.65-.81-1.9-.9-.26-.1-.44-.14-.63.14-.18.28-.72.9-.88 1.08-.16.19-.32.21-.6.07-1.64-.81-2.72-1.45-3.8-3.31-.29-.5.3-.45.81-1.5.1-.18.01-.34-.06-.47-.07-.14-.63-1.51-.86-2.06-.23-.55-.46-.47-.63-.48h-.54c-.18 0-.47.07-.72.34-.25.28-.94.92-.94 2.23s.97 2.58 1.1 2.76c.14.18 1.91 2.92 4.64 4.1.65.28 1.16.45 1.55.58.65.2 1.24.17 1.7.1.52-.08 1.65-.68 1.88-1.34.23-.65.23-1.2.16-1.33-.07-.12-.25-.2-.53-.34Z"
+                />
               </svg>
             </a>
             <a
@@ -263,7 +259,9 @@ watch(
               title="Facebook"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M13.8 21v-8h2.7l.4-3.1h-3.1V7.92c0-.9.25-1.51 1.54-1.51H17V3.64A22.6 22.6 0 0 0 14.7 3.5c-2.28 0-3.84 1.39-3.84 3.95V9.9H8.3V13h2.56v8h2.94Z" />
+                <path
+                  d="M13.8 21v-8h2.7l.4-3.1h-3.1V7.92c0-.9.25-1.51 1.54-1.51H17V3.64A22.6 22.6 0 0 0 14.7 3.5c-2.28 0-3.84 1.39-3.84 3.95V9.9H8.3V13h2.56v8h2.94Z"
+                />
               </svg>
             </a>
             <a
@@ -275,7 +273,9 @@ watch(
               title="TikTok"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M15.8 3c.3 2.1 1.5 3.4 3.6 3.5v3.1a6.8 6.8 0 0 1-3.5-1v6.5a5.96 5.96 0 1 1-5.15-5.9v3.2a2.85 2.85 0 1 0 2 2.7V3h3Z" />
+                <path
+                  d="M15.8 3c.3 2.1 1.5 3.4 3.6 3.5v3.1a6.8 6.8 0 0 1-3.5-1v6.5a5.96 5.96 0 1 1-5.15-5.9v3.2a2.85 2.85 0 1 0 2 2.7V3h3Z"
+                />
               </svg>
             </a>
           </nav>
@@ -287,9 +287,7 @@ watch(
             >Cambios, devoluciones y garantías</NuxtLink
           >
           <NuxtLink to="/guia-de-perfumes">Guía de perfumes</NuxtLink>
-          <a
-            v-if="store.contactEmail"
-            :href="`mailto:${store.contactEmail}`"
+          <a v-if="store.contactEmail" :href="`mailto:${store.contactEmail}`"
             >Contacto</a
           >
           <a

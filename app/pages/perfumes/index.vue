@@ -181,7 +181,6 @@ const filtered = computed(() => {
       (!concentration.value || p.concentration === concentration.value) &&
       (!occasion.value ||
         p.occasions?.includes(occasion.value as ShoppingOccasion)) &&
-      (!available.value || p.variants.some((v) => v.available)),
       (!available.value || catalogVariants(p).some((v) => v.available)),
   );
   const price = (p: (typeof list)[number]) =>
@@ -416,9 +415,9 @@ useHead(() => ({
       <label
         >Momento<select v-model="occasion">
           <option value="">Todos</option>
-          <option v-for="item in shoppingOccasions" :key="item">{{
-            item
-          }}</option>
+          <option v-for="item in shoppingOccasions" :key="item">
+            {{ item }}
+          </option>
         </select></label
       >
       <label
