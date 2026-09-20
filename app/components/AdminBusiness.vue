@@ -204,6 +204,9 @@ const options = computed(() =>
         variant.inventory?.mode ??
         (variant.type === "decant" ? "decant" : "on_demand");
       const isDecant = variant.type === "decant" || inventoryMode === "decant";
+      const stockItem = inventory.value.find(
+        (row) => row.productId === product.id && row.variantId === variant.id,
+      );
       return {
         productId: product.id,
         variantId: variant.id,
@@ -213,6 +216,8 @@ const options = computed(() =>
         size: variant.size,
         inventoryMode,
         isDecant,
+        stock: stockItem ? stockItem.stock : 0,
+        averageCost: stockItem ? stockItem.averageCost : 0,
       };
     }),
   ),
@@ -263,13 +268,15 @@ async function load(target = section.value) {
       });
     if (target === "sales") {
       const version = ++salesLoadVersion;
-      const [result, sources] = await Promise.all([
+      const [result, sources, inventoryRows] = await Promise.all([
         api<Sale[]>("/api/admin/sales", { query: salesQuery() }),
         api<DecantSource[]>("/api/admin/inventory/decant-sources"),
+        api<InventoryRow[]>("/api/admin/inventory"),
       ]);
       if (version !== salesLoadVersion) return;
       sales.value = result;
       decantSources.value = sources;
+      inventory.value = inventoryRows;
       salesCursor.value =
         sales.value.length === 50 ? (sales.value.at(-1)?.id ?? "") : "";
     }
@@ -330,6 +337,7 @@ type SaleFormLine = {
   pickerOpen: boolean;
   quantity: number;
   unitPrice: number;
+  originalPrice: number;
   discount: number;
 };
 function saleLine(input: Partial<SaleFormLine> = {}): SaleFormLine {
@@ -339,6 +347,7 @@ function saleLine(input: Partial<SaleFormLine> = {}): SaleFormLine {
     pickerOpen: input.pickerOpen ?? false,
     quantity: input.quantity ?? 1,
     unitPrice: input.unitPrice ?? 0,
+    originalPrice: input.originalPrice ?? 0,
     discount: input.discount ?? 0,
   };
 }
@@ -365,8 +374,18 @@ function saleMatches(line: SaleFormLine) {
     ? saleOptions.value.filter((item) =>
         normalizePicker(item.label).includes(term),
       )
-    : saleOptions.value.filter((item) => item.isDecant);
-  return matches.slice(0, 10);
+    : saleOptions.value.filter((item) => item.isDecant || item.stock > 0);
+  
+  matches.sort((a, b) => {
+    const aPriority = a.isDecant || a.stock > 0 ? 1 : 0;
+    const bPriority = b.isDecant || b.stock > 0 ? 1 : 0;
+    if (aPriority !== bPriority) return bPriority - aPriority;
+    
+    if (a.stock !== b.stock) return b.stock - a.stock;
+    return a.label.localeCompare(b.label);
+  });
+
+  return matches.slice(0, 50);
 }
 function selectSaleOption(
   line: SaleFormLine,
@@ -375,6 +394,7 @@ function selectSaleOption(
   line.selection = `${option.productId}/${option.variantId}`;
   line.query = option.label;
   line.unitPrice = option.price;
+  line.originalPrice = option.price;
   line.pickerOpen = false;
 }
 function decantSaleInfo(line: { selection: string; quantity: number }) {
@@ -1054,19 +1074,47 @@ async function editSupplier(supplier: Supplier) {
 }
 type PurchaseFormLine = {
   selection: string;
+  query: string;
+  pickerOpen: boolean;
   quantity: number;
   unitCost: number;
+  originalPrice: number;
+  previousCost: number;
   discount: number;
   saleUnitPrice?: number;
 };
 function purchaseLine(input: Partial<PurchaseFormLine> = {}): PurchaseFormLine {
   return {
     selection: input.selection ?? "",
+    query: input.query ?? "",
+    pickerOpen: input.pickerOpen ?? false,
     quantity: input.quantity ?? 1,
     unitCost: input.unitCost ?? 0,
+    originalPrice: input.originalPrice ?? 0,
+    previousCost: input.previousCost ?? 0,
     discount: input.discount ?? 0,
     saleUnitPrice: input.saleUnitPrice,
   };
+}
+function purchaseMatches(line: PurchaseFormLine) {
+  const term = normalizePicker(line.query);
+  const matches = term
+    ? purchaseOptions.value.filter((item) =>
+        normalizePicker(item.purchaseLabel).includes(term),
+      )
+    : purchaseOptions.value;
+  matches.sort((a, b) => a.purchaseLabel.localeCompare(b.purchaseLabel));
+  return matches.slice(0, 50);
+}
+function selectPurchaseOption(
+  line: PurchaseFormLine,
+  option: (typeof purchaseOptions.value)[number],
+) {
+  line.selection = `${option.productId}/${option.variantId}`;
+  line.query = option.purchaseLabel;
+  line.originalPrice = option.price;
+  line.previousCost = option.averageCost;
+  line.pickerOpen = false;
 }
 const purchaseForm = reactive({
   requestId: "",
@@ -1119,7 +1167,10 @@ watch(
         ? [
             purchaseLine({
               selection: `${item.productId}/${item.variantId}`,
+              query: option.purchaseLabel,
               quantity: item.quantity,
+              originalPrice: option.price,
+              previousCost: option.averageCost,
               saleUnitPrice: item.unitPrice,
             }),
           ]
@@ -1873,8 +1924,13 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 type="number"
                 min="1"
                 required /></label
-            ><label
-              >Precio unitario COP<AdminMoneyInput
+            ><label>
+              <span>Precio vendido COP
+                <span v-if="line.originalPrice" style="font-weight:normal; opacity:0.8; font-size:0.85em; margin-left: 0.5rem">
+                  (Orig: {{ money(line.originalPrice) }})
+                </span>
+              </span>
+              <AdminMoneyInput
                 v-model="line.unitPrice"
                 required /></label
             ><label
@@ -2587,36 +2643,63 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
             :key="index"
             class="business-line"
           >
-            <label
-              >Presentación<select v-model="line.selection" required>
-                <option value="">Selecciona…</option>
-                <option
-                  v-for="item in purchaseOptions"
+            <div class="sale-picker">
+              <label
+                >Presentación<input
+                  v-model="line.query"
+                  type="search"
+                  autocomplete="off"
+                  placeholder="Busca perfume o tamaño…"
+                  @focus="line.pickerOpen = true"
+                  @blur="line.pickerOpen = false"
+                  @keydown.esc="line.pickerOpen = false"
+                  @input="
+                    line.selection = '';
+                    line.pickerOpen = true;
+                  "
+              /></label>
+              <div v-if="line.pickerOpen" class="sale-picker-menu">
+                <p class="sale-picker-hint">
+                  {{
+                    line.query
+                      ? "Resultados de búsqueda"
+                      : "Catálogo disponible."
+                  }}
+                </p>
+                <button
+                  v-for="item in purchaseMatches(line)"
                   :key="item.productId + item.variantId"
-                  :value="`${item.productId}/${item.variantId}`"
+                  type="button"
+                  class="sale-picker-option"
+                  @mousedown.prevent="selectPurchaseOption(line, item)"
                 >
                   {{ item.purchaseLabel }}
-                </option>
-              </select></label
-            ><label
+                </button>
+                <p v-if="!purchaseMatches(line).length" class="sale-picker-empty">
+                  No hay coincidencias.
+                </p>
+              </div>
+            </div>
+            <label
               >Cantidad<input
                 v-model.number="line.quantity"
                 type="number"
                 min="1"
                 required /></label
-            ><label
-              >Costo unitario COP<AdminMoneyInput
+            ><label>
+              <span>Precio comprado COP
+                <span v-if="line.originalPrice || line.previousCost" style="font-weight:normal; opacity:0.8; font-size:0.85em; margin-left: 0.5rem">
+                  (Catálogo: {{ money(line.originalPrice) }} <span v-if="line.previousCost">| Costo Ant: {{ money(line.previousCost) }}</span>)
+                </span>
+              </span>
+              <AdminMoneyInput
                 v-model="line.unitCost"
                 required /></label
-            ><label
-              >Precio vendido COP<input
-                :value="
-                  line.saleUnitPrice === undefined
-                    ? '—'
-                    : money(line.saleUnitPrice)
-                "
+            ><label v-if="line.saleUnitPrice !== undefined"
+              >Vendido en encargo<input
+                :value="money(line.saleUnitPrice)"
                 readonly
-            /></label>
+            /></label
             ><label
               >Descuento total de la línea (COP)<AdminMoneyInput
                 v-model="line.discount" /></label
