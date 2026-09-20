@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { cashAccounts, type CashMovement } from "../../../../shared/business";
+import { type CashMovement } from "../../../../shared/business";
 
 export default defineEventHandler(async (event) => {
   const admin = await requireAdmin(event);

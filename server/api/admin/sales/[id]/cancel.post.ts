@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  cashAccounts,
   remainingSaleItemQuantities,
   type CashMovement,
   type InventoryMovement,

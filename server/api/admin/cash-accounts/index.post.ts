@@ -2,7 +2,6 @@ import { z } from "zod";
 import type { CashAccountDefinition } from "../../../../shared/business";
 
 export default defineEventHandler(async (event) => {
-  const admin = await requireAdmin(event);
   const body = await readValidated(
     event,
     z.object({

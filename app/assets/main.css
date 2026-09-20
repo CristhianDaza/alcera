@@ -2812,7 +2812,6 @@ select {
 .metric-grid strong {
   display: block;
   margin-top: 8px;
-  font-family: var(--serif);
   font-size: clamp(20px, 3vw, 30px);
 }
 .business-columns {
