@@ -3,8 +3,16 @@ export interface Variant {
   size: string;
   price: number;
   available: boolean;
-  /** Las variantes antiguas sin tipo se consideran frascos originales. */
   type?: "bottle" | "decant";
+  inventory?: InventorySettings;
+}
+export interface InventorySettings {
+  stock: number;
+  minimumStock: number;
+  averageCost: number;
+  updatedAt: string;
+  mode?: "stock" | "on_demand" | "decant";
+  decantPackagingCost?: number;
 }
 export interface ProductImage {
   publicId: string;

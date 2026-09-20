@@ -128,6 +128,30 @@ async function save() {
     saving.value = false;
   }
 }
+async function convertToSale() {
+  if (
+    !selected.value ||
+    !window.confirm(`¿Crear una venta desde la solicitud ${selected.value.id}?`)
+  )
+    return;
+  saving.value = true;
+  notice.value = "";
+  try {
+    const sale = await $fetch<{ number: string }>(
+      `/api/admin/orders/${selected.value.id}/convert-to-sale`,
+      {
+        method: "POST",
+        headers: await props.getHeaders(),
+        body: { channel: "website" },
+      },
+    );
+    notice.value = `Venta ${sale.number} creada. Ábrela en Gestión → Ventas para registrar el pago.`;
+  } catch (error) {
+    notice.value = errorMessage(error);
+  } finally {
+    saving.value = false;
+  }
+}
 onMounted(() => load());
 </script>
 <template>
@@ -225,6 +249,19 @@ onMounted(() => load());
             ? "Pendiente de acordar envío"
             : money(selected.subtotal + selected.shipping)
         }}</strong>
+      </p>
+      <button
+        v-if="selected.status === 'awaiting_payment'"
+        type="button"
+        class="button"
+        :disabled="saving"
+        @click="convertToSale"
+      >
+        Convertir en venta
+      </button>
+      <p v-else-if="selected.status === 'pending'" class="muted">
+        Confirma primero la disponibilidad y el valor del envío. Después podrás
+        convertir la solicitud en venta.
       </p>
       <form
         v-if="orderTransitions[selected.status].length"

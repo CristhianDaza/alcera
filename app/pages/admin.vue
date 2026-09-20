@@ -63,8 +63,22 @@ const email = ref(""),
 const catalog = ref<Product[]>([]),
   storeForm = ref<Settings>({ ...useStore().value }),
   editor = ref<EditableProduct | null>(null);
-const tab = ref<"products" | "orders" | "settings">("products"),
-  productFilter = ref<"all" | Product["status"]>("all"),
+type AdminTab = "business" | "products" | "orders" | "settings";
+const adminTabs: AdminTab[] = ["business", "products", "orders", "settings"];
+const tab = computed<AdminTab>(() => {
+  const value = queryText(route.query.tab) as AdminTab;
+  return adminTabs.includes(value) ? value : "business";
+});
+function selectTab(value: AdminTab) {
+  const query: Record<string, string | null | Array<string | null>> = {
+    ...route.query,
+  };
+  query.tab = value;
+  if (value !== "business") delete query.section;
+  if (value !== "products") delete query.editor;
+  void router.push({ query });
+}
+const productFilter = ref<"all" | Product["status"]>("all"),
   productSearch = ref("");
 const normalize = (value: string) =>
   value
@@ -336,6 +350,18 @@ function edit(p?: Product) {
   baseNotes.value = editor.value.olfactoryPyramid.base.join(", ");
   idealFor.value = editor.value.idealFor.join(", ");
 }
+function openProduct(productId: string) {
+  const query: Record<string, string | null | Array<string | null>> = {
+    ...route.query,
+  };
+  query.tab = "products";
+  query.editor = productId;
+  delete query.section;
+  void router.push({ query });
+}
+function openOrders() {
+  selectTab("orders");
+}
 function openEditor(product?: Product) {
   edit(product);
   updateAdminQuery({ editor: product?.id ?? "new" });
@@ -560,10 +586,19 @@ function move(index: number, direction: number) {
     <template v-else>
       <div class="admin-tabs" role="tablist" aria-label="Administración">
         <button
+          v-if="!demo"
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'business'"
+          @click="selectTab('business')"
+        >
+          Gestión
+        </button>
+        <button
           type="button"
           role="tab"
           :aria-selected="tab === 'products'"
-          @click="tab = 'products'"
+          @click="selectTab('products')"
         >
           Perfumes
         </button>
@@ -572,7 +607,7 @@ function move(index: number, direction: number) {
           type="button"
           role="tab"
           :aria-selected="tab === 'orders'"
-          @click="tab = 'orders'"
+          @click="selectTab('orders')"
         >
           Pedidos
         </button>
@@ -580,12 +615,19 @@ function move(index: number, direction: number) {
           type="button"
           role="tab"
           :aria-selected="tab === 'settings'"
-          @click="tab = 'settings'"
+          @click="selectTab('settings')"
         >
           Configuración
         </button>
       </div>
-      <section v-if="tab === 'settings'" class="settings">
+      <AdminBusiness
+        v-if="tab === 'business' && !demo"
+        :get-headers="headers"
+        :catalog="catalog"
+        @open-orders="openOrders"
+        @open-product="openProduct"
+      />
+      <section v-else-if="tab === 'settings'" class="settings">
         <h2>Configuración de la tienda</h2>
         <form class="admin-fields" @submit.prevent="saveSettings">
           <label
@@ -908,9 +950,10 @@ function move(index: number, direction: number) {
         </div>
         <h3>Presentaciones</h3>
         <p class="muted admin-help">
-          Marca como decant las presentaciones que se envasan desde este
-          perfume. Esas opciones aparecerán automáticamente en la página
-          Decants.
+          Para vender decants, añade una presentación por cada medida, por
+          ejemplo 5 ml y 10 ml. Marca cada una como Decant y asigna su precio de
+          venta individual. Solo aparecerán en Ventas cuando haya un frasco
+          abierto de este mismo perfume.
         </p>
         <div
           v-for="(v, i) in editor?.variants"

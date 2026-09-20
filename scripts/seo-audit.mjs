@@ -1,4 +1,3 @@
-// Read-only HTTP audit. Usage: node --use-system-ca scripts/seo-audit.mjs [origin] [output]
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 const origin = process.argv[2] || "http://127.0.0.1:3000";

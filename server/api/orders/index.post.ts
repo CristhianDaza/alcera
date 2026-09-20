@@ -47,7 +47,6 @@ export default defineEventHandler(async (event) => {
     .digest("hex");
   const db = database();
   const ref = db.collection("orders").doc(input.requestId);
-  // Do not trust caller-controlled forwarding headers. A shared proxy may need a deployment-specific limiter.
   const bucket = Math.floor(Date.now() / 600000);
   const rateKey = createHash("sha256")
     .update(`${getRequestIP(event) || "unknown"}:${bucket}`)
@@ -117,7 +116,6 @@ export default defineEventHandler(async (event) => {
     return result;
   });
   setResponseStatus(event, 201);
-  // No public order lookup or customer data response.
   return {
     id: order.id,
     whatsappUrl: orderWhatsappUrl(order, config.whatsapp, config.name),

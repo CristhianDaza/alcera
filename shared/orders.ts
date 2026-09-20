@@ -95,7 +95,6 @@ export const orderUpdateSchema = z.object({
   note: z.string().trim().max(1000),
 });
 
-// Only catalog values become the saved commercial snapshot.
 export function resolveOrderItems(
   items: OrderRequest["items"],
   products: Product[],

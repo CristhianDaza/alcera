@@ -1,4 +1,3 @@
-// Read-only storefront checks; never submits an order or changes remote data.
 import { chromium, expect } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 const base = process.argv[2] || "http://127.0.0.1:3107";
