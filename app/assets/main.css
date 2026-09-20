@@ -2766,7 +2766,6 @@ select {
   color: var(--ink);
 }
 
-/* Gestión operativa */
 .business-panel {
   margin: 28px 0 56px;
 }
@@ -3827,7 +3826,6 @@ select {
   }
 }
 
-/* Storefront readability, touch targets and responsive composition. */
 body {
   font-size: 15px;
 }
@@ -4829,7 +4827,6 @@ main:focus {
   }
 }
 
-/* Hero editorial: la fotografía queda como una pieza independiente, no como un fondo. */
 @media (min-width: 1051px) {
   .hero-image {
     min-height: 0;
@@ -4895,7 +4892,6 @@ main:focus {
   letter-spacing: 0.2px;
 }
 
-/* Fotografías editoriales de familias: contraste uniforme y lectura segura. */
 .family-card:hover .family-link-label {
   color: #fff;
   border-color: #fff;
@@ -4907,7 +4903,6 @@ main:focus {
   }
 }
 
-/* Header móvil compacto: marca legible y acciones táctiles sin compresión. */
 .brand-mark__name-compact,
 .mobile-nav-title {
   display: none;

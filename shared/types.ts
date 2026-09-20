@@ -3,9 +3,7 @@ export interface Variant {
   size: string;
   price: number;
   available: boolean;
-  /** Las variantes antiguas sin tipo se consideran frascos originales. */
   type?: "bottle" | "decant";
-  /** Datos privados de operación. Las variantes antiguas inician en cero. */
   inventory?: InventorySettings;
 }
 export interface InventorySettings {
@@ -13,9 +11,7 @@ export interface InventorySettings {
   minimumStock: number;
   averageCost: number;
   updatedAt: string;
-  /** stock: unidades; on_demand: se compra antes de confirmar; decant: se sirve de un frasco abierto. */
   mode?: "stock" | "on_demand" | "decant";
-  /** Costo por cada atomizador, etiqueta y empaque de un decant. */
   decantPackagingCost?: number;
 }
 export interface ProductImage {

@@ -163,7 +163,6 @@ export function dateRange(query: Record<string, string | undefined>) {
   return {
     from,
     to,
-    // Colombia no usa horario de verano: medianoche local equivale a 05:00 UTC.
     start: `${from}T05:00:00.000Z`,
     end: `${followingDate(to)}T04:59:59.999Z`,
   };

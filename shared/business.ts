@@ -96,7 +96,6 @@ export interface Sale {
   balanceDue: number;
   refundTotal?: number;
   returnedCost?: number;
-  /** Acumulado materializado para validar y reversar devoluciones sin leer todo el historial. */
   returnedItems?: SaleReturnedItem[];
   inventoryAppliedAt?: string;
   inventoryReversedAt?: string;
@@ -104,7 +103,6 @@ export interface Sale {
   updatedAt: string;
   createdBy: string;
   notes?: string;
-  /** Solo se agrega en respuestas de listado cuando se filtra por medio de pago. */
   paymentMethods?: PaymentMethod[];
   requestFingerprint?: string;
 }

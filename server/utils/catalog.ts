@@ -374,7 +374,6 @@ export async function products(all = false): Promise<Product[]> {
         if (all) await writeBothSnapshots(result);
         else await writeSnapshot(false, result);
       } catch (error) {
-        // Serving the source collection is safer than taking the catalog offline.
         console.error("Could not create catalog snapshot", error);
       }
       return result;

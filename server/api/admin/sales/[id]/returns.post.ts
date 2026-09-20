@@ -86,8 +86,6 @@ export default defineEventHandler(async (event) => {
         statusCode: 409,
         statusMessage: "El reembolso supera el dinero recibido",
       });
-    // Las ventas anteriores a este campo se migran de forma perezosa al registrar
-    // su siguiente devolución. Las nuevas no vuelven a leer todo el historial.
     const previousReturnedItems =
       sale.returnedItems ??
       (
