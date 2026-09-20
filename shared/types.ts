@@ -13,6 +13,12 @@ export interface InventorySettings {
   updatedAt: string;
   mode?: "stock" | "on_demand" | "decant";
   decantPackagingCost?: number;
+  decantSupplies?: DecantSupplyUse[];
+}
+export interface DecantSupplyUse {
+  supplyId: string;
+  quantity: number;
+  consumption: "decant" | "sale";
 }
 export interface ProductImage {
   publicId: string;

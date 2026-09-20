@@ -1,6 +1,8 @@
 import {
   purchaseCreateSchema,
+  inventoryItemOf,
   type Purchase,
+  type Supply,
 } from "../../../../shared/business";
 import type { Product } from "../../../../shared/types";
 
@@ -22,10 +24,20 @@ export default defineEventHandler(async (event) => {
         });
       return purchase;
     }
-    const refs = [...new Set(body.items.map((item) => item.productId))].map(
-      (productId) => db.collection("products").doc(productId),
-    );
-    const snapshots = await Promise.all(refs.map((ref) => tx.get(ref)));
+    const refs = [
+      ...new Set(
+        body.items.flatMap((item) => (item.productId ? [item.productId] : [])),
+      ),
+    ].map((productId) => db.collection("products").doc(productId));
+    const supplyRefs = [
+      ...new Set(
+        body.items.flatMap((item) => (item.supplyId ? [item.supplyId] : [])),
+      ),
+    ].map((supplyId) => db.collection("supplies").doc(supplyId));
+    const [snapshots, supplySnapshots] = await Promise.all([
+      Promise.all(refs.map((ref) => tx.get(ref))),
+      Promise.all(supplyRefs.map((ref) => tx.get(ref))),
+    ]);
     const [supplierSnapshot, saleSnapshot] = await Promise.all([
       body.supplierId
         ? tx.get(db.collection("suppliers").doc(body.supplierId))
@@ -50,16 +62,42 @@ export default defineEventHandler(async (event) => {
         { id: snapshot.id, ...snapshot.data() } as Product,
       ]),
     );
+    const supplies = new Map(
+      supplySnapshots
+        .filter((snapshot) => snapshot.exists)
+        .map((snapshot) => [
+          snapshot.id,
+          inventoryItemOf(docData<Supply>(snapshot)),
+        ]),
+    );
     const items = body.items.map((item) => {
-      const product = products.get(item.productId);
-      const variant = findVariant(product, item.variantId);
+      const supply = item.supplyId ? supplies.get(item.supplyId) : undefined;
+      if (item.supplyId && (!supply || !supply.active))
+        throw createError({
+          statusCode: 400,
+          statusMessage: "El insumo seleccionado no está disponible",
+        });
+      const product = item.productId ? products.get(item.productId) : undefined;
+      const variant =
+        product && item.variantId
+          ? findVariant(product, item.variantId)
+          : undefined;
       const total = item.quantity * item.unitCost - item.discount;
       if (total < 0)
         throw createError({
           statusCode: 400,
           statusMessage: "Un descuento supera el valor de la línea",
         });
-      return { ...item, name: product!.name, size: variant.size, total };
+      return {
+        ...item,
+        name: supply?.name ?? product!.name,
+        size: supply
+          ? supply.category === "DECANT_CONTAINER"
+            ? `${supply.capacityMl} ml`
+            : supply.unit
+          : variant!.size,
+        total,
+      };
     });
     const number = await nextNumber(tx, "C", new Date(body.date));
     const at = nowIso();

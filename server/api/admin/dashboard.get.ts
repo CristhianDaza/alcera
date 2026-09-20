@@ -49,7 +49,8 @@ export default defineEventHandler(async (event) => {
           (cost, item) => cost + item.quantity * item.unitCost,
           0,
         ) -
-          (sale.returnedCost ?? 0)),
+          (sale.returnedCost ?? 0) +
+          (sale.additionalInventoryCost ?? 0)),
       0,
     );
   const expenseTotal = expenses

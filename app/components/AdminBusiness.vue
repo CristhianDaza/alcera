@@ -2,6 +2,13 @@
 import { money } from "#shared/commerce";
 import {
   expenseCategories,
+  inventoryItemCategories,
+  inventoryItemCategoryLabels,
+  inventoryItemOf,
+  availableDecantContainers,
+  selectedDecantContainerId,
+  inventoryUnits,
+  inventoryUnitLabels,
   millilitersFromSize,
   paymentMethods,
   saleChannels,
@@ -18,6 +25,8 @@ import {
   type Sale,
   type SalePayment,
   type SaleReturn,
+  type Supply,
+  type SupplyMovement,
   type Supplier,
 } from "#shared/business";
 import type { Product } from "#shared/types";
@@ -80,7 +89,9 @@ const dashboard = ref<DashboardData | null>(null),
   salesCursor = ref(""),
   inventory = ref<InventoryRow[]>([]),
   decantSources = ref<DecantSource[]>([]),
+  supplies = ref<Supply[]>([]),
   movements = ref<InventoryMovement[]>([]),
+  supplyMovements = ref<SupplyMovement[]>([]),
   purchases = ref<Purchase[]>([]),
   suppliers = ref<Supplier[]>([]),
   expenses = ref<Expense[]>([]),
@@ -155,6 +166,7 @@ type ActionModalField = {
   min?: number;
   step?: number;
   help?: string;
+  visible?: (values: Record<string, string>) => boolean;
 };
 type ActionModal = {
   title: string;
@@ -225,6 +237,41 @@ const options = computed(() =>
 const purchaseOptions = computed(() =>
   options.value.filter((item) => !item.isDecant),
 );
+function supplyPurchaseLabel(supply: ReturnType<typeof inventoryItemOf>) {
+  return `${supply.name} · ${inventoryItemCategoryLabels[supply.category]}${supply.category === "DECANT_CONTAINER" ? ` · ${supply.capacityMl} ml` : ""}`;
+}
+const purchaseCatalogOptions = computed(() => [
+  ...purchaseOptions.value.map((item) => ({
+    selection: `${item.productId}/${item.variantId}`,
+    label: item.purchaseLabel,
+    originalPrice: item.price,
+    previousCost: item.averageCost,
+  })),
+  ...supplies.value
+    .map(inventoryItemOf)
+    .filter((item) => item.active)
+    .map((item) => ({
+      selection: `supply/${item.id}`,
+      label: supplyPurchaseLabel(item),
+      originalPrice: 0,
+      previousCost: item.averageCost,
+    })),
+]);
+const decantSizeOptions = computed(() =>
+  [
+    ...new Set(
+      options.value
+        .filter((item) => item.isDecant)
+        .map((item) => millilitersFromSize(item.size))
+        .filter((size) => size > 0),
+    ),
+  ]
+    .sort((a, b) => a - b)
+    .map((size) => ({
+      value: String(size),
+      label: `Solo decants de ${size} ml`,
+    })),
+);
 const saleOptions = computed(() =>
   options.value.filter(
     (item) =>
@@ -268,31 +315,42 @@ async function load(target = section.value) {
       });
     if (target === "sales") {
       const version = ++salesLoadVersion;
-      const [result, sources, inventoryRows] = await Promise.all([
+      const [result, sources, inventoryRows, supplyItems] = await Promise.all([
         api<Sale[]>("/api/admin/sales", { query: salesQuery() }),
         api<DecantSource[]>("/api/admin/inventory/decant-sources"),
         api<InventoryRow[]>("/api/admin/inventory"),
+        api<Supply[]>("/api/admin/supplies"),
       ]);
       if (version !== salesLoadVersion) return;
       sales.value = result;
       decantSources.value = sources;
       inventory.value = inventoryRows;
+      supplies.value = supplyItems;
       salesCursor.value =
         sales.value.length === 50 ? (sales.value.at(-1)?.id ?? "") : "";
     }
     if (target === "inventory")
-      [inventory.value, movements.value, decantSources.value] =
-        await Promise.all([
-          api<InventoryRow[]>("/api/admin/inventory"),
-          api<InventoryMovement[]>("/api/admin/inventory/movements"),
-          api<DecantSource[]>("/api/admin/inventory/decant-sources"),
-        ]);
-    if (target === "purchases")
-      [purchases.value, suppliers.value, sales.value] = await Promise.all([
-        api<Purchase[]>("/api/admin/purchases"),
-        api<Supplier[]>("/api/admin/suppliers"),
-        api<Sale[]>("/api/admin/sales"),
+      [
+        inventory.value,
+        movements.value,
+        decantSources.value,
+        supplies.value,
+        supplyMovements.value,
+      ] = await Promise.all([
+        api<InventoryRow[]>("/api/admin/inventory"),
+        api<InventoryMovement[]>("/api/admin/inventory/movements"),
+        api<DecantSource[]>("/api/admin/inventory/decant-sources"),
+        api<Supply[]>("/api/admin/supplies"),
+        api<SupplyMovement[]>("/api/admin/supplies/movements"),
       ]);
+    if (target === "purchases")
+      [purchases.value, suppliers.value, sales.value, supplies.value] =
+        await Promise.all([
+          api<Purchase[]>("/api/admin/purchases"),
+          api<Supplier[]>("/api/admin/suppliers"),
+          api<Sale[]>("/api/admin/sales"),
+          api<Supply[]>("/api/admin/supplies"),
+        ]);
     if (target === "expenses")
       expenses.value = await api<Expense[]>("/api/admin/expenses");
     if (target === "cash")
@@ -339,7 +397,9 @@ type SaleFormLine = {
   unitPrice: number;
   originalPrice: number;
   discount: number;
+  inventoryItemId: string;
 };
+type SaleSupplyUseForm = { supplyId: string; quantity: number };
 function saleLine(input: Partial<SaleFormLine> = {}): SaleFormLine {
   return {
     selection: input.selection ?? "",
@@ -349,6 +409,7 @@ function saleLine(input: Partial<SaleFormLine> = {}): SaleFormLine {
     unitPrice: input.unitPrice ?? 0,
     originalPrice: input.originalPrice ?? 0,
     discount: input.discount ?? 0,
+    inventoryItemId: input.inventoryItemId ?? "",
   };
 }
 const saleForm = reactive({
@@ -361,7 +422,67 @@ const saleForm = reactive({
   shipping: 0,
   notes: "",
   items: [saleLine()],
+  supplyUses: [] as SaleSupplyUseForm[],
 });
+const manuallySelectableSupplies = computed(() =>
+  supplies.value
+    .map(inventoryItemOf)
+    .filter((item) => item.active && item.category !== "DECANT_CONTAINER"),
+);
+function supplyUseName(supplyId: string) {
+  const item = supplies.value.find((supply) => supply.id === supplyId);
+  return item ? supplyPurchaseLabel(inventoryItemOf(item)) : "Insumo";
+}
+async function addSaleSupplyUse() {
+  const values = await requestActionModal({
+    title: "Añadir insumo a la venta",
+    description: "Solo se descontará de inventario al confirmar esta venta.",
+    confirmLabel: "Añadir insumo",
+    fields: [
+      {
+        key: "supplyId",
+        label: "Insumo",
+        value: "",
+        type: "select",
+        options: [
+          { value: "", label: "Selecciona…" },
+          ...manuallySelectableSupplies.value.map((item) => ({
+            value: item.id,
+            label: `${supplyPurchaseLabel(item)} · ${item.stock} disponibles`,
+          })),
+        ],
+        required: true,
+      },
+      {
+        key: "quantity",
+        label: "Cantidad a usar",
+        value: "1",
+        type: "number",
+        min: 1,
+        step: 1,
+        required: true,
+      },
+    ],
+  });
+  if (!values?.supplyId || Number(values.quantity) < 1) return;
+  const current = saleForm.supplyUses.find(
+    (use) => use.supplyId === values.supplyId,
+  );
+  if (current) current.quantity += Number(values.quantity);
+  else
+    saleForm.supplyUses.push({
+      supplyId: values.supplyId,
+      quantity: Number(values.quantity),
+    });
+}
+function compatibleContainers(line: { selection: string }) {
+  const option = options.value.find(
+    (item) => `${item.productId}/${item.variantId}` === line.selection,
+  );
+  if (!option?.isDecant) return [];
+  const capacityMl = millilitersFromSize(option.size);
+  return availableDecantContainers(supplies.value, capacityMl);
+}
 const normalizePicker = (value: string) =>
   value
     .normalize("NFD")
@@ -375,12 +496,12 @@ function saleMatches(line: SaleFormLine) {
         normalizePicker(item.label).includes(term),
       )
     : saleOptions.value.filter((item) => item.isDecant || item.stock > 0);
-  
+
   matches.sort((a, b) => {
     const aPriority = a.isDecant || a.stock > 0 ? 1 : 0;
     const bPriority = b.isDecant || b.stock > 0 ? 1 : 0;
     if (aPriority !== bPriority) return bPriority - aPriority;
-    
+
     if (a.stock !== b.stock) return b.stock - a.stock;
     return a.label.localeCompare(b.label);
   });
@@ -395,9 +516,15 @@ function selectSaleOption(
   line.query = option.label;
   line.unitPrice = option.price;
   line.originalPrice = option.price;
+  const capacityMl = millilitersFromSize(option.size);
+  line.inventoryItemId = selectedDecantContainerId(supplies.value, capacityMl);
   line.pickerOpen = false;
 }
-function decantSaleInfo(line: { selection: string; quantity: number }) {
+function decantSaleInfo(line: {
+  selection: string;
+  quantity: number;
+  inventoryItemId?: string;
+}) {
   const option = options.value.find(
     (item) => `${item.productId}/${item.variantId}` === line.selection,
   );
@@ -410,6 +537,17 @@ function decantSaleInfo(line: { selection: string; quantity: number }) {
       warning: true,
     };
   const requiredMl = mlPerUnit * Math.max(1, Number(line.quantity) || 1);
+  const containers = compatibleContainers(line);
+  if (!containers.length)
+    return {
+      message: `No hay envases de ${mlPerUnit} ml disponibles.`,
+      warning: true,
+    };
+  if (!line.inventoryItemId)
+    return {
+      message: `Selecciona uno de los ${containers.length} envases compatibles de ${mlPerUnit} ml.`,
+      warning: true,
+    };
   const sources = decantSources.value
     .filter(
       (source) =>
@@ -593,6 +731,9 @@ async function createSale() {
           : "pending_payment",
         shippingCharged: Number(saleForm.shipping),
         notes: saleForm.notes || undefined,
+        supplyUses: saleForm.supplyUses.length
+          ? saleForm.supplyUses.map((use) => ({ ...use }))
+          : undefined,
         items: saleForm.items.map((item) => {
           const [productId, variantId] = item.selection.split("/");
           return {
@@ -601,6 +742,7 @@ async function createSale() {
             quantity: Number(item.quantity),
             unitPrice: Number(item.unitPrice),
             discount: Number(item.discount),
+            inventoryItemId: item.inventoryItemId || undefined,
           };
         }),
       },
@@ -615,6 +757,7 @@ async function createSale() {
       shipping: 0,
       notes: "",
       items: [saleLine()],
+      supplyUses: [],
     });
     await load("sales");
     return "Venta registrada.";
@@ -932,6 +1075,509 @@ async function configureStock(row: InventoryRow) {
     return "Configuración actualizada.";
   });
 }
+async function createSupply(purchaseLine?: PurchaseFormLine) {
+  const values = await requestActionModal({
+    title: purchaseLine ? "Nuevo artículo para esta compra" : "Añadir insumo",
+    description: purchaseLine
+      ? "Define cualquier capacidad de envase. La cantidad comprada se indicará en esta línea, no aquí."
+      : "Por ejemplo: botella de 5 ml, sticker o bolsa de envío.",
+    confirmLabel: purchaseLine ? "Crear y seleccionar" : "Añadir insumo",
+    fields: [
+      { key: "name", label: "Nombre", value: "", required: true },
+      {
+        key: "category",
+        label: "Categoría",
+        value: "SUPPLY",
+        type: "select",
+        options: inventoryItemCategories.map((category) => ({
+          value: category,
+          label: inventoryItemCategoryLabels[category],
+        })),
+        required: true,
+      },
+      {
+        key: "capacityMl",
+        label: "Capacidad (ml)",
+        value: "",
+        type: "number",
+        min: 1,
+        step: 1,
+        required: true,
+        visible: (values) => values.category === "DECANT_CONTAINER",
+      },
+      {
+        key: "unit",
+        label: "Unidad de medida",
+        value: "UNIT",
+        type: "select",
+        options: inventoryUnits.map((unit) => ({
+          value: unit,
+          label: inventoryUnitLabels[unit],
+        })),
+        required: true,
+        visible: (values) => values.category !== "DECANT_CONTAINER",
+      },
+      {
+        key: "stock",
+        label: purchaseLine ? "Cantidad que compras" : "Existencias iniciales",
+        value: purchaseLine ? "1" : "0",
+        type: "number",
+        min: 0,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "minimum",
+        label: "Stock mínimo",
+        value: "0",
+        type: "number",
+        min: 0,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "cost",
+        label: "Costo unitario COP",
+        value: "0",
+        type: "number",
+        min: 0,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "active",
+        label: "Estado",
+        value: "true",
+        type: "select",
+        options: [
+          { value: "true", label: "Activo" },
+          { value: "false", label: "Inactivo" },
+        ],
+      },
+    ],
+  });
+  if (!values) return;
+  await perform(async () => {
+    const supply = await api<Supply>("/api/admin/supplies", {
+      method: "POST",
+      body: {
+        name: values.name,
+        stock: purchaseLine ? 0 : Number(values.stock),
+        minimumStock: Number(values.minimum),
+        averageCost: Number(values.cost),
+        category: values.category,
+        unit: values.unit,
+        capacityMl:
+          values.category === "DECANT_CONTAINER"
+            ? Number(values.capacityMl)
+            : null,
+        active: values.active === "true",
+      },
+    });
+    if (purchaseLine) {
+      const item = inventoryItemOf(supply);
+      supplies.value.push(supply);
+      purchaseLine.selection = `supply/${item.id}`;
+      purchaseLine.query = supplyPurchaseLabel(item);
+      purchaseLine.quantity = Number(values.stock);
+      purchaseLine.unitCost = Number(values.cost);
+      purchaseLine.originalPrice = 0;
+      purchaseLine.previousCost = item.averageCost;
+      return "Artículo creado. Indica la cantidad que compras en esta línea.";
+    }
+    await load("inventory");
+    return "Insumo añadido al inventario.";
+  });
+}
+async function configureSupplyConsumption(supply: Supply) {
+  const rule = supply.automaticConsumption;
+  const values = await requestActionModal({
+    title: "Descuento automático del insumo",
+    description: `${supply.name}. Esta regla se aplica a cualquier producto que se venda como decant.`,
+    confirmLabel: "Guardar regla",
+    fields: [
+      {
+        key: "consumption",
+        label: "Cuándo descontar",
+        value: rule?.consumption ?? "decant",
+        type: "select",
+        options: [
+          { value: "decant", label: "Por cada decant vendido" },
+          { value: "sale", label: "Una vez por pedido con decants" },
+          { value: "none", label: "No descontar automáticamente" },
+        ],
+      },
+      {
+        key: "quantity",
+        label: "Cantidad",
+        value: String(rule?.quantity ?? 1),
+        type: "number",
+        min: 1,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "sizeMl",
+        label: "Alcance de la regla heredada",
+        value: rule?.sizeMl ? String(rule.sizeMl) : "all",
+        type: "select",
+        options: [
+          { value: "all", label: "Cualquier tamaño de decant" },
+          ...decantSizeOptions.value,
+        ],
+      },
+    ],
+  });
+  if (!values || (values.consumption !== "none" && Number(values.quantity) < 1))
+    return;
+  await perform(async () => {
+    await api(`/api/admin/supplies/${supply.id}/settings`, {
+      method: "PATCH",
+      body: {
+        automaticConsumption:
+          values.consumption === "none"
+            ? null
+            : {
+                quantity: Number(values.quantity),
+                consumption: values.consumption,
+                ...(values.sizeMl === "all"
+                  ? {}
+                  : { sizeMl: Number(values.sizeMl) }),
+              },
+      },
+    });
+    await load("inventory");
+    return "Regla de descuento actualizada.";
+  });
+}
+async function adjustSupply(supply: Supply) {
+  const values = await requestActionModal({
+    title: "Ajustar existencias de insumo",
+    description: `${supply.name} · disponibles: ${supply.stock}`,
+    confirmLabel: "Registrar movimiento",
+    fields: [
+      {
+        key: "quantity",
+        label: "Cambio de unidades",
+        value: "1",
+        type: "number",
+        step: 1,
+        required: true,
+        help: "Usa un número negativo para restar.",
+      },
+      {
+        key: "cost",
+        label: "Costo unitario COP",
+        value: String(supply.averageCost),
+        type: "number",
+        min: 0,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "reference",
+        label: "Referencia",
+        value: "conteo físico",
+        required: true,
+      },
+      {
+        key: "reason",
+        label: "Motivo",
+        value: "ajuste de inventario",
+        required: true,
+      },
+    ],
+  });
+  if (!values || !Number(values.quantity)) return;
+  await perform(async () => {
+    await api("/api/admin/supplies/movements", {
+      method: "POST",
+      body: {
+        requestId: crypto.randomUUID(),
+        supplyId: supply.id,
+        type: "adjustment",
+        quantityChange: Number(values.quantity),
+        unitCost: Number(values.cost),
+        reference: values.reference,
+        reason: values.reason,
+        occurredAt: new Date().toISOString(),
+      },
+    });
+    await load("inventory");
+    return "Existencias del insumo actualizadas.";
+  });
+}
+async function editSupply(supply: Supply) {
+  const item = inventoryItemOf(supply);
+  const values = await requestActionModal({
+    title: "Editar artículo de inventario",
+    description:
+      "Los artículos con movimientos se conservan; desactívalos si ya no se usarán.",
+    confirmLabel: "Guardar artículo",
+    fields: [
+      { key: "name", label: "Nombre", value: item.name, required: true },
+      {
+        key: "category",
+        label: "Categoría",
+        value: item.category,
+        type: "select",
+        options: inventoryItemCategories.map((category) => ({
+          value: category,
+          label: inventoryItemCategoryLabels[category],
+        })),
+      },
+      {
+        key: "capacityMl",
+        label: "Capacidad (ml)",
+        value: item.capacityMl ? String(item.capacityMl) : "",
+        type: "number",
+        min: 1,
+        step: 1,
+        required: true,
+        visible: (form) => form.category === "DECANT_CONTAINER",
+      },
+      {
+        key: "unit",
+        label: "Unidad de medida",
+        value: item.unit,
+        type: "select",
+        options: inventoryUnits.map((unit) => ({
+          value: unit,
+          label: inventoryUnitLabels[unit],
+        })),
+      },
+      {
+        key: "minimumStock",
+        label: "Stock mínimo",
+        value: String(item.minimumStock),
+        type: "number",
+        min: 0,
+        step: 1,
+      },
+      {
+        key: "averageCost",
+        label: "Costo unitario COP",
+        value: String(item.averageCost),
+        type: "number",
+        min: 0,
+        step: 1,
+      },
+      {
+        key: "active",
+        label: "Estado",
+        value: String(item.active),
+        type: "select",
+        options: [
+          { value: "true", label: "Activo" },
+          { value: "false", label: "Inactivo" },
+        ],
+      },
+    ],
+  });
+  if (!values) return;
+  await perform(async () => {
+    await api(`/api/admin/supplies/${item.id}/settings`, {
+      method: "PATCH",
+      body: {
+        name: values.name,
+        category: values.category,
+        unit: values.unit,
+        capacityMl:
+          values.category === "DECANT_CONTAINER"
+            ? Number(values.capacityMl)
+            : null,
+        minimumStock: Number(values.minimumStock),
+        averageCost: Number(values.averageCost),
+        active: values.active === "true",
+      },
+    });
+    await load("inventory");
+    return "Artículo de inventario actualizado.";
+  });
+}
+async function configureDecantSupply(row: InventoryRow) {
+  if (!supplies.value.filter((supply) => supply.active).length) {
+    notice.value = "Primero añade al menos un insumo.";
+    return;
+  }
+  const values = await requestActionModal({
+    title: "Añadir insumo al decant",
+    description: `${row.name} · ${row.size}. Configurados: ${row.decantSupplies?.map((use) => `${supplies.value.find((supply) => supply.id === use.supplyId)?.name ?? "Insumo"} (${use.quantity}${use.consumption === "sale" ? " por pedido" : " por decant"})`).join(", ") || "ninguno"}.`,
+    confirmLabel: "Guardar insumo",
+    fields: [
+      {
+        key: "supplyId",
+        label: "Insumo",
+        value: "",
+        type: "select",
+        options: [
+          { value: "", label: "Selecciona…" },
+          ...supplies.value
+            .filter((supply) => supply.active)
+            .map((supply) => ({
+              value: supply.id,
+              label: `${supply.name} (${supply.stock} disponibles)`,
+            })),
+        ],
+        required: true,
+      },
+      {
+        key: "quantity",
+        label: "Cantidad",
+        value: "1",
+        type: "number",
+        min: 1,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "consumption",
+        label: "Cuándo descontar",
+        value: "decant",
+        type: "select",
+        options: [
+          { value: "decant", label: "Por cada decant" },
+          { value: "sale", label: "Una vez por pedido" },
+        ],
+      },
+    ],
+  });
+  if (!values?.supplyId || Number(values.quantity) < 1) return;
+  const decantSupplies = [...(row.decantSupplies ?? [])].filter(
+    (use) =>
+      !(
+        use.supplyId === values.supplyId &&
+        use.consumption === values.consumption
+      ),
+  );
+  decantSupplies.push({
+    supplyId: values.supplyId,
+    quantity: Number(values.quantity),
+    consumption: values.consumption as "decant" | "sale",
+  });
+  await perform(async () => {
+    await api(
+      `/api/admin/inventory/${row.productId}/${row.variantId}/settings`,
+      {
+        method: "PATCH",
+        body: {
+          minimumStock: row.minimumStock,
+          averageCost: row.averageCost,
+          mode: row.mode,
+          decantPackagingCost: row.decantPackagingCost,
+          decantSupplies,
+        },
+      },
+    );
+    await load("inventory");
+    return "Insumo asignado al decant.";
+  });
+}
+async function removeDecantSupply(
+  row: InventoryRow,
+  supplyId: string,
+  consumption: "decant" | "sale",
+) {
+  const decantSupplies = (row.decantSupplies ?? []).filter(
+    (use) => use.supplyId !== supplyId || use.consumption !== consumption,
+  );
+  await perform(async () => {
+    await api(
+      `/api/admin/inventory/${row.productId}/${row.variantId}/settings`,
+      {
+        method: "PATCH",
+        body: {
+          minimumStock: row.minimumStock,
+          averageCost: row.averageCost,
+          mode: row.mode,
+          decantPackagingCost: row.decantPackagingCost,
+          decantSupplies,
+        },
+      },
+    );
+    await load("inventory");
+    return "Insumo retirado del decant.";
+  });
+}
+async function assignSupplyToDecant(supply: Supply) {
+  const decants = inventory.value.filter((row) => row.type === "decant");
+  if (!decants.length) {
+    notice.value = "Primero crea una presentación de tipo Decant.";
+    return;
+  }
+  const values = await requestActionModal({
+    title: "Asignar insumo a un decant",
+    description: `${supply.name}. Se descontará automáticamente en las próximas ventas confirmadas.`,
+    confirmLabel: "Asignar",
+    fields: [
+      {
+        key: "decant",
+        label: "Presentación de decant",
+        value: "",
+        type: "select",
+        options: [
+          { value: "", label: "Selecciona…" },
+          ...decants.map((row) => ({
+            value: `${row.productId}/${row.variantId}`,
+            label: `${row.name} · ${row.size}`,
+          })),
+        ],
+        required: true,
+      },
+      {
+        key: "quantity",
+        label: "Cantidad",
+        value: "1",
+        type: "number",
+        min: 1,
+        step: 1,
+        required: true,
+      },
+      {
+        key: "consumption",
+        label: "Cuándo descontar",
+        value: "decant",
+        type: "select",
+        options: [
+          { value: "decant", label: "Por cada decant" },
+          { value: "sale", label: "Una vez por pedido" },
+        ],
+      },
+    ],
+  });
+  if (!values?.decant || Number(values.quantity) < 1) return;
+  const [productId, variantId] = values.decant.split("/");
+  const row = decants.find(
+    (item) => item.productId === productId && item.variantId === variantId,
+  );
+  if (!row) return;
+  const consumption = values.consumption as "decant" | "sale";
+  const decantSupplies = [...(row.decantSupplies ?? [])].filter(
+    (use) => !(use.supplyId === supply.id && use.consumption === consumption),
+  );
+  decantSupplies.push({
+    supplyId: supply.id,
+    quantity: Number(values.quantity),
+    consumption,
+  });
+  await perform(async () => {
+    await api(
+      `/api/admin/inventory/${row.productId}/${row.variantId}/settings`,
+      {
+        method: "PATCH",
+        body: {
+          minimumStock: row.minimumStock,
+          averageCost: row.averageCost,
+          mode: row.mode,
+          decantPackagingCost: row.decantPackagingCost,
+          decantSupplies,
+        },
+      },
+    );
+    await load("inventory");
+    return "Insumo asignado al decant.";
+  });
+}
 async function openDecantSource(row: InventoryRow) {
   const suggested = row.size.match(/\d+/)?.[0] ?? "";
   const values = await requestActionModal({
@@ -1099,21 +1745,21 @@ function purchaseLine(input: Partial<PurchaseFormLine> = {}): PurchaseFormLine {
 function purchaseMatches(line: PurchaseFormLine) {
   const term = normalizePicker(line.query);
   const matches = term
-    ? purchaseOptions.value.filter((item) =>
-        normalizePicker(item.purchaseLabel).includes(term),
+    ? purchaseCatalogOptions.value.filter((item) =>
+        normalizePicker(item.label).includes(term),
       )
-    : purchaseOptions.value;
-  matches.sort((a, b) => a.purchaseLabel.localeCompare(b.purchaseLabel));
+    : purchaseCatalogOptions.value;
+  matches.sort((a, b) => a.label.localeCompare(b.label));
   return matches.slice(0, 50);
 }
 function selectPurchaseOption(
   line: PurchaseFormLine,
-  option: (typeof purchaseOptions.value)[number],
+  option: (typeof purchaseCatalogOptions.value)[number],
 ) {
-  line.selection = `${option.productId}/${option.variantId}`;
-  line.query = option.purchaseLabel;
-  line.originalPrice = option.price;
-  line.previousCost = option.averageCost;
+  line.selection = option.selection;
+  line.query = option.label;
+  line.originalPrice = option.originalPrice;
+  line.previousCost = option.previousCost;
   line.pickerOpen = false;
 }
 const purchaseForm = reactive({
@@ -1203,10 +1849,11 @@ async function createPurchase() {
         allocateFreight: purchaseForm.allocateFreight,
         notes: purchaseForm.notes || undefined,
         items: purchaseForm.items.map((item) => {
-          const [productId, variantId] = item.selection.split("/");
+          const [kind, id] = item.selection.split("/");
           return {
-            productId,
-            variantId,
+            ...(kind === "supply"
+              ? { supplyId: id }
+              : { productId: kind, variantId: id }),
             quantity: Number(item.quantity),
             unitCost: Number(item.unitCost),
             discount: Number(item.discount),
@@ -1918,6 +2565,18 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 {{ decantSaleInfo(line)?.message }}
               </small>
             </div>
+            <label v-if="compatibleContainers(line).length"
+              >Envase<select v-model="line.inventoryItemId" required>
+                <option value="">Selecciona un envase…</option>
+                <option
+                  v-for="container in compatibleContainers(line)"
+                  :key="container.id"
+                  :value="container.id"
+                >
+                  {{ container.name }} · {{ container.stock }} disponibles
+                </option>
+              </select></label
+            >
             <label
               >Cantidad<input
                 v-model.number="line.quantity"
@@ -1925,14 +2584,21 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 min="1"
                 required /></label
             ><label>
-              <span>Precio vendido COP
-                <span v-if="line.originalPrice" style="font-weight:normal; opacity:0.8; font-size:0.85em; margin-left: 0.5rem">
+              <span
+                >Precio vendido COP
+                <span
+                  v-if="line.originalPrice"
+                  style="
+                    font-weight: normal;
+                    opacity: 0.8;
+                    font-size: 0.85em;
+                    margin-left: 0.5rem;
+                  "
+                >
                   (Orig: {{ money(line.originalPrice) }})
                 </span>
               </span>
-              <AdminMoneyInput
-                v-model="line.unitPrice"
-                required /></label
+              <AdminMoneyInput v-model="line.unitPrice" required /></label
             ><label
               >Descuento total de la línea (COP)<AdminMoneyInput
                 v-model="line.discount" /></label
@@ -1951,7 +2617,38 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
             @click="saleForm.items.push(saleLine())"
           >
             Añadir línea ＋</button
-          ><label class="wide"
+          ><button
+            type="button"
+            class="text-link"
+            :disabled="busy"
+            @click="addSaleSupplyUse"
+          >
+            Añadir caja, bolsa u otro insumo ＋
+          </button>
+          <div v-if="saleForm.supplyUses.length" class="wide">
+            <p class="muted">Insumos que se descontarán al confirmar:</p>
+            <div
+              v-for="(use, useIndex) in saleForm.supplyUses"
+              :key="use.supplyId"
+              class="business-line"
+            >
+              <span>{{ supplyUseName(use.supplyId) }}</span>
+              <label
+                >Cantidad<input
+                  v-model.number="use.quantity"
+                  type="number"
+                  min="1"
+                  required /></label
+              ><button
+                type="button"
+                class="text-link"
+                @click="saleForm.supplyUses.splice(useIndex, 1)"
+              >
+                Quitar
+              </button>
+            </div>
+          </div>
+          <label class="wide"
             >Notas<textarea
               v-model="saleForm.notes"
               maxlength="2000"
@@ -2388,6 +3085,97 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           </tbody>
         </table>
       </div>
+      <article class="business-card">
+        <div class="section-heading">
+          <div>
+            <h3>Inventario de insumos</h3>
+            <p class="muted">
+              Envases, cajas, bolsas, etiquetas y otros consumibles. Solo el
+              envase elegido se descuenta automáticamente al vender un decant.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="text-link"
+            :disabled="busy"
+            @click="createSupply()"
+          >
+            Añadir insumo
+          </button>
+        </div>
+        <p v-if="!supplies.length" class="empty-notice">
+          Aún no hay artículos. Añade envases, cajas, bolsas o etiquetas.
+        </p>
+        <div v-else class="business-table-wrap">
+          <table class="business-table">
+            <thead>
+              <tr>
+                <th>Insumo</th>
+                <th>Categoría</th>
+                <th>Unidad</th>
+                <th>Existencias</th>
+                <th>Mínimo</th>
+                <th>Costo</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="supply in supplies" :key="supply.id">
+                <td>
+                  <strong>{{ supply.name }}</strong
+                  ><small v-if="supply.sku">{{ supply.sku }}</small>
+                </td>
+                <td>
+                  {{
+                    inventoryItemCategoryLabels[
+                      inventoryItemOf(supply).category
+                    ]
+                  }}
+                  <small v-if="inventoryItemOf(supply).capacityMl"
+                    >{{ inventoryItemOf(supply).capacityMl }} ml</small
+                  >
+                </td>
+                <td>{{ inventoryUnitLabels[inventoryItemOf(supply).unit] }}</td>
+                <td>
+                  <span
+                    class="stock-dot"
+                    :class="
+                      supply.stock === 0
+                        ? 'stock-out'
+                        : supply.stock <= supply.minimumStock
+                          ? 'stock-low'
+                          : 'stock-available'
+                    "
+                  ></span
+                  >{{ supply.stock }}
+                </td>
+                <td>{{ supply.minimumStock }}</td>
+                <td>{{ money(supply.averageCost) }}</td>
+                <td>{{ supply.active ? "Activo" : "Inactivo" }}</td>
+                <td class="row-actions">
+                  <button
+                    type="button"
+                    class="text-link"
+                    :disabled="busy"
+                    @click="editSupply(supply)"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    class="text-link"
+                    :disabled="busy"
+                    @click="adjustSupply(supply)"
+                  >
+                    Ajustar
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
       <nav
         v-if="inventoryTotalPages > 1"
         class="pagination admin-pagination"
@@ -2493,12 +3281,21 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
       <div class="business-table-wrap">
         <table class="business-table">
           <tbody>
-            <tr v-for="item in movements.slice(0, 20)" :key="item.id">
+            <tr
+              v-for="item in [...movements, ...supplyMovements]
+                .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+                .slice(0, 20)"
+              :key="item.id"
+            >
               <td>{{ formatDate(item.occurredAt) }}</td>
               <td>{{ item.reason }}</td>
               <td :class="item.quantityChange < 0 ? 'danger' : ''">
                 {{ item.quantityChange > 0 ? "+" : "" }}{{ item.quantityChange
-                }}{{ item.quantityUnit === "ml" ? " ml" : "" }}
+                }}{{
+                  "quantityUnit" in item && item.quantityUnit === "ml"
+                    ? " ml"
+                    : ""
+                }}
               </td>
               <td>{{ item.stockBefore }} → {{ item.stockAfter }}</td>
             </tr>
@@ -2668,17 +3465,28 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 </p>
                 <button
                   v-for="item in purchaseMatches(line)"
-                  :key="item.productId + item.variantId"
+                  :key="item.selection"
                   type="button"
                   class="sale-picker-option"
                   @mousedown.prevent="selectPurchaseOption(line, item)"
                 >
-                  {{ item.purchaseLabel }}
+                  {{ item.label }}
                 </button>
-                <p v-if="!purchaseMatches(line).length" class="sale-picker-empty">
+                <p
+                  v-if="!purchaseMatches(line).length"
+                  class="sale-picker-empty"
+                >
                   No hay coincidencias.
                 </p>
               </div>
+              <button
+                type="button"
+                class="text-link"
+                :disabled="busy"
+                @click="createSupply(line)"
+              >
+                Nuevo envase o insumo
+              </button>
             </div>
             <label
               >Cantidad<input
@@ -2687,19 +3495,28 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 min="1"
                 required /></label
             ><label>
-              <span>Precio comprado COP
-                <span v-if="line.originalPrice || line.previousCost" style="font-weight:normal; opacity:0.8; font-size:0.85em; margin-left: 0.5rem">
-                  (Catálogo: {{ money(line.originalPrice) }} <span v-if="line.previousCost">| Costo Ant: {{ money(line.previousCost) }}</span>)
+              <span
+                >Precio comprado COP
+                <span
+                  v-if="line.originalPrice || line.previousCost"
+                  style="
+                    font-weight: normal;
+                    opacity: 0.8;
+                    font-size: 0.85em;
+                    margin-left: 0.5rem;
+                  "
+                >
+                  (Catálogo: {{ money(line.originalPrice) }}
+                  <span v-if="line.previousCost"
+                    >| Costo Ant: {{ money(line.previousCost) }}</span
+                  >)
                 </span>
               </span>
-              <AdminMoneyInput
-                v-model="line.unitCost"
-                required /></label
+              <AdminMoneyInput v-model="line.unitCost" required /></label
             ><label v-if="line.saleUnitPrice !== undefined"
               >Vendido en encargo<input
                 :value="money(line.saleUnitPrice)"
-                readonly
-            /></label
+                readonly /></label
             ><label
               >Descuento total de la línea (COP)<AdminMoneyInput
                 v-model="line.discount" /></label
@@ -3377,35 +4194,43 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           class="admin-fields compact-form"
           @submit.prevent="submitActionModal"
         >
-          <label
-            v-for="field in actionModal.fields"
-            :key="field.key"
-            class="wide"
-          >
-            {{ field.label }}
-            <select
-              v-if="field.type === 'select'"
-              v-model="field.value"
-              :required="field.required"
+          <template v-for="field in actionModal.fields" :key="field.key">
+            <label
+              v-if="
+                !field.visible ||
+                field.visible(
+                  Object.fromEntries(
+                    actionModal.fields.map((item) => [item.key, item.value]),
+                  ),
+                )
+              "
+              class="wide"
             >
-              <option
-                v-for="option in field.options"
-                :key="option.value"
-                :value="option.value"
+              {{ field.label }}
+              <select
+                v-if="field.type === 'select'"
+                v-model="field.value"
+                :required="field.required"
               >
-                {{ option.label }}
-              </option>
-            </select>
-            <input
-              v-else
-              v-model="field.value"
-              :type="field.type ?? 'text'"
-              :required="field.required"
-              :min="field.min"
-              :step="field.step"
-            />
-            <small v-if="field.help">{{ field.help }}</small>
-          </label>
+                <option
+                  v-for="option in field.options"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+              <input
+                v-else
+                v-model="field.value"
+                :type="field.type ?? 'text'"
+                :required="field.required"
+                :min="field.min"
+                :step="field.step"
+              />
+              <small v-if="field.help">{{ field.help }}</small>
+            </label>
+          </template>
           <div class="row-actions wide business-modal-actions">
             <button type="button" class="text-link" @click="closeActionModal">
               Cancelar

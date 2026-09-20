@@ -34,6 +34,7 @@ export default defineEventHandler(async (event) => {
           inventory.mode ??
           (variant.type === "decant" ? "decant" : "on_demand"),
         decantPackagingCost: inventory.decantPackagingCost ?? 0,
+        decantSupplies: inventory.decantSupplies ?? [],
       };
     });
   });

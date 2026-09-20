@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   cashMovementCreateSchema,
+  availableDecantContainers,
+  selectedDecantContainerId,
   decantConsumption,
   decantUnitCost,
   expenseCreateSchema,
@@ -11,6 +13,7 @@ import {
   remainingSaleItemQuantities,
   saleCreateSchema,
   saleTotals,
+  supplyCreateSchema,
   weightedAverageCost,
   weightedAverageCostAfterRemoval,
 } from "../shared/business";
@@ -219,6 +222,28 @@ describe("business rules", () => {
     ).toBe(true);
   });
 
+  it("accepts manually selected packaging supplies on a sale", () => {
+    expect(
+      saleCreateSchema.safeParse({
+        requestId: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+        channel: "physical",
+        status: "pending_payment",
+        items: [
+          {
+            productId: "p1",
+            variantId: "v1",
+            quantity: 1,
+            unitPrice: 20_000,
+            discount: 0,
+          },
+        ],
+        supplyUses: [{ supplyId: "box-small", quantity: 1 }],
+        shippingCharged: 0,
+      }).success,
+    ).toBe(true);
+  });
+
   it("uses on-demand inventory by default for a bottle", () => {
     expect(
       inventoryOf({
@@ -227,5 +252,55 @@ describe("business rules", () => {
         price: 300_000,
       }).mode,
     ).toBe("on_demand");
+  });
+
+  it("creates general inventory items and validates decant containers", () => {
+    const base = {
+      name: "Frasco 10 ml",
+      stock: 20,
+      minimumStock: 2,
+      averageCost: 500,
+    };
+    expect(supplyCreateSchema.safeParse(base).success).toBe(true);
+    expect(
+      supplyCreateSchema.safeParse({
+        ...base,
+        category: "DECANT_CONTAINER",
+        unit: "UNIT",
+        capacityMl: 10,
+      }).success,
+    ).toBe(true);
+    expect(
+      supplyCreateSchema.safeParse({
+        ...base,
+        category: "DECANT_CONTAINER",
+        unit: "UNIT",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("only offers active containers with the selected capacity", () => {
+    const at = new Date().toISOString();
+    const items = [
+      { id: "c10", name: "Vidrio 10", stock: 10, minimumStock: 0, averageCost: 1, active: true, category: "DECANT_CONTAINER" as const, unit: "UNIT" as const, capacityMl: 10, createdAt: at, updatedAt: at },
+      { id: "c5", name: "Vidrio 5", stock: 10, minimumStock: 0, averageCost: 1, active: true, category: "DECANT_CONTAINER" as const, unit: "UNIT" as const, capacityMl: 5, createdAt: at, updatedAt: at },
+      { id: "box", name: "Caja", stock: 10, minimumStock: 0, averageCost: 1, active: true, category: "PACKAGING" as const, unit: "UNIT" as const, createdAt: at, updatedAt: at },
+      { id: "off", name: "Inactivo", stock: 10, minimumStock: 0, averageCost: 1, active: false, category: "DECANT_CONTAINER" as const, unit: "UNIT" as const, capacityMl: 10, createdAt: at, updatedAt: at },
+    ];
+    expect(availableDecantContainers(items, 10).map((item) => item.id)).toEqual(["c10"]);
+    expect(selectedDecantContainerId(items, 10)).toBe("c10");
+  });
+
+  it("accepts purchase entries for an inventory item", () => {
+    expect(
+      purchaseCreateSchema.safeParse({
+        requestId: crypto.randomUUID(),
+        supplierName: "Proveedor",
+        date: new Date().toISOString(),
+        paymentStatus: "pending",
+        items: [{ supplyId: "container-10", quantity: 50, unitCost: 500, discount: 0 }],
+        freight: 0,
+      }).success,
+    ).toBe(true);
   });
 });

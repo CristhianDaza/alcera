@@ -57,15 +57,48 @@ export const inventoryMovementTypes = [
   "damage_loss",
   "adjustment",
 ] as const;
+export const inventoryItemCategories = [
+  "DECANT_CONTAINER",
+  "PACKAGING",
+  "SUPPLY",
+  "OTHER",
+] as const;
+export const inventoryUnits = [
+  "UNIT",
+  "ML",
+  "METER",
+  "ROLL",
+  "PACKAGE",
+] as const;
+export const inventoryItemCategoryLabels: Record<
+  (typeof inventoryItemCategories)[number],
+  string
+> = {
+  DECANT_CONTAINER: "Envase para decant",
+  PACKAGING: "Empaque",
+  SUPPLY: "Insumo",
+  OTHER: "Otro",
+};
+export const inventoryUnitLabels: Record<
+  (typeof inventoryUnits)[number],
+  string
+> = {
+  UNIT: "Unidad",
+  ML: "ml",
+  METER: "Metro",
+  ROLL: "Rollo",
+  PACKAGE: "Paquete",
+};
 
 export type SaleStatus = (typeof saleStatuses)[number];
 export type SaleChannel = (typeof saleChannels)[number];
 export type PaymentMethod = (typeof paymentMethods)[number];
-/** Identificador estable de una cuenta; puede ser una cuenta inicial o creada por el administrador. */
 export type CashAccount = string;
 export type ExpenseCategory = (typeof expenseCategories)[number];
 export type InventoryMovementType = (typeof inventoryMovementTypes)[number];
 export type InventoryMode = "stock" | "on_demand" | "decant";
+export type InventoryItemCategory = (typeof inventoryItemCategories)[number];
+export type InventoryUnit = (typeof inventoryUnits)[number];
 
 export interface SaleItem {
   productId: string;
@@ -79,6 +112,11 @@ export interface SaleItem {
   unitCost: number;
   discount: number;
   lineTotal: number;
+  inventoryItemId?: string;
+}
+export interface SaleSupplyUse {
+  supplyId: string;
+  quantity: number;
 }
 export interface Sale {
   id: string;
@@ -88,6 +126,8 @@ export interface Sale {
   channel: SaleChannel;
   status: SaleStatus;
   items: SaleItem[];
+  supplyUses?: SaleSupplyUse[];
+  additionalInventoryCost?: number;
   subtotal: number;
   discountTotal: number;
   shippingCharged: number;
@@ -191,6 +231,69 @@ export interface InventoryRow {
   state: "out" | "low" | "available";
   mode: InventoryMode;
   decantPackagingCost: number;
+  decantSupplies?: import("./types").DecantSupplyUse[];
+}
+export interface Supply {
+  id: string;
+  name: string;
+  sku?: string;
+  stock: number;
+  minimumStock: number;
+  averageCost: number;
+  category?: InventoryItemCategory;
+  unit?: InventoryUnit;
+  capacityMl?: number | null;
+  automaticConsumption?: {
+    quantity: number;
+    consumption: "decant" | "sale";
+    sizeMl?: number;
+  };
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function inventoryItemOf(supply: Supply): Supply & {
+  category: InventoryItemCategory;
+  unit: InventoryUnit;
+  capacityMl: number | null;
+} {
+  return {
+    ...supply,
+    category: supply.category ?? "SUPPLY",
+    unit: supply.unit ?? "UNIT",
+    capacityMl: supply.capacityMl ?? null,
+  };
+}
+export function availableDecantContainers(items: Supply[], capacityMl: number) {
+  return items
+    .map(inventoryItemOf)
+    .filter(
+      (item) =>
+        item.active &&
+        item.stock > 0 &&
+        item.category === "DECANT_CONTAINER" &&
+        item.capacityMl === capacityMl,
+    );
+}
+export function selectedDecantContainerId(items: Supply[], capacityMl: number) {
+  const containers = availableDecantContainers(items, capacityMl);
+  return containers.length === 1 ? containers[0]!.id : "";
+}
+export interface SupplyMovement {
+  id: string;
+  supplyId: string;
+  type: InventoryMovementType;
+  quantityChange: number;
+  unitCost: number | null;
+  stockBefore: number;
+  stockAfter: number;
+  referenceType: "sale" | "purchase" | "manual" | "return";
+  referenceId?: string;
+  reason: string;
+  occurredAt: string;
+  createdAt: string;
+  createdBy: string;
 }
 export interface Supplier {
   id: string;
@@ -225,8 +328,9 @@ export interface Purchase {
   status: "draft" | "confirmed" | "cancelled";
   paymentStatus: "pending" | "paid";
   items: Array<{
-    productId: string;
-    variantId: string;
+    productId?: string;
+    variantId?: string;
+    supplyId?: string;
     name: string;
     size: string;
     quantity: number;
@@ -354,6 +458,7 @@ export const saleCreateSchema = z.object({
         .object({
           productId: id,
           variantId: id,
+          inventoryItemId: id.optional(),
           quantity: z.number().int().min(1).max(999),
           unitPrice: money,
           discount: money.default(0),
@@ -365,6 +470,15 @@ export const saleCreateSchema = z.object({
     )
     .min(1)
     .max(100),
+  supplyUses: z
+    .array(
+      z.object({
+        supplyId: id,
+        quantity: z.number().int().positive().max(1_000_000),
+      }),
+    )
+    .max(50)
+    .optional(),
   shippingCharged: money.default(0),
   notes: z.string().trim().max(2000).optional(),
 });
@@ -397,6 +511,92 @@ export const inventorySettingsSchema = z.object({
   averageCost: money.optional(),
   mode: z.enum(["stock", "on_demand", "decant"]).optional(),
   decantPackagingCost: money.optional(),
+  decantSupplies: z
+    .array(
+      z.object({
+        supplyId: id,
+        quantity: z.number().int().positive().max(1_000_000),
+        consumption: z.enum(["decant", "sale"]),
+      }),
+    )
+    .max(50)
+    .optional(),
+});
+export const supplyCreateSchema = z
+  .object({
+    name: text,
+    sku: z.string().trim().max(100).optional(),
+    stock: z.number().int().min(0).max(1_000_000_000),
+    minimumStock: z.number().int().min(0).max(1_000_000),
+    averageCost: money,
+    category: z.enum(inventoryItemCategories).default("SUPPLY"),
+    unit: z.enum(inventoryUnits).default("UNIT"),
+    capacityMl: z.number().positive().max(2_000).nullable().optional(),
+    active: z.boolean().default(true),
+    automaticConsumption: z
+      .object({
+        quantity: z.number().int().positive().max(1_000_000),
+        consumption: z.enum(["decant", "sale"]),
+        sizeMl: z.number().positive().max(2_000).optional(),
+      })
+      .optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.category === "DECANT_CONTAINER") {
+      if (!value.capacityMl)
+        ctx.addIssue({
+          code: "custom",
+          path: ["capacityMl"],
+          message: "La capacidad en ml es obligatoria para un envase de decant",
+        });
+    } else if (value.capacityMl != null)
+      ctx.addIssue({
+        code: "custom",
+        path: ["capacityMl"],
+        message: "La capacidad solo aplica a envases para decant",
+      });
+  });
+export const supplySettingsSchema = z
+  .object({
+    name: text.optional(),
+    sku: z.string().trim().max(100).optional(),
+    minimumStock: z.number().int().min(0).max(1_000_000).optional(),
+    averageCost: money.optional(),
+    category: z.enum(inventoryItemCategories).optional(),
+    unit: z.enum(inventoryUnits).optional(),
+    capacityMl: z.number().positive().max(2_000).nullable().optional(),
+    active: z.boolean().optional(),
+    automaticConsumption: z
+      .object({
+        quantity: z.number().int().positive().max(1_000_000),
+        consumption: z.enum(["decant", "sale"]),
+        sizeMl: z.number().positive().max(2_000).optional(),
+      })
+      .nullable()
+      .optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.category === "DECANT_CONTAINER" && !value.capacityMl)
+      ctx.addIssue({
+        code: "custom",
+        path: ["capacityMl"],
+        message: "La capacidad en ml es obligatoria para un envase de decant",
+      });
+  });
+export const supplyMovementCreateSchema = z.object({
+  requestId,
+  supplyId: id,
+  type: z.enum(inventoryMovementTypes).exclude(["sale", "purchase"]),
+  quantityChange: z
+    .number()
+    .int()
+    .min(-1_000_000_000)
+    .max(1_000_000_000)
+    .refine((value) => value !== 0),
+  unitCost: money.nullable().default(null),
+  reference: z.string().trim().min(1).max(200),
+  reason: text,
+  occurredAt: iso,
 });
 export const decantSourceCreateSchema = z.object({
   requestId,
@@ -429,12 +629,24 @@ export const purchaseCreateSchema = z
       .array(
         z
           .object({
-            productId: id,
-            variantId: id,
+            productId: id.optional(),
+            variantId: id.optional(),
+            supplyId: id.optional(),
             quantity: z.number().int().positive().max(100000),
             unitCost: money,
             discount: money.default(0),
           })
+          .refine(
+            (item) =>
+              (Boolean(item.productId) &&
+                Boolean(item.variantId) &&
+                !item.supplyId) ||
+              (Boolean(item.supplyId) && !item.productId && !item.variantId),
+            {
+              message: "Selecciona un producto o un insumo",
+              path: ["supplyId"],
+            },
+          )
           .refine((item) => item.discount <= item.quantity * item.unitCost, {
             message: "El descuento no puede superar el valor de la línea",
             path: ["discount"],
