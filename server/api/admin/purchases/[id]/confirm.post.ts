@@ -29,12 +29,20 @@ export default defineEventHandler(async (event) => {
         statusCode: 409,
         statusMessage: "Una compra cancelada no puede confirmarse",
       });
-    const refs = [...new Set(purchase.items.flatMap((item) => item.productId ? [item.productId] : []))].map(
-      (id) => db.collection("products").doc(id),
-    );
-    const supplyRefs = [...new Set(purchase.items.flatMap((item) => item.supplyId ? [item.supplyId] : []))].map(
-      (id) => db.collection("supplies").doc(id),
-    );
+    const refs = [
+      ...new Set(
+        purchase.items.flatMap((item) =>
+          item.productId ? [item.productId] : [],
+        ),
+      ),
+    ].map((id) => db.collection("products").doc(id));
+    const supplyRefs = [
+      ...new Set(
+        purchase.items.flatMap((item) =>
+          item.supplyId ? [item.supplyId] : [],
+        ),
+      ),
+    ].map((id) => db.collection("supplies").doc(id));
     const [snapshots, supplySnapshots] = await Promise.all([
       Promise.all(refs.map((ref) => tx.get(ref))),
       Promise.all(supplyRefs.map((ref) => tx.get(ref))),
@@ -48,7 +56,10 @@ export default defineEventHandler(async (event) => {
     const supplies = new Map(
       supplySnapshots
         .filter((snapshot) => snapshot.exists)
-        .map((snapshot) => [snapshot.id, inventoryItemOf(docData<Supply>(snapshot))]),
+        .map((snapshot) => [
+          snapshot.id,
+          inventoryItemOf(docData<Supply>(snapshot)),
+        ]),
     );
     let cashNumber: string | undefined;
     const shouldCreateCashMovement =
@@ -73,7 +84,10 @@ export default defineEventHandler(async (event) => {
       if (item.supplyId) {
         const supply = supplies.get(item.supplyId);
         if (!supply)
-          throw createError({ statusCode: 409, statusMessage: "El insumo de la compra ya no existe" });
+          throw createError({
+            statusCode: 409,
+            statusMessage: "El insumo de la compra ya no existe",
+          });
         const stockAfter = safeInteger(
           supply.stock + item.quantity,
           "El saldo de insumos supera el límite numérico seguro",
@@ -84,7 +98,12 @@ export default defineEventHandler(async (event) => {
           item.quantity,
           netUnitCost,
         );
-        supplies.set(supply.id, { ...supply, stock: stockAfter, averageCost, updatedAt: at });
+        supplies.set(supply.id, {
+          ...supply,
+          stock: stockAfter,
+          averageCost,
+          updatedAt: at,
+        });
         supplyMovements.push({
           id: newId(),
           supplyId: supply.id,

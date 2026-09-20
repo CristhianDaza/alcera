@@ -13,13 +13,11 @@ export interface InventorySettings {
   updatedAt: string;
   mode?: "stock" | "on_demand" | "decant";
   decantPackagingCost?: number;
-  /** Insumos consumidos al preparar esta presentación de decant. */
   decantSupplies?: DecantSupplyUse[];
 }
 export interface DecantSupplyUse {
   supplyId: string;
   quantity: number;
-  /** "sale" se descuenta una vez por pedido que contenga este decant. */
   consumption: "decant" | "sale";
 }
 export interface ProductImage {

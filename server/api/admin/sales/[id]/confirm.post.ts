@@ -41,8 +41,10 @@ export default defineEventHandler(async (event) => {
     const refs = productIds.map((id) => db.collection("products").doc(id));
     const supplyIds = [
       ...new Set(
-        [...sale.items.map((item) => item.inventoryItemId), ...(sale.supplyUses ?? []).map((use) => use.supplyId)]
-          .filter((id): id is string => Boolean(id)),
+        [
+          ...sale.items.map((item) => item.inventoryItemId),
+          ...(sale.supplyUses ?? []).map((use) => use.supplyId),
+        ].filter((id): id is string => Boolean(id)),
       ),
     ];
     const [snapshots, sourceSnapshots, supplySnapshots] = await Promise.all([
@@ -54,7 +56,9 @@ export default defineEventHandler(async (event) => {
           ),
         ),
       ),
-      Promise.all(supplyIds.map((id) => tx.get(db.collection("supplies").doc(id)))),
+      Promise.all(
+        supplyIds.map((id) => tx.get(db.collection("supplies").doc(id))),
+      ),
     ]);
     const products = new Map(
       snapshots.map((snapshot) => [
@@ -77,7 +81,10 @@ export default defineEventHandler(async (event) => {
     const supplies = new Map(
       supplySnapshots
         .filter((snapshot) => snapshot.exists)
-        .map((snapshot) => [snapshot.id, inventoryItemOf(docData<Supply>(snapshot))]),
+        .map((snapshot) => [
+          snapshot.id,
+          inventoryItemOf(docData<Supply>(snapshot)),
+        ]),
     );
     const supplyUse = new Map<string, number>();
     let additionalInventoryCost = 0;
@@ -107,7 +114,10 @@ export default defineEventHandler(async (event) => {
             statusCode: 409,
             statusMessage: `No hay envases de ${ml} ml disponibles.`,
           });
-        supplyUse.set(container.id, (supplyUse.get(container.id) ?? 0) + item.quantity);
+        supplyUse.set(
+          container.id,
+          (supplyUse.get(container.id) ?? 0) + item.quantity,
+        );
         const neededMl = Math.round(ml * item.quantity);
         const source = sourcesByProduct
           .get(item.productId)

@@ -8,10 +8,8 @@ export default defineEventHandler(async (event) => {
   const supply: Supply = {
     id: ref.id,
     ...body,
-    capacityMl:
-      body.category === "DECANT_CONTAINER" ? body.capacityMl! : null,
+    capacityMl: body.category === "DECANT_CONTAINER" ? body.capacityMl! : null,
     unit: body.category === "DECANT_CONTAINER" ? "UNIT" : body.unit,
-    // Las reglas antiguas se conservan solo como datos migrables; no se aplican a ventas nuevas.
     automaticConsumption: undefined,
     active: body.active,
     createdAt: at,

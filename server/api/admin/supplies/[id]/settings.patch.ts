@@ -28,7 +28,8 @@ export default defineEventHandler(async (event) => {
   if (category === "DECANT_CONTAINER" && !capacityMl)
     throw createError({
       statusCode: 400,
-      statusMessage: "La capacidad en ml es obligatoria para un envase de decant",
+      statusMessage:
+        "La capacidad en ml es obligatoria para un envase de decant",
     });
   await ref.update(
     firestoreData({
@@ -37,7 +38,9 @@ export default defineEventHandler(async (event) => {
       ...(body.minimumStock !== undefined
         ? { minimumStock: body.minimumStock }
         : {}),
-      ...(body.averageCost !== undefined ? { averageCost: body.averageCost } : {}),
+      ...(body.averageCost !== undefined
+        ? { averageCost: body.averageCost }
+        : {}),
       ...(body.active !== undefined ? { active: body.active } : {}),
       category,
       unit,
@@ -52,8 +55,12 @@ export default defineEventHandler(async (event) => {
     ...rest,
     ...(body.name !== undefined ? { name: body.name } : {}),
     ...(body.sku !== undefined ? { sku: body.sku } : {}),
-    ...(body.minimumStock !== undefined ? { minimumStock: body.minimumStock } : {}),
-    ...(body.averageCost !== undefined ? { averageCost: body.averageCost } : {}),
+    ...(body.minimumStock !== undefined
+      ? { minimumStock: body.minimumStock }
+      : {}),
+    ...(body.averageCost !== undefined
+      ? { averageCost: body.averageCost }
+      : {}),
     ...(body.active !== undefined ? { active: body.active } : {}),
     category,
     unit,

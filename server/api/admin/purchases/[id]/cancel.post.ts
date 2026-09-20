@@ -41,15 +41,24 @@ export default defineEventHandler(async (event) => {
       });
     const refs =
       purchase.status === "confirmed"
-        ? [...new Set(purchase.items.flatMap((item) => item.productId ? [item.productId] : []))].map(
-            (productId) => db.collection("products").doc(productId),
-          )
+        ? [
+            ...new Set(
+              purchase.items.flatMap((item) =>
+                item.productId ? [item.productId] : [],
+              ),
+            ),
+          ].map((productId) => db.collection("products").doc(productId))
         : [];
-    const supplyRefs = purchase.status === "confirmed"
-      ? [...new Set(purchase.items.flatMap((item) => item.supplyId ? [item.supplyId] : []))].map(
-          (supplyId) => db.collection("supplies").doc(supplyId),
-        )
-      : [];
+    const supplyRefs =
+      purchase.status === "confirmed"
+        ? [
+            ...new Set(
+              purchase.items.flatMap((item) =>
+                item.supplyId ? [item.supplyId] : [],
+              ),
+            ),
+          ].map((supplyId) => db.collection("supplies").doc(supplyId))
+        : [];
     const [snapshots, supplySnapshots] = await Promise.all([
       Promise.all(refs.map((productRef) => tx.get(productRef))),
       Promise.all(supplyRefs.map((supplyRef) => tx.get(supplyRef))),
@@ -63,7 +72,10 @@ export default defineEventHandler(async (event) => {
     const supplies = new Map(
       supplySnapshots
         .filter((snapshot) => snapshot.exists)
-        .map((snapshot) => [snapshot.id, inventoryItemOf(docData<Supply>(snapshot))]),
+        .map((snapshot) => [
+          snapshot.id,
+          inventoryItemOf(docData<Supply>(snapshot)),
+        ]),
     );
     const number = cashWasApplied
       ? await nextNumber(tx, "M", new Date())

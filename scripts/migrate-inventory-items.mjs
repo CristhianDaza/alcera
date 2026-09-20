@@ -21,7 +21,6 @@ for (const doc of snapshot.docs) {
   const update = {};
   if (!item.category) {
     if (Number.isFinite(sizeMl) && sizeMl > 0) {
-      // La regla antigua acotada por tamaño representa el caso migrable de envase.
       update.category = "DECANT_CONTAINER";
       update.capacityMl = sizeMl;
       update.unit = "UNIT";
@@ -40,4 +39,6 @@ for (const doc of snapshot.docs) {
 }
 
 if (apply) await batch.commit();
-console.log(JSON.stringify({ mode: apply ? "applied" : "dry-run", ...report }, null, 2));
+console.log(
+  JSON.stringify({ mode: apply ? "applied" : "dry-run", ...report }, null, 2),
+);

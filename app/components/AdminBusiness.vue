@@ -156,7 +156,7 @@ const labels: Record<string, string> = {
   adjustment: "Ajuste",
   sale_refund: "Devolución de venta",
 };
-  type ActionModalField = {
+type ActionModalField = {
   key: string;
   label: string;
   value: string;
@@ -330,21 +330,27 @@ async function load(target = section.value) {
         sales.value.length === 50 ? (sales.value.at(-1)?.id ?? "") : "";
     }
     if (target === "inventory")
-      [inventory.value, movements.value, decantSources.value, supplies.value, supplyMovements.value] =
-        await Promise.all([
-          api<InventoryRow[]>("/api/admin/inventory"),
-          api<InventoryMovement[]>("/api/admin/inventory/movements"),
-          api<DecantSource[]>("/api/admin/inventory/decant-sources"),
-          api<Supply[]>("/api/admin/supplies"),
-          api<SupplyMovement[]>("/api/admin/supplies/movements"),
-        ]);
-    if (target === "purchases")
-      [purchases.value, suppliers.value, sales.value, supplies.value] = await Promise.all([
-        api<Purchase[]>("/api/admin/purchases"),
-        api<Supplier[]>("/api/admin/suppliers"),
-        api<Sale[]>("/api/admin/sales"),
+      [
+        inventory.value,
+        movements.value,
+        decantSources.value,
+        supplies.value,
+        supplyMovements.value,
+      ] = await Promise.all([
+        api<InventoryRow[]>("/api/admin/inventory"),
+        api<InventoryMovement[]>("/api/admin/inventory/movements"),
+        api<DecantSource[]>("/api/admin/inventory/decant-sources"),
         api<Supply[]>("/api/admin/supplies"),
+        api<SupplyMovement[]>("/api/admin/supplies/movements"),
       ]);
+    if (target === "purchases")
+      [purchases.value, suppliers.value, sales.value, supplies.value] =
+        await Promise.all([
+          api<Purchase[]>("/api/admin/purchases"),
+          api<Supplier[]>("/api/admin/suppliers"),
+          api<Sale[]>("/api/admin/sales"),
+          api<Supply[]>("/api/admin/supplies"),
+        ]);
     if (target === "expenses")
       expenses.value = await api<Expense[]>("/api/admin/expenses");
     if (target === "cash")
@@ -421,9 +427,7 @@ const saleForm = reactive({
 const manuallySelectableSupplies = computed(() =>
   supplies.value
     .map(inventoryItemOf)
-    .filter(
-      (item) => item.active && item.category !== "DECANT_CONTAINER",
-    ),
+    .filter((item) => item.active && item.category !== "DECANT_CONTAINER"),
 );
 function supplyUseName(supplyId: string) {
   const item = supplies.value.find((supply) => supply.id === supplyId);
@@ -513,10 +517,7 @@ function selectSaleOption(
   line.unitPrice = option.price;
   line.originalPrice = option.price;
   const capacityMl = millilitersFromSize(option.size);
-  line.inventoryItemId = selectedDecantContainerId(
-    supplies.value,
-    capacityMl,
-  );
+  line.inventoryItemId = selectedDecantContainerId(supplies.value, capacityMl);
   line.pickerOpen = false;
 }
 function decantSaleInfo(line: {
@@ -1310,7 +1311,8 @@ async function editSupply(supply: Supply) {
   const item = inventoryItemOf(supply);
   const values = await requestActionModal({
     title: "Editar artículo de inventario",
-    description: "Los artículos con movimientos se conservan; desactívalos si ya no se usarán.",
+    description:
+      "Los artículos con movimientos se conservan; desactívalos si ya no se usarán.",
     confirmLabel: "Guardar artículo",
     fields: [
       { key: "name", label: "Nombre", value: item.name, required: true },
@@ -2621,8 +2623,9 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
             :disabled="busy"
             @click="addSaleSupplyUse"
           >
-            Añadir caja, bolsa u otro insumo ＋</button
-          ><div v-if="saleForm.supplyUses.length" class="wide">
+            Añadir caja, bolsa u otro insumo ＋
+          </button>
+          <div v-if="saleForm.supplyUses.length" class="wide">
             <p class="muted">Insumos que se descontarán al confirmar:</p>
             <div
               v-for="(use, useIndex) in saleForm.supplyUses"
@@ -3124,7 +3127,11 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                   ><small v-if="supply.sku">{{ supply.sku }}</small>
                 </td>
                 <td>
-                  {{ inventoryItemCategoryLabels[inventoryItemOf(supply).category] }}
+                  {{
+                    inventoryItemCategoryLabels[
+                      inventoryItemOf(supply).category
+                    ]
+                  }}
                   <small v-if="inventoryItemOf(supply).capacityMl"
                     >{{ inventoryItemOf(supply).capacityMl }} ml</small
                   >
@@ -3275,14 +3282,20 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
         <table class="business-table">
           <tbody>
             <tr
-              v-for="item in [...movements, ...supplyMovements].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 20)"
+              v-for="item in [...movements, ...supplyMovements]
+                .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+                .slice(0, 20)"
               :key="item.id"
             >
               <td>{{ formatDate(item.occurredAt) }}</td>
               <td>{{ item.reason }}</td>
               <td :class="item.quantityChange < 0 ? 'danger' : ''">
                 {{ item.quantityChange > 0 ? "+" : "" }}{{ item.quantityChange
-                }}{{ "quantityUnit" in item && item.quantityUnit === "ml" ? " ml" : "" }}
+                }}{{
+                  "quantityUnit" in item && item.quantityUnit === "ml"
+                    ? " ml"
+                    : ""
+                }}
               </td>
               <td>{{ item.stockBefore }} → {{ item.stockAfter }}</td>
             </tr>
@@ -4182,34 +4195,41 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           @submit.prevent="submitActionModal"
         >
           <template v-for="field in actionModal.fields" :key="field.key">
-          <label
-            v-if="!field.visible || field.visible(Object.fromEntries(actionModal.fields.map((item) => [item.key, item.value])))"
-            class="wide"
-          >
-            {{ field.label }}
-            <select
-              v-if="field.type === 'select'"
-              v-model="field.value"
-              :required="field.required"
+            <label
+              v-if="
+                !field.visible ||
+                field.visible(
+                  Object.fromEntries(
+                    actionModal.fields.map((item) => [item.key, item.value]),
+                  ),
+                )
+              "
+              class="wide"
             >
-              <option
-                v-for="option in field.options"
-                :key="option.value"
-                :value="option.value"
+              {{ field.label }}
+              <select
+                v-if="field.type === 'select'"
+                v-model="field.value"
+                :required="field.required"
               >
-                {{ option.label }}
-              </option>
-            </select>
-            <input
-              v-else
-              v-model="field.value"
-              :type="field.type ?? 'text'"
-              :required="field.required"
-              :min="field.min"
-              :step="field.step"
-            />
-            <small v-if="field.help">{{ field.help }}</small>
-          </label>
+                <option
+                  v-for="option in field.options"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+              <input
+                v-else
+                v-model="field.value"
+                :type="field.type ?? 'text'"
+                :required="field.required"
+                :min="field.min"
+                :step="field.step"
+              />
+              <small v-if="field.help">{{ field.help }}</small>
+            </label>
           </template>
           <div class="row-actions wide business-modal-actions">
             <button type="button" class="text-link" @click="closeActionModal">

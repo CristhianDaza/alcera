@@ -30,13 +30,17 @@ export default defineEventHandler(async (event) => {
     );
     const supplyIds = [
       ...new Set(
-        [...body.items.map((item) => item.inventoryItemId), ...(body.supplyUses ?? []).map((use) => use.supplyId)]
-          .filter((id): id is string => Boolean(id)),
+        [
+          ...body.items.map((item) => item.inventoryItemId),
+          ...(body.supplyUses ?? []).map((use) => use.supplyId),
+        ].filter((id): id is string => Boolean(id)),
       ),
     ];
     const [snapshots, containerSnapshots] = await Promise.all([
       Promise.all(refs.map((ref) => tx.get(ref))),
-      Promise.all(supplyIds.map((id) => tx.get(db.collection("supplies").doc(id)))),
+      Promise.all(
+        supplyIds.map((id) => tx.get(db.collection("supplies").doc(id))),
+      ),
     ]);
     const products = snapshots.map(
       (snapshot) => ({ id: snapshot.id, ...snapshot.data() }) as Product,
@@ -44,7 +48,10 @@ export default defineEventHandler(async (event) => {
     const containers = new Map(
       containerSnapshots
         .filter((snapshot) => snapshot.exists)
-        .map((snapshot) => [snapshot.id, inventoryItemOf(docData<Supply>(snapshot))]),
+        .map((snapshot) => [
+          snapshot.id,
+          inventoryItemOf(docData<Supply>(snapshot)),
+        ]),
     );
     const number = await nextNumber(tx, "V", new Date(body.occurredAt));
     const items = body.items.map((item) => {
@@ -59,7 +66,12 @@ export default defineEventHandler(async (event) => {
         const container = item.inventoryItemId
           ? containers.get(item.inventoryItemId)
           : undefined;
-        if (!container || !container.active || container.category !== "DECANT_CONTAINER" || container.capacityMl !== capacityMl)
+        if (
+          !container ||
+          !container.active ||
+          container.category !== "DECANT_CONTAINER" ||
+          container.capacityMl !== capacityMl
+        )
           throw createError({
             statusCode: 409,
             statusMessage: `Selecciona un envase activo de ${capacityMl} ml para este decant`,
@@ -84,7 +96,8 @@ export default defineEventHandler(async (event) => {
       if (!supply || !supply.active || supply.category === "DECANT_CONTAINER")
         throw createError({
           statusCode: 409,
-          statusMessage: "El insumo seleccionado no está disponible para esta venta",
+          statusMessage:
+            "El insumo seleccionado no está disponible para esta venta",
         });
     }
     const totals = saleTotals(items, body.shippingCharged);

@@ -24,12 +24,16 @@ export default defineEventHandler(async (event) => {
         });
       return purchase;
     }
-    const refs = [...new Set(body.items.flatMap((item) => item.productId ? [item.productId] : []))].map(
-      (productId) => db.collection("products").doc(productId),
-    );
-    const supplyRefs = [...new Set(body.items.flatMap((item) => item.supplyId ? [item.supplyId] : []))].map(
-      (supplyId) => db.collection("supplies").doc(supplyId),
-    );
+    const refs = [
+      ...new Set(
+        body.items.flatMap((item) => (item.productId ? [item.productId] : [])),
+      ),
+    ].map((productId) => db.collection("products").doc(productId));
+    const supplyRefs = [
+      ...new Set(
+        body.items.flatMap((item) => (item.supplyId ? [item.supplyId] : [])),
+      ),
+    ].map((supplyId) => db.collection("supplies").doc(supplyId));
     const [snapshots, supplySnapshots] = await Promise.all([
       Promise.all(refs.map((ref) => tx.get(ref))),
       Promise.all(supplyRefs.map((ref) => tx.get(ref))),
@@ -61,14 +65,23 @@ export default defineEventHandler(async (event) => {
     const supplies = new Map(
       supplySnapshots
         .filter((snapshot) => snapshot.exists)
-        .map((snapshot) => [snapshot.id, inventoryItemOf(docData<Supply>(snapshot))]),
+        .map((snapshot) => [
+          snapshot.id,
+          inventoryItemOf(docData<Supply>(snapshot)),
+        ]),
     );
     const items = body.items.map((item) => {
       const supply = item.supplyId ? supplies.get(item.supplyId) : undefined;
       if (item.supplyId && (!supply || !supply.active))
-        throw createError({ statusCode: 400, statusMessage: "El insumo seleccionado no está disponible" });
+        throw createError({
+          statusCode: 400,
+          statusMessage: "El insumo seleccionado no está disponible",
+        });
       const product = item.productId ? products.get(item.productId) : undefined;
-      const variant = product && item.variantId ? findVariant(product, item.variantId) : undefined;
+      const variant =
+        product && item.variantId
+          ? findVariant(product, item.variantId)
+          : undefined;
       const total = item.quantity * item.unitCost - item.discount;
       if (total < 0)
         throw createError({
@@ -79,7 +92,9 @@ export default defineEventHandler(async (event) => {
         ...item,
         name: supply?.name ?? product!.name,
         size: supply
-          ? (supply.category === "DECANT_CONTAINER" ? `${supply.capacityMl} ml` : supply.unit)
+          ? supply.category === "DECANT_CONTAINER"
+            ? `${supply.capacityMl} ml`
+            : supply.unit
           : variant!.size,
         total,
       };
