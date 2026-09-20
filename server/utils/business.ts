@@ -1,9 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { Transaction } from "firebase-admin/firestore";
 import type { Product, Variant } from "../../shared/types";
 
 export const nowIso = () => new Date().toISOString();
 export const newId = () => randomUUID();
+export const requestFingerprint = (value: unknown) =>
+  createHash("sha256").update(JSON.stringify(value)).digest("hex");
 /** Firestore rechaza propiedades opcionales con valor undefined. */
 export function firestoreData<T>(value: T): T {
   if (Array.isArray(value)) return value.map(firestoreData) as T;
@@ -41,6 +43,12 @@ export async function readValidated<T>(
 
 export function docData<T>(doc: { id: string; data(): unknown }): T {
   return { id: doc.id, ...(doc.data() as object) } as T;
+}
+
+export function safeInteger(value: number, message: string) {
+  if (!Number.isSafeInteger(value))
+    throw createError({ statusCode: 409, statusMessage: message });
+  return value;
 }
 
 export async function nextNumber(

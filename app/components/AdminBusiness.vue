@@ -33,6 +33,8 @@ const emit = defineEmits<{
 const route = useRoute();
 const router = useRouter();
 const queryText = (value: unknown) => (typeof value === "string" ? value : "");
+const ensureRequestId = (form: { requestId: string }) =>
+  form.requestId || (form.requestId = crypto.randomUUID());
 function syncFilters(values: Record<string, string>) {
   const query = { ...route.query };
   for (const [key, value] of Object.entries(values)) {
@@ -226,6 +228,7 @@ async function api<T>(url: string, options: Parameters<typeof $fetch>[1] = {}) {
     headers: await props.getHeaders(),
   } as never);
 }
+let salesLoadVersion = 0;
 function salesQuery(cursor = "") {
   return {
     query: saleFilters.query,
@@ -246,10 +249,12 @@ async function load(target = section.value) {
         query: dashboardPeriod,
       });
     if (target === "sales") {
+      const version = ++salesLoadVersion;
       const [result, sources] = await Promise.all([
         api<Sale[]>("/api/admin/sales", { query: salesQuery() }),
         api<DecantSource[]>("/api/admin/inventory/decant-sources"),
       ]);
+      if (version !== salesLoadVersion) return;
       sales.value = result;
       decantSources.value = sources;
       salesCursor.value =
@@ -286,11 +291,13 @@ watch(section, (value) => load(value));
 onMounted(() => load("summary"));
 async function loadMoreSales() {
   if (!salesCursor.value) return;
+  const version = salesLoadVersion;
   busy.value = true;
   try {
     const result = await api<Sale[]>("/api/admin/sales", {
       query: salesQuery(salesCursor.value),
     });
+    if (version !== salesLoadVersion) return;
     sales.value.push(
       ...result.filter(
         (sale) => !sales.value.some((current) => current.id === sale.id),
@@ -323,6 +330,7 @@ function saleLine(input: Partial<SaleFormLine> = {}): SaleFormLine {
   };
 }
 const saleForm = reactive({
+  requestId: "",
   date: today(),
   customerName: "",
   customerPhone: "",
@@ -483,10 +491,12 @@ async function returnSaleItem(item: Sale["items"][number]) {
     return;
   }
   const saleId = saleDetail.value.sale.id;
+  const requestId = crypto.randomUUID();
   await perform(async () => {
     await api(`/api/admin/sales/${saleId}/returns`, {
       method: "POST",
       body: {
+        requestId,
         date: new Date().toISOString(),
         items: [
           {
@@ -536,6 +546,7 @@ async function createSale() {
     await api("/api/admin/sales", {
       method: "POST",
       body: {
+        requestId: ensureRequestId(saleForm),
         occurredAt: localIso(saleForm.date),
         customer,
         channel: saleForm.channel,
@@ -562,6 +573,7 @@ async function createSale() {
       },
     });
     Object.assign(saleForm, {
+      requestId: "",
       date: today(),
       customerName: "",
       customerPhone: "",
@@ -576,6 +588,7 @@ async function createSale() {
   });
 }
 const payForm = reactive({
+  requestId: "",
   saleId: "",
   amount: 0,
   method: "cash",
@@ -584,6 +597,7 @@ const payForm = reactive({
 });
 function startPayment(sale: Sale) {
   Object.assign(payForm, {
+    requestId: "",
     saleId: sale.id,
     amount: sale.balanceDue,
     method: "cash",
@@ -602,6 +616,7 @@ async function addPayment() {
     await api(`/api/admin/sales/${payForm.saleId}/payments`, {
       method: "POST",
       body: {
+        requestId: ensureRequestId(payForm),
         date: new Date().toISOString(),
         amount: Number(payForm.amount),
         method: payForm.method,
@@ -619,6 +634,7 @@ async function addPayment() {
         confirmationWarning = ` El pago quedó guardado, pero debes confirmar el inventario manualmente: ${errorMessage(error)}`;
       }
     payForm.saleId = "";
+    payForm.requestId = "";
     await load("sales");
     return `Pago registrado en caja.${confirmationWarning || (completesPayment ? " Inventario confirmado automáticamente." : "")}`;
   });
@@ -771,6 +787,7 @@ watch(alertTotalPages, (total) => {
   if (alertPage.value > total) alertPage.value = total;
 });
 const movementForm = reactive({
+  requestId: "",
   selection: "",
   type: "adjustment",
   quantityChange: 1,
@@ -785,6 +802,7 @@ async function createMovement() {
     await api("/api/admin/inventory/movements", {
       method: "POST",
       body: {
+        requestId: ensureRequestId(movementForm),
         productId,
         variantId,
         type: movementForm.type,
@@ -796,6 +814,7 @@ async function createMovement() {
       },
     });
     movementForm.quantityChange = 1;
+    movementForm.requestId = "";
     movementForm.unitCost = 0;
     movementForm.reference = "";
     movementForm.reason = "";
@@ -899,10 +918,12 @@ async function openDecantSource(row: InventoryRow) {
     ],
   });
   if (!values || Number(values.usableMl) < 1) return;
+  const requestId = crypto.randomUUID();
   await perform(async () => {
     await api("/api/admin/inventory/decant-sources", {
       method: "POST",
       body: {
+        requestId,
         productId: row.productId,
         variantId: row.variantId,
         usableMl: Number(values.usableMl),
@@ -948,10 +969,12 @@ async function adjustDecantSource(source: DecantSource) {
     ],
   });
   if (!values || !Number(values.change)) return;
+  const requestId = crypto.randomUUID();
   await perform(async () => {
     await api(`/api/admin/inventory/decant-sources/${source.id}/adjust`, {
       method: "POST",
       body: {
+        requestId,
         quantityChange: Number(values.change),
         type: values.type,
         reason: values.reason,
@@ -1033,6 +1056,7 @@ function purchaseLine(input: Partial<PurchaseFormLine> = {}): PurchaseFormLine {
   };
 }
 const purchaseForm = reactive({
+  requestId: "",
   date: today(),
   supplierId: "",
   sourceSaleId: "",
@@ -1100,6 +1124,7 @@ async function createPurchase() {
     await api("/api/admin/purchases", {
       method: "POST",
       body: {
+        requestId: ensureRequestId(purchaseForm),
         supplierId: purchaseForm.supplierId || undefined,
         sourceSaleId: purchaseForm.sourceSaleId || undefined,
         supplierName: purchaseForm.supplierName,
@@ -1126,6 +1151,7 @@ async function createPurchase() {
       },
     });
     Object.assign(purchaseForm, {
+      requestId: "",
       date: today(),
       supplierId: "",
       sourceSaleId: "",
@@ -1229,6 +1255,7 @@ async function cancelPurchase(purchase: Purchase) {
 }
 
 const expenseForm = reactive({
+  requestId: "",
   date: today(),
   description: "",
   category: "shipping",
@@ -1257,6 +1284,7 @@ async function createExpense() {
     await api("/api/admin/expenses", {
       method: "POST",
       body: {
+        requestId: ensureRequestId(expenseForm),
         date: localIso(expenseForm.date),
         description: expenseForm.description,
         category: expenseForm.category,
@@ -1271,6 +1299,7 @@ async function createExpense() {
       },
     });
     Object.assign(expenseForm, {
+      requestId: "",
       date: today(),
       description: "",
       category: "shipping",
@@ -1391,6 +1420,7 @@ async function reverseExpense(expense: Expense) {
   });
 }
 const cashForm = reactive({
+  requestId: "",
   date: today(),
   direction: "in",
   type: "opening_balance",
@@ -1417,6 +1447,7 @@ const filteredCash = computed(() =>
   ),
 );
 const transferForm = reactive({
+  requestId: "",
   date: today(),
   from: "cash",
   to: "nequi",
@@ -1431,6 +1462,7 @@ const reconciliationForm = reactive({
 });
 async function createCashMovement() {
   await perform(async () => {
+    ensureRequestId(cashForm);
     await api("/api/admin/cash-movements", {
       method: "POST",
       body: {
@@ -1441,12 +1473,14 @@ async function createCashMovement() {
     });
     cashForm.amount = 0;
     cashForm.description = "";
+    cashForm.requestId = "";
     await load("cash");
     return "Movimiento de caja registrado.";
   });
 }
 async function createTransfer() {
   await perform(async () => {
+    ensureRequestId(transferForm);
     await api("/api/admin/cash-movements/transfer", {
       method: "POST",
       body: {
@@ -1456,6 +1490,7 @@ async function createTransfer() {
       },
     });
     Object.assign(transferForm, {
+      requestId: "",
       date: today(),
       from: "cash",
       to: "nequi",
@@ -1481,6 +1516,7 @@ async function reconcileAccount() {
   });
 }
 async function perform(action: () => Promise<string>) {
+  if (busy.value) return;
   busy.value = true;
   notice.value = "";
   try {

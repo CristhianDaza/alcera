@@ -8,9 +8,21 @@ export default defineEventHandler(async (event) => {
   const admin = await requireAdmin(event);
   const body = await readValidated(event, expenseCreateSchema);
   const db = database();
-  const id = newId();
-  const cashId = body.status === "paid" ? newId() : undefined;
+  const id = body.requestId;
+  const cashId = body.status === "paid" ? `${id}-cash` : undefined;
+  const fingerprint = requestFingerprint(body);
   return db.runTransaction(async (tx) => {
+    const expenseRef = db.collection("expenses").doc(id);
+    const existing = await tx.get(expenseRef);
+    if (existing.exists) {
+      const expense = docData<Expense>(existing);
+      if (expense.requestFingerprint !== fingerprint)
+        throw createError({
+          statusCode: 409,
+          statusMessage: "La clave de operación ya fue utilizada",
+        });
+      return expense;
+    }
     const [number, cashNumber] = await nextNumbers(
       tx,
       body.status === "paid"
@@ -21,16 +33,18 @@ export default defineEventHandler(async (event) => {
         : [{ prefix: "G", date: new Date(body.date) }],
     );
     const at = nowIso();
+    const { requestId: _requestId, ...input } = body;
     const expense: Expense = {
       id,
       number: number!,
-      ...body,
+      ...input,
       cashMovementId: cashId,
       createdAt: at,
       updatedAt: at,
       createdBy: admin.uid,
+      requestFingerprint: fingerprint,
     };
-    tx.set(db.collection("expenses").doc(id), firestoreData(expense));
+    tx.set(expenseRef, firestoreData(expense));
     if (body.status === "paid") {
       const cash: CashMovement = {
         id: cashId!,

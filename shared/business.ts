@@ -95,6 +95,8 @@ export interface Sale {
   balanceDue: number;
   refundTotal?: number;
   returnedCost?: number;
+  /** Acumulado materializado para validar y reversar devoluciones sin leer todo el historial. */
+  returnedItems?: SaleReturnedItem[];
   inventoryAppliedAt?: string;
   inventoryReversedAt?: string;
   createdAt: string;
@@ -103,6 +105,12 @@ export interface Sale {
   notes?: string;
   /** Solo se agrega en respuestas de listado cuando se filtra por medio de pago. */
   paymentMethods?: PaymentMethod[];
+  requestFingerprint?: string;
+}
+export interface SaleReturnedItem {
+  productId: string;
+  variantId: string;
+  quantity: number;
 }
 export interface SaleReturn {
   id: string;
@@ -119,6 +127,7 @@ export interface SaleReturn {
   reason: string;
   createdAt: string;
   createdBy: string;
+  requestFingerprint?: string;
 }
 export interface SalePayment {
   id: string;
@@ -130,6 +139,7 @@ export interface SalePayment {
   reference?: string;
   createdAt: string;
   createdBy: string;
+  requestFingerprint?: string;
 }
 export interface InventoryMovement {
   id: string;
@@ -149,6 +159,7 @@ export interface InventoryMovement {
   createdBy: string;
   quantityUnit?: "unit" | "ml";
   sourceId?: string;
+  requestFingerprint?: string;
 }
 export interface DecantSource {
   id: string;
@@ -164,6 +175,7 @@ export interface DecantSource {
   notes?: string;
   createdBy: string;
   updatedAt: string;
+  requestFingerprint?: string;
 }
 export interface InventoryRow {
   productId: string;
@@ -226,6 +238,7 @@ export interface Purchase {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  requestFingerprint?: string;
 }
 export interface Expense {
   id: string;
@@ -243,6 +256,7 @@ export interface Expense {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  requestFingerprint?: string;
 }
 export interface CashMovement {
   id: string;
@@ -266,6 +280,7 @@ export interface CashMovement {
   referenceId?: string;
   createdAt: string;
   createdBy: string;
+  requestFingerprint?: string;
 }
 export interface DashboardData {
   from: string;
@@ -306,8 +321,10 @@ export interface ReportData {
 }
 
 const id = z.string().regex(/^[a-zA-Z0-9-]{1,120}$/);
+const requestId = z.uuid();
 const text = z.string().trim().min(1).max(500);
 const money = z.number().int().min(0).max(1_000_000_000);
+const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER);
 const iso = z.iso.datetime();
 const optionalCustomer = z
   .object({
@@ -318,6 +335,7 @@ const optionalCustomer = z
   .optional();
 
 export const saleCreateSchema = z.object({
+  requestId,
   occurredAt: iso,
   customer: optionalCustomer,
   channel: z.enum(saleChannels),
@@ -343,6 +361,7 @@ export const saleCreateSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
 });
 export const paymentCreateSchema = z.object({
+  requestId,
   date: iso,
   amount: z.number().int().positive().max(1_000_000_000),
   method: z.enum(paymentMethods),
@@ -350,12 +369,15 @@ export const paymentCreateSchema = z.object({
   reference: z.string().trim().max(200).optional(),
 });
 export const movementCreateSchema = z.object({
+  requestId,
   productId: id,
   variantId: id,
   type: z.enum(inventoryMovementTypes).exclude(["sale", "purchase"]),
   quantityChange: z
     .number()
     .int()
+    .min(-1_000_000_000)
+    .max(1_000_000_000)
     .refine((value) => value !== 0),
   unitCost: money.nullable().default(null),
   reference: z.string().trim().min(1).max(200),
@@ -369,6 +391,7 @@ export const inventorySettingsSchema = z.object({
   decantPackagingCost: money.optional(),
 });
 export const decantSourceCreateSchema = z.object({
+  requestId,
   productId: id,
   variantId: id,
   usableMl: z.number().int().min(1).max(2_000).optional(),
@@ -387,6 +410,7 @@ export const supplierCreateSchema = z.object({
 export const purchaseCreateSchema = z
   .object({
     supplierId: id.optional(),
+    requestId,
     sourceSaleId: id.optional(),
     supplierName: text,
     date: iso,
@@ -395,13 +419,18 @@ export const purchaseCreateSchema = z
     cashAccount: z.enum(cashAccounts).optional(),
     items: z
       .array(
-        z.object({
-          productId: id,
-          variantId: id,
-          quantity: z.number().int().positive().max(100000),
-          unitCost: money,
-          discount: money.default(0),
-        }),
+        z
+          .object({
+            productId: id,
+            variantId: id,
+            quantity: z.number().int().positive().max(100000),
+            unitCost: money,
+            discount: money.default(0),
+          })
+          .refine((item) => item.discount <= item.quantity * item.unitCost, {
+            message: "El descuento no puede superar el valor de la línea",
+            path: ["discount"],
+          }),
       )
       .min(1)
       .max(100),
@@ -412,9 +441,26 @@ export const purchaseCreateSchema = z
   .refine((v) => v.paymentStatus !== "paid" || !!v.cashAccount, {
     message: "Selecciona la cuenta de pago",
     path: ["cashAccount"],
-  });
+  })
+  .refine(
+    (value) => {
+      const total = value.items.reduce(
+        (sum, item) =>
+          sum +
+          BigInt(item.quantity) * BigInt(item.unitCost) -
+          BigInt(item.discount),
+        BigInt(value.freight),
+      );
+      return total >= BigInt(0) && total <= maxSafeInteger;
+    },
+    {
+      message: "El total de la compra supera el límite monetario seguro",
+      path: ["items"],
+    },
+  );
 export const expenseCreateSchema = z
   .object({
+    requestId,
     date: iso,
     description: text,
     category: z.enum(expenseCategories),
@@ -431,6 +477,7 @@ export const expenseCreateSchema = z
   );
 export const cashMovementCreateSchema = z
   .object({
+    requestId,
     date: iso,
     direction: z.enum(["in", "out"]),
     type: z.enum([
@@ -476,7 +523,7 @@ export const saleTotals = (
 
 export function remainingSaleItemQuantities(
   items: SaleItem[],
-  returns: SaleReturn[],
+  returns: Array<{ items: SaleReturnedItem[] }>,
 ) {
   const returned = new Map<string, number>();
   for (const entry of returns)
@@ -503,10 +550,13 @@ export const weightedAverageCost = (
   cost: number,
   added: number,
   addedCost: number,
-) =>
-  stock + added === 0
-    ? addedCost
-    : Math.round((stock * cost + added * addedCost) / (stock + added));
+) => {
+  const units = BigInt(stock) + BigInt(added);
+  if (units === BigInt(0)) return addedCost;
+  const total =
+    BigInt(stock) * BigInt(cost) + BigInt(added) * BigInt(addedCost);
+  return Number((total + units / BigInt(2)) / units);
+};
 
 export const weightedAverageCostAfterRemoval = (
   stock: number,
@@ -516,10 +566,11 @@ export const weightedAverageCostAfterRemoval = (
 ) => {
   const remaining = stock - removed;
   if (remaining <= 0) return 0;
-  return Math.max(
-    0,
-    Math.round((stock * cost - removed * removedCost) / remaining),
-  );
+  const total =
+    BigInt(stock) * BigInt(cost) - BigInt(removed) * BigInt(removedCost);
+  if (total <= BigInt(0)) return 0;
+  const units = BigInt(remaining);
+  return Number((total + units / BigInt(2)) / units);
 };
 
 export function millilitersFromSize(size: string) {
@@ -555,7 +606,12 @@ export function landedUnitCost(
 ) {
   const share =
     allocateFreight && merchandiseTotal > 0
-      ? Math.round((freight * lineTotal) / merchandiseTotal)
+      ? Number(
+          (BigInt(freight) * BigInt(lineTotal) +
+            BigInt(merchandiseTotal) / BigInt(2)) /
+            BigInt(merchandiseTotal),
+        )
       : 0;
-  return Math.round((lineTotal + share) / quantity);
+  const total = BigInt(lineTotal) + BigInt(share);
+  return Number((total + BigInt(quantity) / BigInt(2)) / BigInt(quantity));
 }

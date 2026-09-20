@@ -28,11 +28,18 @@ export default defineEventHandler(async (event) => {
         statusMessage: "Pedido no encontrado",
       });
     const order = docData<Order>(orderSnapshot);
-    if ((order as Order & { saleId?: string }).saleId)
+    const existingSaleId = (order as Order & { saleId?: string }).saleId;
+    if (existingSaleId) {
+      const existingSale = await tx.get(
+        db.collection("sales").doc(existingSaleId),
+      );
+      if (existingSale.exists) return docData<Sale>(existingSale);
       throw createError({
         statusCode: 409,
-        statusMessage: "El pedido ya fue convertido en venta",
+        statusMessage:
+          "El pedido referencia una venta inexistente y requiere revisión",
       });
+    }
     if (order.status !== "awaiting_payment")
       throw createError({
         statusCode: 409,

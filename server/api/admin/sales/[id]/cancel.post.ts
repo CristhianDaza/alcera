@@ -57,11 +57,13 @@ export default defineEventHandler(async (event) => {
           )
       : [];
     const previousReturns = sale.inventoryAppliedAt
-      ? (
-          await tx.get(
-            db.collection("saleReturns").where("saleId", "==", saleId),
-          )
-        ).docs.map((doc) => docData<SaleReturn>(doc))
+      ? sale.returnedItems
+        ? [{ items: sale.returnedItems }]
+        : (
+            await tx.get(
+              db.collection("saleReturns").where("saleId", "==", saleId),
+            )
+          ).docs.map((doc) => docData<SaleReturn>(doc))
       : [];
     const sourceIds = [
       ...new Set(
@@ -159,13 +161,17 @@ export default defineEventHandler(async (event) => {
             movement.quantityUnit !== "ml",
         );
         if (!original) continue;
+        const stockAfter = safeInteger(
+          current.stock + quantity,
+          "El saldo de inventario supera el límite numérico seguro",
+        );
         updatedProducts.set(
           item.productId,
           replaceVariant(product!, item.variantId, {
             ...variant,
             inventory: {
               ...current,
-              stock: current.stock + quantity,
+              stock: stockAfter,
               updatedAt: at,
             },
           }),
@@ -179,7 +185,7 @@ export default defineEventHandler(async (event) => {
           quantityChange: quantity,
           unitCost: item.unitCost,
           stockBefore: current.stock,
-          stockAfter: current.stock + quantity,
+          stockAfter,
           referenceType: "sale",
           referenceId: saleId,
           reason: `Anulación ${sale.number}: ${body.reason}`,

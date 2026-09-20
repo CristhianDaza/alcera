@@ -8,8 +8,20 @@ export default defineEventHandler(async (event) => {
   const admin = await requireAdmin(event);
   const body = await readValidated(event, purchaseCreateSchema);
   const db = database();
-  const id = newId();
+  const id = body.requestId;
+  const fingerprint = requestFingerprint(body);
   return db.runTransaction(async (tx) => {
+    const purchaseRef = db.collection("purchases").doc(id);
+    const existing = await tx.get(purchaseRef);
+    if (existing.exists) {
+      const purchase = docData<Purchase>(existing);
+      if (purchase.requestFingerprint !== fingerprint)
+        throw createError({
+          statusCode: 409,
+          statusMessage: "La clave de operación ya fue utilizada",
+        });
+      return purchase;
+    }
     const refs = [...new Set(body.items.map((item) => item.productId))].map(
       (productId) => db.collection("products").doc(productId),
     );
@@ -51,10 +63,11 @@ export default defineEventHandler(async (event) => {
     });
     const number = await nextNumber(tx, "C", new Date(body.date));
     const at = nowIso();
+    const { requestId: _requestId, ...input } = body;
     const purchase: Purchase = {
       id,
       number,
-      ...body,
+      ...input,
       supplierName: supplierSnapshot?.exists
         ? String(supplierSnapshot.data()?.name ?? body.supplierName)
         : body.supplierName,
@@ -64,8 +77,9 @@ export default defineEventHandler(async (event) => {
       createdAt: at,
       updatedAt: at,
       createdBy: admin.uid,
+      requestFingerprint: fingerprint,
     };
-    tx.set(db.collection("purchases").doc(id), firestoreData(purchase));
+    tx.set(purchaseRef, firestoreData(purchase));
     return purchase;
   });
 });

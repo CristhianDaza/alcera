@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
     event,
     z
       .object({
+        requestId: z.uuid(),
         date: z.iso.datetime(),
         items: z
           .array(
@@ -25,7 +26,8 @@ export default defineEventHandler(async (event) => {
               quantity: z.number().int().positive().max(999),
             }),
           )
-          .min(1),
+          .min(1)
+          .max(100),
         refundAmount: z.number().int().min(0).max(1_000_000_000),
         refundAccount: z.enum(cashAccounts).optional(),
         reason: z.string().trim().min(3).max(1000),
@@ -36,10 +38,36 @@ export default defineEventHandler(async (event) => {
       }),
   );
   const saleId = getRouterParam(event, "id")!;
+  const requestedVariants = new Set(
+    body.items.map((item) => `${item.productId}/${item.variantId}`),
+  );
+  if (requestedVariants.size !== body.items.length)
+    throw createError({
+      statusCode: 400,
+      statusMessage:
+        "Cada presentación debe aparecer una sola vez en la devolución",
+    });
   const db = database();
+  const fingerprint = requestFingerprint({ saleId, ...body });
   return db.runTransaction(async (tx) => {
     const saleRef = db.collection("sales").doc(saleId);
-    const saleSnapshot = await tx.get(saleRef);
+    const returnRef = db.collection("saleReturns").doc(body.requestId);
+    const [saleSnapshot, existingReturn] = await Promise.all([
+      tx.get(saleRef),
+      tx.get(returnRef),
+    ]);
+    if (existingReturn.exists) {
+      const saleReturn = docData<SaleReturn>(existingReturn);
+      if (
+        saleReturn.saleId !== saleId ||
+        saleReturn.requestFingerprint !== fingerprint
+      )
+        throw createError({
+          statusCode: 409,
+          statusMessage: "La clave de operación ya pertenece a otra venta",
+        });
+      return saleReturn;
+    }
     if (!saleSnapshot.exists)
       throw createError({
         statusCode: 404,
@@ -59,12 +87,13 @@ export default defineEventHandler(async (event) => {
         statusCode: 409,
         statusMessage: "El reembolso supera el dinero recibido",
       });
-    const returnSnapshot = await tx.get(
-      db.collection("saleReturns").where("saleId", "==", saleId),
-    );
-    const previousReturns = returnSnapshot.docs.map((doc) =>
-      docData<SaleReturn>(doc),
-    );
+    // Las ventas anteriores a este campo se migran de forma perezosa al registrar
+    // su siguiente devolución. Las nuevas no vuelven a leer todo el historial.
+    const previousReturnedItems =
+      sale.returnedItems ??
+      (
+        await tx.get(db.collection("saleReturns").where("saleId", "==", saleId))
+      ).docs.flatMap((doc) => docData<SaleReturn>(doc).items);
     const productIds = [...new Set(body.items.map((item) => item.productId))];
     const productSnapshots = await Promise.all(
       productIds.map((id) => tx.get(db.collection("products").doc(id))),
@@ -93,8 +122,7 @@ export default defineEventHandler(async (event) => {
           statusCode: 400,
           statusMessage: "La presentación no pertenece a la venta",
         });
-      const alreadyReturned = previousReturns
-        .flatMap((entry) => entry.items)
+      const alreadyReturned = previousReturnedItems
         .filter(
           (item) =>
             item.productId === requested.productId &&
@@ -121,7 +149,10 @@ export default defineEventHandler(async (event) => {
           statusMessage:
             "Los decants abiertos no vuelven al inventario; registra el reembolso como ajuste de caja si aplica",
         });
-      const nextStock = inventory.stock + requested.quantity;
+      const nextStock = safeInteger(
+        inventory.stock + requested.quantity,
+        "El saldo de inventario supera el límite numérico seguro",
+      );
       updatedProducts.set(
         requested.productId,
         replaceVariant(product!, variant.id, {
@@ -154,7 +185,7 @@ export default defineEventHandler(async (event) => {
         variants: product.variants,
       });
     const saleReturn: SaleReturn = {
-      id: newId(),
+      id: body.requestId,
       saleId,
       date: body.date,
       items: returnedItems,
@@ -163,11 +194,12 @@ export default defineEventHandler(async (event) => {
       reason: body.reason,
       createdAt: at,
       createdBy: admin.uid,
+      requestFingerprint: fingerprint,
     };
-    tx.set(db.collection("saleReturns").doc(saleReturn.id), saleReturn);
+    tx.set(returnRef, saleReturn);
     if (body.refundAmount) {
       const cash: CashMovement = {
-        id: newId(),
+        id: `${body.requestId}-cash`,
         number: refundNumber!,
         date: body.date,
         direction: "out",
@@ -185,9 +217,28 @@ export default defineEventHandler(async (event) => {
     const refundTotal = (sale.refundTotal ?? 0) + body.refundAmount;
     const returnedCost = (sale.returnedCost ?? 0) + costTotal;
     const paidTotal = sale.paidTotal - body.refundAmount;
+    const returnedByVariant = new Map<string, number>();
+    for (const item of [...previousReturnedItems, ...returnedItems]) {
+      const key = `${item.productId}/${item.variantId}`;
+      returnedByVariant.set(
+        key,
+        (returnedByVariant.get(key) ?? 0) + item.quantity,
+      );
+    }
+    const cumulativeReturnedItems = [...returnedByVariant.entries()].map(
+      ([key, quantity]) => {
+        const separator = key.indexOf("/");
+        return {
+          productId: key.slice(0, separator),
+          variantId: key.slice(separator + 1),
+          quantity,
+        };
+      },
+    );
     tx.update(saleRef, {
       refundTotal,
       returnedCost,
+      returnedItems: cumulativeReturnedItems,
       paidTotal,
       balanceDue: Math.max(0, sale.total - refundTotal - paidTotal),
       updatedAt: at,

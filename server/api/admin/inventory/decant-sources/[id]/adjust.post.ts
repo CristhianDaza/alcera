@@ -9,6 +9,7 @@ export default defineEventHandler(async (event) => {
   const body = await readValidated(
     event,
     z.object({
+      requestId: z.uuid(),
       quantityChange: z
         .number()
         .int()
@@ -19,15 +20,32 @@ export default defineEventHandler(async (event) => {
   );
   const id = getRouterParam(event, "id")!;
   const db = database();
+  const fingerprint = requestFingerprint({ sourceId: id, ...body });
   return db.runTransaction(async (tx) => {
     const ref = db.collection("decantSources").doc(id);
-    const snapshot = await tx.get(ref);
+    const movementRef = db.collection("inventoryMovements").doc(body.requestId);
+    const [snapshot, existingMovement] = await Promise.all([
+      tx.get(ref),
+      tx.get(movementRef),
+    ]);
     if (!snapshot.exists)
       throw createError({
         statusCode: 404,
         statusMessage: "Frasco abierto no encontrado",
       });
     const source = docData<DecantSource>(snapshot);
+    if (existingMovement.exists) {
+      const movement = docData<InventoryMovement>(existingMovement);
+      if (
+        movement.sourceId !== id ||
+        movement.requestFingerprint !== fingerprint
+      )
+        throw createError({
+          statusCode: 409,
+          statusMessage: "La clave de operación ya pertenece a otro frasco",
+        });
+      return source;
+    }
     const after = source.remainingMl + body.quantityChange;
     if (after < 0 || after > source.initialMl)
       throw createError({
@@ -44,7 +62,7 @@ export default defineEventHandler(async (event) => {
       });
     const at = nowIso();
     const movement: InventoryMovement = {
-      id: newId(),
+      id: body.requestId,
       productId: source.productId,
       variantId: source.variantId,
       type: body.type,
@@ -60,13 +78,14 @@ export default defineEventHandler(async (event) => {
       occurredAt: at,
       createdAt: at,
       createdBy: admin.uid,
+      requestFingerprint: fingerprint,
     };
     tx.update(ref, {
       remainingMl: after,
       status: after === 0 ? "empty" : "open",
       updatedAt: at,
     });
-    tx.set(db.collection("inventoryMovements").doc(movement.id), movement);
+    tx.set(movementRef, movement);
     return {
       ...source,
       remainingMl: after,

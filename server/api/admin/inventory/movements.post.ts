@@ -21,10 +21,28 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Una devolución de cliente debe sumar existencias",
     });
   const db = database();
-  const id = newId();
+  const id = body.requestId;
+  const fingerprint = requestFingerprint(body);
   return db.runTransaction(async (tx) => {
     const productRef = db.collection("products").doc(body.productId);
-    const snapshot = await tx.get(productRef);
+    const movementRef = db.collection("inventoryMovements").doc(id);
+    const [snapshot, existingMovement] = await Promise.all([
+      tx.get(productRef),
+      tx.get(movementRef),
+    ]);
+    if (existingMovement.exists) {
+      const movement = docData<InventoryMovement>(existingMovement);
+      if (
+        movement.productId !== body.productId ||
+        movement.variantId !== body.variantId ||
+        movement.requestFingerprint !== fingerprint
+      )
+        throw createError({
+          statusCode: 409,
+          statusMessage: "La clave de operación ya pertenece a otro movimiento",
+        });
+      return movement;
+    }
     if (!snapshot.exists)
       throw createError({
         statusCode: 404,
@@ -39,21 +57,26 @@ export default defineEventHandler(async (event) => {
         statusMessage:
           "Los decants se controlan desde un frasco abierto y no mediante unidades manuales",
       });
-    const after = current.stock + body.quantityChange;
+    const after = safeInteger(
+      current.stock + body.quantityChange,
+      "El saldo de inventario supera el límite numérico seguro",
+    );
     if (after < 0)
       throw createError({
         statusCode: 409,
         statusMessage: "El movimiento dejaría inventario negativo",
       });
     const at = nowIso();
+    const { requestId: _requestId, ...input } = body;
     const movement: InventoryMovement = {
       id,
-      ...body,
+      ...input,
       stockBefore: current.stock,
       stockAfter: after,
       referenceType: "manual",
       createdAt: at,
       createdBy: admin.uid,
+      requestFingerprint: fingerprint,
     };
     tx.update(productRef, {
       variants: replaceVariant(product, variant.id, {
@@ -66,7 +89,7 @@ export default defineEventHandler(async (event) => {
         },
       }).variants,
     });
-    tx.set(db.collection("inventoryMovements").doc(id), movement);
+    tx.set(movementRef, movement);
     return movement;
   });
 });

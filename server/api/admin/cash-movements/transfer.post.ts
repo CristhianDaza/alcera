@@ -7,6 +7,7 @@ export default defineEventHandler(async (event) => {
     event,
     z
       .object({
+        requestId: z.uuid(),
         date: z.iso.datetime(),
         from: z.enum(cashAccounts),
         to: z.enum(cashAccounts),
@@ -19,16 +20,47 @@ export default defineEventHandler(async (event) => {
       }),
   );
   const db = database();
+  const fingerprint = requestFingerprint(body);
   return db.runTransaction(async (tx) => {
+    const transferId = body.requestId;
+    const outRef = db.collection("cashMovements").doc(`${transferId}-out`);
+    const inRef = db.collection("cashMovements").doc(`${transferId}-in`);
+    const [existingOut, existingIn] = await Promise.all([
+      tx.get(outRef),
+      tx.get(inRef),
+    ]);
+    if (existingOut.exists && existingIn.exists) {
+      const movements = [
+        docData<CashMovement>(existingOut),
+        docData<CashMovement>(existingIn),
+      ];
+      if (
+        movements.some(
+          (movement) => movement.requestFingerprint !== fingerprint,
+        )
+      )
+        throw createError({
+          statusCode: 409,
+          statusMessage: "La clave de operación ya fue utilizada",
+        });
+      return {
+        transferId,
+        movements,
+      };
+    }
+    if (existingOut.exists || existingIn.exists)
+      throw createError({
+        statusCode: 409,
+        statusMessage: "La transferencia está incompleta y requiere revisión",
+      });
     const [numberOut, numberIn] = await nextNumbers(tx, [
       { prefix: "M", date: new Date(body.date) },
       { prefix: "M", date: new Date(body.date) },
     ]);
     const at = nowIso();
-    const transferId = newId();
     const movements: CashMovement[] = [
       {
-        id: newId(),
+        id: `${transferId}-out`,
         number: numberOut!,
         date: body.date,
         direction: "out",
@@ -38,9 +70,10 @@ export default defineEventHandler(async (event) => {
         description: `Transferencia a ${body.to}: ${body.description}`,
         createdAt: at,
         createdBy: admin.uid,
+        requestFingerprint: fingerprint,
       },
       {
-        id: newId(),
+        id: `${transferId}-in`,
         number: numberIn!,
         date: body.date,
         direction: "in",
@@ -50,10 +83,11 @@ export default defineEventHandler(async (event) => {
         description: `Transferencia desde ${body.from}: ${body.description}`,
         createdAt: at,
         createdBy: admin.uid,
+        requestFingerprint: fingerprint,
       },
     ];
-    for (const movement of movements)
-      tx.set(db.collection("cashMovements").doc(movement.id), {
+    for (const [index, movement] of movements.entries())
+      tx.set(index === 0 ? outRef : inRef, {
         ...movement,
         transferId,
       });

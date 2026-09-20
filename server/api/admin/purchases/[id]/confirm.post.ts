@@ -65,13 +65,17 @@ export default defineEventHandler(async (event) => {
         item.quantity,
         netUnitCost,
       );
+      const stockAfter = safeInteger(
+        current.stock + item.quantity,
+        "El saldo de inventario supera el límite numérico seguro",
+      );
       updatedProducts.set(
         item.productId,
         replaceVariant(product!, item.variantId, {
           ...variant,
           inventory: {
             ...current,
-            stock: current.stock + item.quantity,
+            stock: stockAfter,
             averageCost,
             updatedAt: at,
           },
@@ -86,7 +90,7 @@ export default defineEventHandler(async (event) => {
         quantityChange: item.quantity,
         unitCost: netUnitCost,
         stockBefore: current.stock,
-        stockAfter: current.stock + item.quantity,
+        stockAfter,
         referenceType: "purchase",
         referenceId: purchaseId,
         reason: `Compra ${purchase.number}`,

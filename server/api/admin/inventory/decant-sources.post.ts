@@ -14,10 +14,24 @@ export default defineEventHandler(async (event) => {
   const admin = await requireAdmin(event);
   const body = await readValidated(event, decantSourceCreateSchema);
   const db = database();
-  const sourceId = newId();
+  const sourceId = body.requestId;
+  const fingerprint = requestFingerprint(body);
   return db.runTransaction(async (tx) => {
     const productRef = db.collection("products").doc(body.productId);
-    const snapshot = await tx.get(productRef);
+    const sourceRef = db.collection("decantSources").doc(sourceId);
+    const [snapshot, existingSource] = await Promise.all([
+      tx.get(productRef),
+      tx.get(sourceRef),
+    ]);
+    if (existingSource.exists) {
+      const source = docData<DecantSource>(existingSource);
+      if (source.requestFingerprint !== fingerprint)
+        throw createError({
+          statusCode: 409,
+          statusMessage: "La clave de operación ya fue utilizada",
+        });
+      return source;
+    }
     if (!snapshot.exists)
       throw createError({
         statusCode: 404,
@@ -62,6 +76,7 @@ export default defineEventHandler(async (event) => {
       notes: body.notes,
       createdBy: admin.uid,
       updatedAt: at,
+      requestFingerprint: fingerprint,
     };
     const movement: InventoryMovement = {
       id: newId(),
@@ -85,7 +100,7 @@ export default defineEventHandler(async (event) => {
         inventory: nextInventory,
       }).variants,
     });
-    tx.set(db.collection("decantSources").doc(sourceId), firestoreData(source));
+    tx.set(sourceRef, firestoreData(source));
     tx.set(db.collection("inventoryMovements").doc(movement.id), movement);
     return source;
   });

@@ -10,11 +10,28 @@ export default defineEventHandler(async (event) => {
   const body = await readValidated(event, paymentCreateSchema);
   const saleId = getRouterParam(event, "id")!;
   const db = database();
-  const paymentId = newId();
-  const cashId = newId();
+  const paymentId = body.requestId;
+  const cashId = `${paymentId}-cash`;
+  const fingerprint = requestFingerprint({ saleId, ...body });
   return db.runTransaction(async (tx) => {
     const saleRef = db.collection("sales").doc(saleId);
-    const snapshot = await tx.get(saleRef);
+    const paymentRef = db.collection("salePayments").doc(paymentId);
+    const [snapshot, existingPayment] = await Promise.all([
+      tx.get(saleRef),
+      tx.get(paymentRef),
+    ]);
+    if (existingPayment.exists) {
+      const payment = docData<SalePayment>(existingPayment);
+      if (
+        payment.saleId !== saleId ||
+        payment.requestFingerprint !== fingerprint
+      )
+        throw createError({
+          statusCode: 409,
+          statusMessage: "La clave de operación ya pertenece a otra venta",
+        });
+      return payment;
+    }
     if (!snapshot.exists)
       throw createError({
         statusCode: 404,
@@ -33,12 +50,14 @@ export default defineEventHandler(async (event) => {
       });
     const number = await nextNumber(tx, "M", new Date(body.date));
     const at = nowIso();
+    const { requestId: _requestId, ...input } = body;
     const payment: SalePayment = {
       id: paymentId,
       saleId,
-      ...body,
+      ...input,
       createdAt: at,
       createdBy: admin.uid,
+      requestFingerprint: fingerprint,
     };
     const cash: CashMovement = {
       id: cashId,
@@ -55,10 +74,7 @@ export default defineEventHandler(async (event) => {
       createdBy: admin.uid,
     };
     const paidTotal = sale.paidTotal + body.amount;
-    tx.set(
-      db.collection("salePayments").doc(paymentId),
-      firestoreData(payment),
-    );
+    tx.set(paymentRef, firestoreData(payment));
     tx.set(db.collection("cashMovements").doc(cashId), cash);
     tx.update(saleRef, {
       paidTotal,

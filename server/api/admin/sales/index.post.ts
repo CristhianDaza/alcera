@@ -9,8 +9,20 @@ export default defineEventHandler(async (event) => {
   const admin = await requireAdmin(event);
   const body = await readValidated(event, saleCreateSchema);
   const db = database();
-  const id = newId();
+  const id = body.requestId;
+  const fingerprint = requestFingerprint(body);
   return db.runTransaction(async (tx) => {
+    const saleRef = db.collection("sales").doc(id);
+    const existing = await tx.get(saleRef);
+    if (existing.exists) {
+      const sale = docData<Sale>(existing);
+      if (sale.requestFingerprint !== fingerprint)
+        throw createError({
+          statusCode: 409,
+          statusMessage: "La clave de operación ya fue utilizada",
+        });
+      return sale;
+    }
     const refs = [...new Set(body.items.map((item) => item.productId))].map(
       (productId) => db.collection("products").doc(productId),
     );
@@ -50,28 +62,30 @@ export default defineEventHandler(async (event) => {
         inventoryOf(findVariant(product, item.variantId)).mode === "on_demand"
       );
     });
+    const { requestId: _requestId, ...input } = body;
     const sale: Sale = {
       id,
       number,
-      customer: body.customer,
-      channel: body.channel,
+      customer: input.customer,
+      channel: input.channel,
       status:
-        body.status === "draft"
+        input.status === "draft"
           ? "draft"
           : requiresPurchase
             ? "pending_purchase"
-            : body.status,
+            : input.status,
       items,
       ...totals,
-      shippingCharged: body.shippingCharged,
+      shippingCharged: input.shippingCharged,
       paidTotal: 0,
       balanceDue: totals.total,
-      createdAt: body.occurredAt,
+      createdAt: input.occurredAt,
       updatedAt: at,
       createdBy: admin.uid,
-      notes: body.notes,
+      notes: input.notes,
+      requestFingerprint: fingerprint,
     };
-    tx.set(db.collection("sales").doc(id), firestoreData(sale));
+    tx.set(saleRef, firestoreData(sale));
     return sale;
   });
 });

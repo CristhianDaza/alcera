@@ -7,6 +7,7 @@ import {
   landedUnitCost,
   millilitersFromSize,
   movementCreateSchema,
+  purchaseCreateSchema,
   remainingSaleItemQuantities,
   saleCreateSchema,
   saleTotals,
@@ -35,11 +36,15 @@ describe("business rules", () => {
       100_000,
     );
     expect(weightedAverageCostAfterRemoval(2, 130_000, 2, 130_000)).toBe(0);
+    expect(weightedAverageCost(10_000_000, 999_999_999, 100_000, 1)).toBe(
+      990_099_009,
+    );
   });
 
   it("does not allow a line discount greater than its value", () => {
     expect(
       saleCreateSchema.safeParse({
+        requestId: crypto.randomUUID(),
         occurredAt: new Date().toISOString(),
         channel: "physical",
         status: "pending_payment",
@@ -60,6 +65,7 @@ describe("business rules", () => {
   it("rejects zero inventory movements", () => {
     expect(
       movementCreateSchema.safeParse({
+        requestId: crypto.randomUUID(),
         productId: "p1",
         variantId: "v1",
         type: "adjustment",
@@ -75,6 +81,7 @@ describe("business rules", () => {
   it("requires a payment account for paid expenses", () => {
     expect(
       expenseCreateSchema.safeParse({
+        requestId: crypto.randomUUID(),
         date: new Date().toISOString(),
         description: "Empaques",
         category: "packaging",
@@ -87,6 +94,7 @@ describe("business rules", () => {
   it("only accepts positive integer cash amounts", () => {
     expect(
       cashMovementCreateSchema.safeParse({
+        requestId: crypto.randomUUID(),
         date: new Date().toISOString(),
         direction: "in",
         type: "opening_balance",
@@ -97,6 +105,7 @@ describe("business rules", () => {
     ).toBe(false);
     expect(
       cashMovementCreateSchema.safeParse({
+        requestId: crypto.randomUUID(),
         date: new Date().toISOString(),
         direction: "in",
         type: "withdrawal",
@@ -170,9 +179,29 @@ describe("business rules", () => {
     expect(landedUnitCost(200_000, 2, 30_000, 300_000, false)).toBe(100_000);
   });
 
+  it("rejects purchase totals outside JavaScript safe integer precision", () => {
+    expect(
+      purchaseCreateSchema.safeParse({
+        requestId: crypto.randomUUID(),
+        supplierName: "Proveedor",
+        date: new Date().toISOString(),
+        paymentStatus: "pending",
+        items: Array.from({ length: 100 }, (_, index) => ({
+          productId: `p-${index}`,
+          variantId: `v-${index}`,
+          quantity: 100_000,
+          unitCost: 1_000_000_000,
+          discount: 0,
+        })),
+        freight: 0,
+      }).success,
+    ).toBe(false);
+  });
+
   it("accepts sales pending procurement", () => {
     expect(
       saleCreateSchema.safeParse({
+        requestId: crypto.randomUUID(),
         occurredAt: new Date().toISOString(),
         channel: "website",
         status: "pending_purchase",
