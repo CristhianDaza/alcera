@@ -61,7 +61,8 @@ export const inventoryMovementTypes = [
 export type SaleStatus = (typeof saleStatuses)[number];
 export type SaleChannel = (typeof saleChannels)[number];
 export type PaymentMethod = (typeof paymentMethods)[number];
-export type CashAccount = (typeof cashAccounts)[number];
+/** Identificador estable de una cuenta; puede ser una cuenta inicial o creada por el administrador. */
+export type CashAccount = string;
 export type ExpenseCategory = (typeof expenseCategories)[number];
 export type InventoryMovementType = (typeof inventoryMovementTypes)[number];
 export type InventoryMode = "stock" | "on_demand" | "decant";
@@ -207,6 +208,14 @@ export interface Supplier {
   createdAt: string;
   updatedAt: string;
 }
+export interface CashAccountDefinition {
+  id: CashAccount;
+  name: string;
+  kind: "cash" | "bank" | "wallet" | "card" | "other";
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 export interface Purchase {
   id: string;
   number: string;
@@ -321,6 +330,7 @@ export interface ReportData {
 }
 
 const id = z.string().regex(/^[a-zA-Z0-9-]{1,120}$/);
+export const cashAccountId = z.string().trim().min(1).max(120);
 const requestId = z.uuid();
 const text = z.string().trim().min(1).max(500);
 const money = z.number().int().min(0).max(1_000_000_000);
@@ -365,7 +375,7 @@ export const paymentCreateSchema = z.object({
   date: iso,
   amount: z.number().int().positive().max(1_000_000_000),
   method: z.enum(paymentMethods),
-  cashAccount: z.enum(cashAccounts),
+  cashAccount: cashAccountId,
   reference: z.string().trim().max(200).optional(),
 });
 export const movementCreateSchema = z.object({
@@ -416,7 +426,7 @@ export const purchaseCreateSchema = z
     date: iso,
     invoice: z.string().trim().max(200).optional(),
     paymentStatus: z.enum(["pending", "paid"]),
-    cashAccount: z.enum(cashAccounts).optional(),
+    cashAccount: cashAccountId.optional(),
     items: z
       .array(
         z
@@ -467,7 +477,7 @@ export const expenseCreateSchema = z
     amount: z.number().int().positive().max(1_000_000_000),
     supplier: z.string().trim().max(200).optional(),
     paymentMethod: z.enum(paymentMethods).optional(),
-    cashAccount: z.enum(cashAccounts).optional(),
+    cashAccount: cashAccountId.optional(),
     receipt: z.string().trim().max(500).optional(),
     status: z.enum(["paid", "pending"]),
   })
@@ -487,7 +497,7 @@ export const cashMovementCreateSchema = z
       "adjustment",
       "other",
     ]),
-    account: z.enum(cashAccounts),
+    account: cashAccountId,
     amount: z.number().int().positive().max(1_000_000_000),
     description: text,
   })

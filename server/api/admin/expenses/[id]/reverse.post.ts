@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
     event,
     z.object({
       reason: z.string().trim().min(3).max(1000),
-      cashAccount: z.enum(cashAccounts).optional(),
+      cashAccount: z.string().trim().min(1).max(120).optional(),
     }),
   );
   const id = getRouterParam(event, "id")!;

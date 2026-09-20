@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { money } from "#shared/commerce";
 import {
-  cashAccounts,
   expenseCategories,
   millilitersFromSize,
   paymentMethods,
   saleChannels,
   saleStatuses,
   type CashMovement,
+  type CashAccountDefinition,
   type DecantSource,
   type DashboardData,
   type Expense,
@@ -84,7 +84,8 @@ const dashboard = ref<DashboardData | null>(null),
   purchases = ref<Purchase[]>([]),
   suppliers = ref<Supplier[]>([]),
   expenses = ref<Expense[]>([]),
-  cash = ref<CashMovement[]>([]);
+  cash = ref<CashMovement[]>([]),
+  accounts = ref<CashAccountDefinition[]>([]);
 const reports = ref<ReportData | null>(null);
 const today = () =>
   new Intl.DateTimeFormat("en-CA", {
@@ -163,10 +164,18 @@ type ActionModal = {
   resolve: (values: Record<string, string> | null) => void;
 };
 const actionModal = ref<ActionModal | null>(null);
-const accountOptions = cashAccounts.map((account) => ({
-  value: account,
-  label: labels[account] || account,
-}));
+const accountOptions = computed(() =>
+  accounts.value
+    .filter((account) => account.active)
+    .map((account) => ({ value: account.id, label: account.name })),
+);
+function accountName(id: string) {
+  return (
+    accounts.value.find((account) => account.id === id)?.name ||
+    labels[id] ||
+    id
+  );
+}
 function requestActionModal(input: Omit<ActionModal, "resolve">) {
   return new Promise<Record<string, string> | null>((resolve) => {
     actionModal.value = {
@@ -244,6 +253,10 @@ async function load(target = section.value) {
   busy.value = true;
   notice.value = "";
   try {
+    if (!accounts.value.length)
+      accounts.value = await api<CashAccountDefinition[]>(
+        "/api/admin/cash-accounts",
+      );
     if (target === "summary")
       dashboard.value = await api<DashboardData>("/api/admin/dashboard", {
         query: dashboardPeriod,
@@ -472,7 +485,7 @@ async function returnSaleItem(item: Sale["items"][number]) {
         label: "Cuenta del reembolso",
         value: "cash",
         type: "select",
-        options: accountOptions,
+        options: accountOptions.value,
         help: "Solo se usa si hay dinero para devolver.",
       },
       {
@@ -682,7 +695,7 @@ async function cancelSale(sale: Sale) {
               label: "Cuenta para la devolución",
               value: "cash",
               type: "select" as const,
-              options: accountOptions,
+              options: accountOptions.value,
               required: true,
             },
           ]
@@ -1195,7 +1208,7 @@ async function payPurchase(purchase: Purchase) {
         label: "Cuenta de salida",
         value: "cash",
         type: "select",
-        options: accountOptions,
+        options: accountOptions.value,
         required: true,
       },
     ],
@@ -1233,7 +1246,7 @@ async function cancelPurchase(purchase: Purchase) {
               label: "Cuenta que recibe la devolución",
               value: "cash",
               type: "select" as const,
-              options: accountOptions,
+              options: accountOptions.value,
               required: true,
             },
           ]
@@ -1358,7 +1371,7 @@ async function payExpense(expense: Expense) {
         label: "Cuenta de salida",
         value: "cash",
         type: "select",
-        options: accountOptions,
+        options: accountOptions.value,
         required: true,
       },
     ],
@@ -1399,7 +1412,7 @@ async function reverseExpense(expense: Expense) {
               label: "Cuenta que recibe el reverso",
               value: expense.cashAccount ?? "cash",
               type: "select" as const,
-              options: accountOptions,
+              options: accountOptions.value,
               required: true,
             },
           ]
@@ -1428,6 +1441,21 @@ const cashForm = reactive({
   amount: 0,
   description: "",
 });
+const accountForm = reactive({ name: "", kind: "wallet" });
+async function createCashAccount() {
+  await perform(async () => {
+    const account = await api<CashAccountDefinition>(
+      "/api/admin/cash-accounts",
+      {
+        method: "POST",
+        body: accountForm,
+      },
+    );
+    accounts.value.push(account);
+    accountForm.name = "";
+    return "Cuenta agregada. Ya puedes seleccionarla en pagos y movimientos.";
+  });
+}
 watch(
   () => cashForm.type,
   (type) => {
@@ -1644,7 +1672,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
         <article class="business-card">
           <h3>Saldos por cuenta</h3>
           <p v-for="item in dashboard.accountBalances" :key="item.account">
-            {{ labels[item.account] || item.account }}
+            {{ accountName(item.account) }}
             <strong>{{ money(item.balance) }}</strong>
           </p>
         </article>
@@ -2104,8 +2132,12 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           </select></label
         ><label
           >Cuenta<select v-model="payForm.account">
-            <option v-for="value in cashAccounts" :key="value" :value="value">
-              {{ labels[value] || value }}
+            <option
+              v-for="account in accountOptions"
+              :key="account.value"
+              :value="account.value"
+            >
+              {{ account.label }}
             </option>
           </select></label
         ><label>Referencia<input v-model="payForm.reference" /></label
@@ -2541,8 +2573,12 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
             </select></label
           ><label v-if="purchaseForm.paymentStatus === 'paid'"
             >Cuenta<select v-model="purchaseForm.account">
-              <option v-for="value in cashAccounts" :key="value" :value="value">
-                {{ labels[value] || value }}
+              <option
+                v-for="account in accountOptions"
+                :key="account.value"
+                :value="account.value"
+              >
+                {{ account.label }}
               </option>
             </select></label
           >
@@ -2752,6 +2788,30 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           </button>
         </div>
       </div>
+      <details class="business-card">
+        <summary>Agregar cuenta de dinero</summary>
+        <form
+          class="admin-fields compact-form"
+          @submit.prevent="createCashAccount"
+        >
+          <label
+            >Nombre<input
+              v-model="accountForm.name"
+              placeholder="Ej. Nequi personal"
+              required
+          /></label>
+          <label
+            >Tipo<select v-model="accountForm.kind">
+              <option value="cash">Efectivo</option>
+              <option value="bank">Banco</option>
+              <option value="wallet">Billetera digital</option>
+              <option value="card">Datáfono</option>
+              <option value="other">Otra</option>
+            </select></label
+          >
+          <button class="button" :disabled="busy">Agregar cuenta</button>
+        </form>
+      </details>
       <form
         class="business-card admin-fields compact-form"
         @submit.prevent="createExpense"
@@ -2790,8 +2850,12 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           </select></label
         ><label v-if="expenseForm.status === 'paid'"
           >Cuenta<select v-model="expenseForm.account">
-            <option v-for="value in cashAccounts" :key="value" :value="value">
-              {{ labels[value] || value }}
+            <option
+              v-for="account in accountOptions"
+              :key="account.value"
+              :value="account.value"
+            >
+              {{ account.label }}
             </option>
           </select></label
         ><label
@@ -3019,7 +3083,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 ...filteredCash.map((item) => [
                   item.number,
                   item.date,
-                  labels[item.account] || item.account,
+                  accountName(item.account),
                   item.direction,
                   item.description,
                   item.amount,
@@ -3061,8 +3125,12 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           </select></label
         ><label
           >Cuenta<select v-model="cashForm.account">
-            <option v-for="value in cashAccounts" :key="value" :value="value">
-              {{ labels[value] || value }}
+            <option
+              v-for="account in accountOptions"
+              :key="account.value"
+              :value="account.value"
+            >
+              {{ account.label }}
             </option>
           </select></label
         ><label
@@ -3086,15 +3154,23 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           /></label>
           <label
             >Desde<select v-model="transferForm.from">
-              <option v-for="value in cashAccounts" :key="value" :value="value">
-                {{ labels[value] || value }}
+              <option
+                v-for="account in accountOptions"
+                :key="account.value"
+                :value="account.value"
+              >
+                {{ account.label }}
               </option>
             </select></label
           >
           <label
             >Hacia<select v-model="transferForm.to">
-              <option v-for="value in cashAccounts" :key="value" :value="value">
-                {{ labels[value] || value }}
+              <option
+                v-for="account in accountOptions"
+                :key="account.value"
+                :value="account.value"
+              >
+                {{ account.label }}
               </option>
             </select></label
           >
@@ -3120,8 +3196,12 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           /></label>
           <label
             >Cuenta<select v-model="reconciliationForm.account">
-              <option v-for="value in cashAccounts" :key="value" :value="value">
-                {{ labels[value] || value }}
+              <option
+                v-for="account in accountOptions"
+                :key="account.value"
+                :value="account.value"
+              >
+                {{ account.label }}
               </option>
             </select></label
           >
@@ -3139,8 +3219,12 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
         <label
           >Cuenta<select v-model="cashFilters.account">
             <option value="">Todas</option>
-            <option v-for="value in cashAccounts" :key="value" :value="value">
-              {{ labels[value] || value }}
+            <option
+              v-for="account in accountOptions"
+              :key="account.value"
+              :value="account.value"
+            >
+              {{ account.label }}
             </option>
           </select></label
         >
@@ -3166,7 +3250,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                 <strong>{{ item.number }}</strong
                 ><small>{{ formatDate(item.date) }}</small>
               </td>
-              <td>{{ labels[item.account] || item.account }}</td>
+              <td>{{ accountName(item.account) }}</td>
               <td>{{ item.description }}</td>
               <td :class="item.direction === 'out' ? 'danger' : ''">
                 {{ item.direction === "in" ? "+" : "−" }}

@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
     event,
     z.object({
       date: z.iso.datetime(),
-      account: z.enum(cashAccounts),
+      account: z.string().trim().min(1).max(120),
       actualBalance: z.number().int().min(0).max(1_000_000_000),
       reason: z.string().trim().min(3).max(500),
     }),

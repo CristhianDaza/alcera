@@ -9,8 +9,8 @@ export default defineEventHandler(async (event) => {
       .object({
         requestId: z.uuid(),
         date: z.iso.datetime(),
-        from: z.enum(cashAccounts),
-        to: z.enum(cashAccounts),
+        from: z.string().trim().min(1).max(120),
+        to: z.string().trim().min(1).max(120),
         amount: z.number().int().positive().max(1_000_000_000),
         description: z.string().trim().min(1).max(500),
       })

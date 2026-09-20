@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
           .min(1)
           .max(100),
         refundAmount: z.number().int().min(0).max(1_000_000_000),
-        refundAccount: z.enum(cashAccounts).optional(),
+        refundAccount: z.string().trim().min(1).max(120).optional(),
         reason: z.string().trim().min(3).max(1000),
       })
       .refine((value) => value.refundAmount === 0 || !!value.refundAccount, {

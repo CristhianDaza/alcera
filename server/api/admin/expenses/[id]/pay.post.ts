@@ -13,7 +13,7 @@ export default defineEventHandler(async (event) => {
     z.object({
       date: z.iso.datetime(),
       paymentMethod: z.enum(paymentMethods),
-      cashAccount: z.enum(cashAccounts),
+      cashAccount: z.string().trim().min(1).max(120),
     }),
   );
   const id = getRouterParam(event, "id")!;
