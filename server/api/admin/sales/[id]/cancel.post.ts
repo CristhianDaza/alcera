@@ -5,6 +5,8 @@ import {
   type InventoryMovement,
   type Sale,
   type SaleReturn,
+  type Supply,
+  type SupplyMovement,
 } from "../../../../../shared/business";
 import type { Product } from "../../../../../shared/types";
 
@@ -55,6 +57,28 @@ export default defineEventHandler(async (event) => {
               movement.type === "sale" && movement.quantityChange < 0,
           )
       : [];
+    const originalSupplyMovements = sale.inventoryAppliedAt
+      ? (
+          await tx.get(
+            db.collection("supplyMovements").where("referenceId", "==", saleId),
+          )
+        ).docs
+          .map((doc) => docData<SupplyMovement>(doc))
+          .filter(
+            (movement) =>
+              movement.type === "sale" && movement.quantityChange < 0,
+          )
+      : [];
+    const supplySnapshots = await Promise.all(
+      originalSupplyMovements.map((movement) =>
+        tx.get(db.collection("supplies").doc(movement.supplyId)),
+      ),
+    );
+    const supplies = new Map(
+      supplySnapshots
+        .filter((snapshot) => snapshot.exists)
+        .map((snapshot) => [snapshot.id, docData<Supply>(snapshot)]),
+    );
     const previousReturns = sale.inventoryAppliedAt
       ? sale.returnedItems
         ? [{ items: sale.returnedItems }]
@@ -202,6 +226,40 @@ export default defineEventHandler(async (event) => {
         tx.update(db.collection("decantSources").doc(source.id), {
           remainingMl: source.remainingMl,
           status: source.status,
+          updatedAt: at,
+        });
+      for (const original of originalSupplyMovements) {
+        const supply = supplies.get(original.supplyId);
+        if (!supply) continue;
+        const stockAfter = safeInteger(
+          supply.stock - original.quantityChange,
+          "El saldo de insumos supera el límite numérico seguro",
+        );
+        supplies.set(supply.id, {
+          ...supply,
+          stock: stockAfter,
+          updatedAt: at,
+        });
+        const id = newId();
+        tx.set(db.collection("supplyMovements").doc(id), {
+          id,
+          supplyId: supply.id,
+          type: "customer_return",
+          quantityChange: -original.quantityChange,
+          unitCost: original.unitCost,
+          stockBefore: supply.stock,
+          stockAfter,
+          referenceType: "sale",
+          referenceId: saleId,
+          reason: `Anulación ${sale.number}: ${body.reason}`,
+          occurredAt: at,
+          createdAt: at,
+          createdBy: admin.uid,
+        } satisfies SupplyMovement);
+      }
+      for (const supply of supplies.values())
+        tx.update(db.collection("supplies").doc(supply.id), {
+          stock: supply.stock,
           updatedAt: at,
         });
     }

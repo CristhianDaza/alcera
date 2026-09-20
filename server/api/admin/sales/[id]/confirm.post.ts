@@ -2,10 +2,13 @@ import type {
   DecantSource,
   InventoryMovement,
   Sale,
+  Supply,
+  SupplyMovement,
 } from "../../../../../shared/business";
 import {
   decantConsumption,
   decantUnitCost,
+  inventoryItemOf,
   millilitersFromSize,
 } from "../../../../../shared/business";
 import type { Product } from "../../../../../shared/types";
@@ -36,7 +39,13 @@ export default defineEventHandler(async (event) => {
       });
     const productIds = [...new Set(sale.items.map((item) => item.productId))];
     const refs = productIds.map((id) => db.collection("products").doc(id));
-    const [snapshots, sourceSnapshots] = await Promise.all([
+    const supplyIds = [
+      ...new Set(
+        [...sale.items.map((item) => item.inventoryItemId), ...(sale.supplyUses ?? []).map((use) => use.supplyId)]
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const [snapshots, sourceSnapshots, supplySnapshots] = await Promise.all([
       Promise.all(refs.map((ref) => tx.get(ref))),
       Promise.all(
         productIds.map((productId) =>
@@ -45,6 +54,7 @@ export default defineEventHandler(async (event) => {
           ),
         ),
       ),
+      Promise.all(supplyIds.map((id) => tx.get(db.collection("supplies").doc(id)))),
     ]);
     const products = new Map(
       snapshots.map((snapshot) => [
@@ -64,6 +74,13 @@ export default defineEventHandler(async (event) => {
     );
     const sourceUpdates = new Map<string, DecantSource>();
     const movements: InventoryMovement[] = [];
+    const supplies = new Map(
+      supplySnapshots
+        .filter((snapshot) => snapshot.exists)
+        .map((snapshot) => [snapshot.id, inventoryItemOf(docData<Supply>(snapshot))]),
+    );
+    const supplyUse = new Map<string, number>();
+    let additionalInventoryCost = 0;
     const items = sale.items.map((item) => {
       const product =
         updatedProducts.get(item.productId) ?? products.get(item.productId);
@@ -77,6 +94,20 @@ export default defineEventHandler(async (event) => {
             statusCode: 400,
             statusMessage: `La presentación ${variant.size} no tiene mililitros válidos`,
           });
+        const container = item.inventoryItemId
+          ? supplies.get(item.inventoryItemId)
+          : undefined;
+        if (
+          !container ||
+          !container.active ||
+          container.category !== "DECANT_CONTAINER" ||
+          container.capacityMl !== ml
+        )
+          throw createError({
+            statusCode: 409,
+            statusMessage: `No hay envases de ${ml} ml disponibles.`,
+          });
+        supplyUse.set(container.id, (supplyUse.get(container.id) ?? 0) + item.quantity);
         const neededMl = Math.round(ml * item.quantity);
         const source = sourcesByProduct
           .get(item.productId)
@@ -98,7 +129,7 @@ export default defineEventHandler(async (event) => {
         const unitCost = decantUnitCost(
           ml,
           source.costPerMl,
-          current.decantPackagingCost ?? 0,
+          (current.decantPackagingCost ?? 0) + container.averageCost,
         );
         movements.push({
           id: newId(),
@@ -160,6 +191,47 @@ export default defineEventHandler(async (event) => {
       });
       return { ...item, unitCost: current.averageCost };
     });
+    const supplyMovements: SupplyMovement[] = [];
+    for (const use of sale.supplyUses ?? []) {
+      const supply = supplies.get(use.supplyId);
+      if (!supply || !supply.active || supply.category === "DECANT_CONTAINER")
+        throw createError({
+          statusCode: 409,
+          statusMessage: "Un insumo manual seleccionado ya no está disponible",
+        });
+      supplyUse.set(supply.id, (supplyUse.get(supply.id) ?? 0) + use.quantity);
+      additionalInventoryCost += supply.averageCost * use.quantity;
+    }
+    for (const [supplyId, quantity] of supplyUse) {
+      const supply = supplies.get(supplyId);
+      if (!supply || !supply.active)
+        throw createError({
+          statusCode: 409,
+          statusMessage: "Un insumo configurado ya no está disponible",
+        });
+      if (supply.stock < quantity)
+        throw createError({
+          statusCode: 409,
+          statusMessage: `No hay existencias suficientes de ${supply.name}`,
+        });
+      const after = supply.stock - quantity;
+      supplyMovements.push({
+        id: newId(),
+        supplyId,
+        type: "sale",
+        quantityChange: -quantity,
+        unitCost: supply.averageCost,
+        stockBefore: supply.stock,
+        stockAfter: after,
+        referenceType: "sale",
+        referenceId: saleId,
+        reason: `Venta ${sale.number} · envase de decant`,
+        occurredAt: at,
+        createdAt: at,
+        createdBy: admin.uid,
+      });
+      supplies.set(supplyId, { ...supply, stock: after, updatedAt: at });
+    }
     for (const [productId, product] of updatedProducts)
       tx.update(db.collection("products").doc(productId), {
         variants: product.variants,
@@ -175,15 +247,25 @@ export default defineEventHandler(async (event) => {
       );
     for (const movement of movements)
       tx.set(db.collection("inventoryMovements").doc(movement.id), movement);
+    for (const supply of supplies.values())
+      if (supplyUse.has(supply.id))
+        tx.update(db.collection("supplies").doc(supply.id), {
+          stock: supply.stock,
+          updatedAt: at,
+        });
+    for (const movement of supplyMovements)
+      tx.set(db.collection("supplyMovements").doc(movement.id), movement);
     const updated = {
       ...sale,
       items,
+      additionalInventoryCost,
       status: "paid" as const,
       inventoryAppliedAt: at,
       updatedAt: at,
     };
     tx.update(saleRef, {
       items,
+      additionalInventoryCost,
       status: "paid",
       inventoryAppliedAt: at,
       updatedAt: at,

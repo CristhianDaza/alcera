@@ -1,9 +1,12 @@
 import {
   landedUnitCost,
+  inventoryItemOf,
   weightedAverageCost,
   type CashMovement,
   type InventoryMovement,
   type Purchase,
+  type Supply,
+  type SupplyMovement,
 } from "../../../../../shared/business";
 import type { Product } from "../../../../../shared/types";
 
@@ -26,15 +29,26 @@ export default defineEventHandler(async (event) => {
         statusCode: 409,
         statusMessage: "Una compra cancelada no puede confirmarse",
       });
-    const refs = [...new Set(purchase.items.map((item) => item.productId))].map(
+    const refs = [...new Set(purchase.items.flatMap((item) => item.productId ? [item.productId] : []))].map(
       (id) => db.collection("products").doc(id),
     );
-    const snapshots = await Promise.all(refs.map((ref) => tx.get(ref)));
+    const supplyRefs = [...new Set(purchase.items.flatMap((item) => item.supplyId ? [item.supplyId] : []))].map(
+      (id) => db.collection("supplies").doc(id),
+    );
+    const [snapshots, supplySnapshots] = await Promise.all([
+      Promise.all(refs.map((ref) => tx.get(ref))),
+      Promise.all(supplyRefs.map((ref) => tx.get(ref))),
+    ]);
     const products = new Map(
       snapshots.map((snapshot) => [
         snapshot.id,
         { id: snapshot.id, ...snapshot.data() } as Product,
       ]),
+    );
+    const supplies = new Map(
+      supplySnapshots
+        .filter((snapshot) => snapshot.exists)
+        .map((snapshot) => [snapshot.id, inventoryItemOf(docData<Supply>(snapshot))]),
     );
     let cashNumber: string | undefined;
     const shouldCreateCashMovement =
@@ -43,15 +57,12 @@ export default defineEventHandler(async (event) => {
       cashNumber = await nextNumber(tx, "M", new Date(purchase.date));
     const at = nowIso();
     const updatedProducts = new Map<string, Product>();
+    const supplyMovements: SupplyMovement[] = [];
     const merchandiseTotal = purchase.items.reduce(
       (sum, item) => sum + item.total,
       0,
     );
     for (const item of purchase.items) {
-      const product =
-        updatedProducts.get(item.productId) ?? products.get(item.productId);
-      const variant = findVariant(product, item.variantId);
-      const current = inventoryOf(variant);
       const netUnitCost = landedUnitCost(
         item.total,
         item.quantity,
@@ -59,6 +70,42 @@ export default defineEventHandler(async (event) => {
         merchandiseTotal,
         Boolean(purchase.allocateFreight),
       );
+      if (item.supplyId) {
+        const supply = supplies.get(item.supplyId);
+        if (!supply)
+          throw createError({ statusCode: 409, statusMessage: "El insumo de la compra ya no existe" });
+        const stockAfter = safeInteger(
+          supply.stock + item.quantity,
+          "El saldo de insumos supera el límite numérico seguro",
+        );
+        const averageCost = weightedAverageCost(
+          supply.stock,
+          supply.averageCost,
+          item.quantity,
+          netUnitCost,
+        );
+        supplies.set(supply.id, { ...supply, stock: stockAfter, averageCost, updatedAt: at });
+        supplyMovements.push({
+          id: newId(),
+          supplyId: supply.id,
+          type: "purchase",
+          quantityChange: item.quantity,
+          unitCost: netUnitCost,
+          stockBefore: supply.stock,
+          stockAfter,
+          referenceType: "purchase",
+          referenceId: purchaseId,
+          reason: `Compra ${purchase.number}`,
+          occurredAt: purchase.date,
+          createdAt: at,
+          createdBy: admin.uid,
+        });
+        continue;
+      }
+      const product =
+        updatedProducts.get(item.productId!) ?? products.get(item.productId!);
+      const variant = findVariant(product, item.variantId!);
+      const current = inventoryOf(variant);
       const averageCost = weightedAverageCost(
         current.stock,
         current.averageCost,
@@ -70,8 +117,8 @@ export default defineEventHandler(async (event) => {
         "El saldo de inventario supera el límite numérico seguro",
       );
       updatedProducts.set(
-        item.productId,
-        replaceVariant(product!, item.variantId, {
+        item.productId!,
+        replaceVariant(product!, item.variantId!, {
           ...variant,
           inventory: {
             ...current,
@@ -84,8 +131,8 @@ export default defineEventHandler(async (event) => {
       const movementId = newId();
       const movement: InventoryMovement = {
         id: movementId,
-        productId: item.productId,
-        variantId: item.variantId,
+        productId: item.productId!,
+        variantId: item.variantId!,
         type: "purchase",
         quantityChange: item.quantity,
         unitCost: netUnitCost,
@@ -104,6 +151,14 @@ export default defineEventHandler(async (event) => {
       tx.update(db.collection("products").doc(productId), {
         variants: product.variants,
       });
+    for (const supply of supplies.values())
+      tx.update(db.collection("supplies").doc(supply.id), {
+        stock: supply.stock,
+        averageCost: supply.averageCost,
+        updatedAt: at,
+      });
+    for (const movement of supplyMovements)
+      tx.set(db.collection("supplyMovements").doc(movement.id), movement);
     let cashMovementId = purchase.cashMovementId;
     if (shouldCreateCashMovement) {
       const cashId = newId();

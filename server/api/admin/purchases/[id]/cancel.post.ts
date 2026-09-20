@@ -1,9 +1,12 @@
 import { z } from "zod";
 import {
   landedUnitCost,
+  inventoryItemOf,
   type CashMovement,
   type InventoryMovement,
   type Purchase,
+  type Supply,
+  type SupplyMovement,
   weightedAverageCostAfterRemoval,
 } from "../../../../../shared/business";
 import type { Product } from "../../../../../shared/types";
@@ -38,18 +41,29 @@ export default defineEventHandler(async (event) => {
       });
     const refs =
       purchase.status === "confirmed"
-        ? [...new Set(purchase.items.map((item) => item.productId))].map(
+        ? [...new Set(purchase.items.flatMap((item) => item.productId ? [item.productId] : []))].map(
             (productId) => db.collection("products").doc(productId),
           )
         : [];
-    const snapshots = await Promise.all(
-      refs.map((productRef) => tx.get(productRef)),
-    );
+    const supplyRefs = purchase.status === "confirmed"
+      ? [...new Set(purchase.items.flatMap((item) => item.supplyId ? [item.supplyId] : []))].map(
+          (supplyId) => db.collection("supplies").doc(supplyId),
+        )
+      : [];
+    const [snapshots, supplySnapshots] = await Promise.all([
+      Promise.all(refs.map((productRef) => tx.get(productRef))),
+      Promise.all(supplyRefs.map((supplyRef) => tx.get(supplyRef))),
+    ]);
     const products = new Map(
       snapshots.map((product) => [
         product.id,
         { id: product.id, ...product.data() } as Product,
       ]),
+    );
+    const supplies = new Map(
+      supplySnapshots
+        .filter((snapshot) => snapshot.exists)
+        .map((snapshot) => [snapshot.id, inventoryItemOf(docData<Supply>(snapshot))]),
     );
     const number = cashWasApplied
       ? await nextNumber(tx, "M", new Date())
@@ -57,21 +71,12 @@ export default defineEventHandler(async (event) => {
     const at = nowIso();
     if (purchase.status === "confirmed") {
       const updated = new Map<string, Product>();
+      const supplyMovements: SupplyMovement[] = [];
       const merchandiseTotal = purchase.items.reduce(
         (sum, item) => sum + item.total,
         0,
       );
       for (const item of purchase.items) {
-        const product =
-          updated.get(item.productId) ?? products.get(item.productId);
-        const variant = findVariant(product, item.variantId);
-        const inventory = inventoryOf(variant);
-        if (inventory.stock < item.quantity)
-          throw createError({
-            statusCode: 409,
-            statusMessage: `No se puede reversar: ya no están disponibles ${item.quantity} unidades de ${item.name} · ${item.size}`,
-          });
-        const after = inventory.stock - item.quantity;
         const netUnitCost = landedUnitCost(
           item.total,
           item.quantity,
@@ -79,9 +84,55 @@ export default defineEventHandler(async (event) => {
           merchandiseTotal,
           Boolean(purchase.allocateFreight),
         );
+        if (item.supplyId) {
+          const supply = supplies.get(item.supplyId);
+          if (!supply || supply.stock < item.quantity)
+            throw createError({
+              statusCode: 409,
+              statusMessage: `No se puede reversar: ya no están disponibles ${item.quantity} unidades de ${item.name}`,
+            });
+          const after = supply.stock - item.quantity;
+          supplies.set(supply.id, {
+            ...supply,
+            stock: after,
+            averageCost: weightedAverageCostAfterRemoval(
+              supply.stock,
+              supply.averageCost,
+              item.quantity,
+              netUnitCost,
+            ),
+            updatedAt: at,
+          });
+          supplyMovements.push({
+            id: newId(),
+            supplyId: supply.id,
+            type: "supplier_return",
+            quantityChange: -item.quantity,
+            unitCost: netUnitCost,
+            stockBefore: supply.stock,
+            stockAfter: after,
+            referenceType: "purchase",
+            referenceId: id,
+            reason: `Reverso ${purchase.number}: ${body.reason}`,
+            occurredAt: at,
+            createdAt: at,
+            createdBy: admin.uid,
+          });
+          continue;
+        }
+        const product =
+          updated.get(item.productId!) ?? products.get(item.productId!);
+        const variant = findVariant(product, item.variantId!);
+        const inventory = inventoryOf(variant);
+        if (inventory.stock < item.quantity)
+          throw createError({
+            statusCode: 409,
+            statusMessage: `No se puede reversar: ya no están disponibles ${item.quantity} unidades de ${item.name} · ${item.size}`,
+          });
+        const after = inventory.stock - item.quantity;
         updated.set(
-          item.productId,
-          replaceVariant(product!, item.variantId, {
+          item.productId!,
+          replaceVariant(product!, item.variantId!, {
             ...variant,
             inventory: {
               ...inventory,
@@ -98,8 +149,8 @@ export default defineEventHandler(async (event) => {
         );
         const movement: InventoryMovement = {
           id: newId(),
-          productId: item.productId,
-          variantId: item.variantId,
+          productId: item.productId!,
+          variantId: item.variantId!,
           type: "supplier_return",
           quantityChange: -item.quantity,
           unitCost: netUnitCost,
@@ -118,6 +169,14 @@ export default defineEventHandler(async (event) => {
         tx.update(db.collection("products").doc(productId), {
           variants: product.variants,
         });
+      for (const supply of supplies.values())
+        tx.update(db.collection("supplies").doc(supply.id), {
+          stock: supply.stock,
+          averageCost: supply.averageCost,
+          updatedAt: at,
+        });
+      for (const movement of supplyMovements)
+        tx.set(db.collection("supplyMovements").doc(movement.id), movement);
     }
     if (cashWasApplied) {
       const cash: CashMovement = {
