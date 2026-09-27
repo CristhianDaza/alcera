@@ -266,8 +266,19 @@ function pageLocation(pageNumber: number) {
   return { path: "/perfumes", query };
 }
 const productGrid = ref<HTMLElement | null>(null);
+const pageLoading = ref(false);
 function scrollToProducts() {
   productGrid.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+async function navigateToPage(pageNumber: number) {
+  pageLoading.value = true;
+  scrollToProducts();
+  try {
+    await router.push(pageLocation(pageNumber));
+  } finally {
+    await nextTick();
+    pageLoading.value = false;
+  }
 }
 watch(totalPages, (total) => {
   if (page.value > total && total > 0) {
@@ -513,7 +524,15 @@ useHead(() => ({
       <h2 class="catalog-list-title">
         {{ hasFilters ? "Resultados de tu búsqueda" : "Perfumes disponibles" }}
       </h2>
-      <div ref="productGrid" class="product-grid">
+      <div v-if="pageLoading" ref="productGrid" class="product-grid catalog-skeleton-grid" role="status" aria-label="Cargando perfumes">
+        <div v-for="item in pageSize" :key="item" class="catalog-card-skeleton" aria-hidden="true">
+          <div class="catalog-card-skeleton__photo"></div>
+          <div class="catalog-card-skeleton__details">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+      <div v-else ref="productGrid" class="product-grid">
         <ProductCard
           v-for="(product, index) in paginatedProducts"
           :key="product.id"
@@ -538,7 +557,7 @@ useHead(() => ({
             v-if="page > 1"
             class="text-link pagination-btn"
             :to="pageLocation(page - 1)"
-            @click="scrollToProducts"
+            @click="navigateToPage(page - 1)"
           >
             ← Anterior
           </NuxtLink>
@@ -556,7 +575,7 @@ useHead(() => ({
                 :class="{ active: p === page }"
                 :aria-current="p === page ? 'page' : undefined"
                 :to="pageLocation(p)"
-                @click="scrollToProducts"
+                @click="navigateToPage(p)"
               >
                 {{ p }}
               </NuxtLink>
@@ -566,7 +585,7 @@ useHead(() => ({
             v-if="page < totalPages"
             class="text-link pagination-btn"
             :to="pageLocation(page + 1)"
-            @click="scrollToProducts"
+            @click="navigateToPage(page + 1)"
           >
             Siguiente →
           </NuxtLink>

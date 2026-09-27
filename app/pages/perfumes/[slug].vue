@@ -68,6 +68,17 @@ const selected = ref(
     p.variants[0]!.id,
 );
 const photo = ref(0);
+const photoLoading = ref(false);
+function selectPhoto(index: number) {
+  if (index === photo.value) return;
+  photoLoading.value = true;
+  photo.value = index;
+}
+function finishPhotoLoading(event: Event) {
+  const image = event.target as HTMLImageElement;
+  if (image.getAttribute("src") === p.images[photo.value]?.url)
+    photoLoading.value = false;
+}
 const added = ref(false);
 const recentlyViewed = ref<Product[]>([]);
 const recentlyViewedStorageKey = "esencia-recently-viewed";
@@ -323,6 +334,7 @@ useHead({
       <div>
         <div class="detail-photo">
           <img
+            :key="p.images[photo]?.url"
             :src="p.images[photo]?.url"
             :alt="p.images[photo]?.alt || p.name"
             :srcset="imageSources(p.images[photo]?.url || '')"
@@ -331,7 +343,13 @@ useHead({
             decoding="async"
             width="900"
             height="1100"
+            :class="{ 'is-loading': photoLoading }"
+            @load="finishPhotoLoading"
+            @error="finishPhotoLoading"
           />
+          <div v-if="photoLoading" class="detail-photo__loading" role="status" aria-label="Cargando imagen">
+            <span class="detail-photo__spinner" aria-hidden="true"></span>
+          </div>
         </div>
         <div v-if="p.images.length > 1" class="thumbnails">
           <button
@@ -339,7 +357,7 @@ useHead({
             :key="image.url"
             :aria-label="'Ver imagen ' + (index + 1)"
             :aria-pressed="photo === index"
-            @click="photo = index"
+            @click="selectPhoto(index)"
           >
             <img
               :src="imageWidth(image.url, 180)"
@@ -679,6 +697,33 @@ useHead({
 <style scoped>
 .purchase-panel {
   position: relative;
+}
+.detail-photo {
+  position: relative;
+}
+.detail-photo > img {
+  transition: opacity 0.24s ease;
+}
+.detail-photo > img.is-loading {
+  opacity: 0;
+}
+.detail-photo__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+}
+.detail-photo__spinner {
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: detail-photo-spin 0.75s linear infinite;
+}
+@keyframes detail-photo-spin {
+  to { transform: rotate(360deg); }
 }
 .purchase-guidance {
   margin: -7px 0 20px;

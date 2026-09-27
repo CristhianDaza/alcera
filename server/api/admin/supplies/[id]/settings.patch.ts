@@ -45,7 +45,6 @@ export default defineEventHandler(async (event) => {
       category,
       unit,
       capacityMl,
-      // Retiramos la regla automática obsoleta al editar el artículo.
       automaticConsumption: undefined,
       updatedAt: nowIso(),
     }),
