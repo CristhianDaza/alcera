@@ -12,7 +12,11 @@ describe("Feed de Google Merchant", () => {
       description: "Una fragancia <especial>",
       images: [
         { publicId: "a", url: "https://images.example.com/main.jpg", alt: "" },
-        { publicId: "b", url: "https://images.example.com/second.jpg", alt: "" },
+        {
+          publicId: "b",
+          url: "https://images.example.com/second.jpg",
+          alt: "",
+        },
       ],
       variants: [
         { id: "50ml", size: "50 ml", price: 285_000, available: true },
@@ -23,7 +27,12 @@ describe("Feed de Google Merchant", () => {
 
     expect(feed).toContain('<rss xmlns:g="http://base.google.com/ns/1.0"');
     expect(feed.match(/<item>/g)).toHaveLength(2);
-    expect(feed).toContain("<g:id>bruma-50ml</g:id>");
+    const ids = [...feed.matchAll(/<g:id>([^<]+)<\/g:id>/g)].map(
+      (match) => match[1]!,
+    );
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+    expect(ids.every((id) => /^alc-[a-f0-9]{32}$/.test(id))).toBe(true);
     expect(feed).toContain("<g:title>Bruma &amp; Dorada 50 ml</g:title>");
     expect(feed).toContain("Una fragancia &lt;especial&gt;");
     expect(feed).toContain(
@@ -34,7 +43,9 @@ describe("Feed de Google Merchant", () => {
     expect(feed).toContain(
       "<g:additional_image_link>https://images.example.com/second.jpg</g:additional_image_link>",
     );
-    expect(feed).toContain("<g:item_group_id>bruma</g:item_group_id>");
+    expect(feed).toMatch(
+      /<g:item_group_id>alc-[a-f0-9]{32}<\/g:item_group_id>/,
+    );
     expect(feed).toContain("<g:identifier_exists>no</g:identifier_exists>");
   });
 

@@ -1,4 +1,5 @@
 import type { Product } from "./types";
+import { createHash } from "node:crypto";
 
 const GOOGLE_PRODUCT_CATEGORY =
   "Health & Beauty > Personal Care > Cosmetics > Perfume & Cologne";
@@ -27,8 +28,19 @@ function field(name: string, value: string | number | undefined): string {
     : `      <g:${name}>${escapeXml(value)}</g:${name}>`;
 }
 
+/**
+ * Merchant Center limita `id` e `item_group_id` a 50 caracteres. Los UUID
+ * internos de producto y presentación pueden exceder ese límite al unirse.
+ */
+function merchantId(...parts: string[]): string {
+  return `alc-${createHash("sha256").update(parts.join("\u0000")).digest("hex").slice(0, 32)}`;
+}
+
 /** Crea un feed RSS 2.0 compatible con Google Merchant Center. */
-export function googleMerchantFeed(products: Product[], siteUrl: string): string {
+export function googleMerchantFeed(
+  products: Product[],
+  siteUrl: string,
+): string {
   const base = new URL(siteUrl).origin;
   const items = products.flatMap((product) => {
     const [mainImage, ...additionalImages] = product.images;
@@ -37,24 +49,27 @@ export function googleMerchantFeed(products: Product[], siteUrl: string): string
     const productUrl = `${base}/perfumes/${encodeURIComponent(product.slug)}`;
     const hasIdentifier = Boolean(product.gtin || product.mpn);
     const multipleVariants = product.variants.length > 1;
+    const groupId = merchantId("group", product.id);
 
     return product.variants.map((variant) => {
       const title = text(`${product.name} ${variant.size}`, 150);
       return [
         "    <item>",
-        `      <g:id>${escapeXml(`${product.id}-${variant.id}`)}</g:id>`,
+        field("id", merchantId("item", product.id, variant.id)),
         field("title", title),
         field("description", text(product.description, 5_000)),
         field("link", productUrl),
         field("image_link", mainImage.url),
-        ...additionalImages.map((image) => field("additional_image_link", image.url)),
+        ...additionalImages.map((image) =>
+          field("additional_image_link", image.url),
+        ),
         field("availability", variant.available ? "in_stock" : "out_of_stock"),
         field("price", `${variant.price} COP`),
         field("condition", "new"),
         field("brand", product.brand),
         field("google_product_category", GOOGLE_PRODUCT_CATEGORY),
         field("size", variant.size),
-        multipleVariants ? field("item_group_id", product.id) : "",
+        multipleVariants ? field("item_group_id", groupId) : "",
         product.gtin ? field("gtin", product.gtin) : "",
         product.mpn ? field("mpn", product.mpn) : "",
         !hasIdentifier ? field("identifier_exists", "no") : "",
