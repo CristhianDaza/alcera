@@ -20,6 +20,7 @@ export default defineNuxtConfig({
       firebaseProjectId: "",
       firebaseAppId: "",
       firebaseMeasurementId: "",
+      brebQrImage: "",
     },
   },
   app: {

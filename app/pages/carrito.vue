@@ -1,14 +1,41 @@
 <script setup lang="ts">
 import { money, reconcileCart } from "#shared/commerce";
+type BrebPaymentStatus = "PENDING" | "PENDING_VERIFICATION" | "PAID";
 const { lines, total } = useCart(),
   store = useStore();
 const catalog = useCatalogStore();
+const route = useRoute();
+const router = useRouter();
+const runtime = useRuntimeConfig();
+const brebQrImage = computed(() => {
+  try {
+    const url = new URL(String(runtime.public.brebQrImage || ""));
+    return url.protocol === "https:" ? url.href : "";
+  } catch {
+    return "";
+  }
+});
+const paymentMethod = ref<"BREB" | "WHATSAPP">(
+  brebQrImage.value ? "BREB" : "WHATSAPP",
+);
+const paymentStatus = ref<BrebPaymentStatus>("PENDING");
 const busy = ref(false),
   notice = ref(""),
   readyUrl = ref("");
 const customer = reactive({ name: "", phone: "", city: "" });
 const contactConsent = ref(false);
 const orderId = ref("");
+const orderReference = ref("");
+const brebAmount = ref(0);
+const brebPaymentPanel = ref<HTMLElement | null>(null);
+const isBrebOrder = computed(() =>
+  Boolean(orderId.value && paymentMethod.value === "BREB"),
+);
+watch(paymentMethod, (method) => {
+  void trackAnalyticsEvent("payment_method_selected", {
+    payment_method: method,
+  });
+});
 let attempt: { signature: string; id: string } | undefined;
 const analyticsItems = computed(() =>
   lines.value.map((line) => ({
@@ -19,7 +46,42 @@ const analyticsItems = computed(() =>
     quantity: line.quantity,
   })),
 );
-onMounted(() => {
+async function restoreBrebOrder(id: string) {
+  const result = await $fetch<{
+    id: string;
+    reference: string;
+    amountToPay: number;
+    paymentStatus: BrebPaymentStatus;
+  }>(`/api/orders/${encodeURIComponent(id)}`);
+  orderId.value = result.id;
+  orderReference.value = result.reference;
+  brebAmount.value = result.amountToPay;
+  paymentStatus.value = result.paymentStatus;
+  paymentMethod.value = "BREB";
+}
+async function scrollToBrebPayment() {
+  await nextTick();
+  brebPaymentPanel.value?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
+onMounted(async () => {
+  try {
+    const requestedOrderId =
+      typeof route.query.pedido === "string" ? route.query.pedido : "";
+    const saved = JSON.parse(
+      localStorage.getItem("alcera-breb-order") || "null",
+    );
+    const id =
+      requestedOrderId || (saved?.paymentMethod === "BREB" ? saved.id : "");
+    if (typeof id === "string" && id) {
+      await restoreBrebOrder(id);
+      if (requestedOrderId) await scrollToBrebPayment();
+    }
+  } catch {
+    /* El pedido se puede recuperar de nuevo desde la misma referencia guardada. */
+  }
   void trackAnalyticsEvent("view_cart", {
     currency: "COP",
     value: total.value,
@@ -37,12 +99,14 @@ function trackWhatsappClick() {
   });
 }
 watch([customer, contactConsent], () => {
+  if (orderId.value) return;
   readyUrl.value = "";
   orderId.value = "";
 });
 watch(
   lines,
   () => {
+    if (orderId.value) return;
     readyUrl.value = "";
     orderId.value = "";
   },
@@ -81,7 +145,7 @@ async function checkout() {
       notice.value = "Retira las presentaciones agotadas para continuar.";
       return;
     }
-    if (!config.whatsapp) {
+    if (paymentMethod.value === "WHATSAPP" && !config.whatsapp) {
       notice.value =
         "La tienda aún no tiene un WhatsApp configurado. No se ha enviado ningún pedido.";
       return;
@@ -100,6 +164,7 @@ async function checkout() {
         quantity: line.quantity,
         expectedPrice: line.price,
       })),
+      paymentMethod: paymentMethod.value,
     };
     void trackAnalyticsEvent("begin_checkout", {
       currency: "COP",
@@ -131,19 +196,47 @@ async function checkout() {
     } catch {
       /* Retry still works during this page session. */
     }
-    const result = await $fetch("/api/orders", {
+    const result = await $fetch<{
+      id: string;
+      reference: string;
+      amountToPay: number;
+      whatsappUrl: string | null;
+    }>("/api/orders", {
       method: "POST",
       body: { ...payload, requestId: attempt.id },
     });
-    readyUrl.value = result.whatsappUrl;
+    readyUrl.value = result.whatsappUrl || "";
     orderId.value = result.id;
+    orderReference.value = result.reference;
+    brebAmount.value = result.amountToPay;
+    if (paymentMethod.value === "BREB") {
+      try {
+        localStorage.setItem(
+          "alcera-breb-order",
+          JSON.stringify({ id: result.id, paymentMethod: "BREB" }),
+        );
+      } catch {
+        /* La referencia seguirá visible durante esta sesión. */
+      }
+      await router.replace({
+        query: { ...route.query, pedido: result.id },
+      });
+      await scrollToBrebPayment();
+      void trackAnalyticsEvent("breb_payment_started", {
+        currency: "COP",
+        value: total.value,
+        order_id: result.id,
+      });
+    }
     void trackAnalyticsEvent("generate_lead", {
       currency: "COP",
       value: total.value,
       order_id: result.id,
     });
     notice.value =
-      "Registramos tu solicitud. Abre WhatsApp para acordar el envío y el pago. Aún no es una compra confirmada ni reserva productos.";
+      paymentMethod.value === "BREB"
+        ? "Pedido creado. El envío no está incluido y se paga al recibir tu pedido."
+        : "Registramos tu solicitud. Abre WhatsApp para acordar el envío y el pago. Aún no es una compra confirmada ni reserva productos.";
   } catch (error) {
     notice.value =
       (error as { data?: { statusMessage?: string } }).data?.statusMessage ||
@@ -151,6 +244,51 @@ async function checkout() {
   } finally {
     busy.value = false;
   }
+}
+async function reportBrebPayment() {
+  if (!orderId.value || busy.value || paymentStatus.value !== "PENDING") return;
+  busy.value = true;
+  notice.value = "";
+  try {
+    const result = await $fetch<{ paymentStatus: BrebPaymentStatus }>(
+      `/api/orders/${encodeURIComponent(orderId.value)}/report-payment`,
+      { method: "POST" },
+    );
+    paymentStatus.value = result.paymentStatus;
+    if (result.paymentStatus === "PENDING_VERIFICATION") {
+      const paidAmount = brebAmount.value;
+      lines.value = [];
+      void trackAnalyticsEvent("breb_payment_reported", {
+        currency: "COP",
+        value: paidAmount,
+        order_id: orderId.value,
+      });
+      return;
+    }
+    void trackAnalyticsEvent("breb_payment_reported", {
+      currency: "COP",
+      value: total.value,
+      order_id: orderId.value,
+    });
+  } catch (error) {
+    notice.value =
+      (error as { data?: { statusMessage?: string } }).data?.statusMessage ||
+      "No pudimos registrar el aviso. Intenta de nuevo.";
+  } finally {
+    busy.value = false;
+  }
+}
+function clearSavedBrebOrder() {
+  try {
+    localStorage.removeItem("alcera-breb-order");
+  } catch {
+    /* No se requiere almacenamiento para salir de esta pantalla. */
+  }
+  orderId.value = "";
+  orderReference.value = "";
+  const query = { ...route.query };
+  delete query.pedido;
+  void router.replace({ query });
 }
 </script>
 <template>
@@ -160,7 +298,7 @@ async function checkout() {
       <h1>Tu <em>bolsa.</em></h1>
     </div>
     <ClientOnly
-      ><div v-if="lines.length" class="cart-layout">
+      ><div v-if="lines.length && !isBrebOrder" class="cart-layout">
         <div>
           <NuxtLink class="text-link" to="/perfumes"
             >← Seguir explorando</NuxtLink
@@ -211,9 +349,46 @@ async function checkout() {
             <span>Subtotal</span><strong>{{ money(total) }}</strong>
           </div>
           <p>
-            Precios en COP. Envío y pago se confirman por WhatsApp. Esta
-            consulta no reserva productos.
+            Precios en COP. El valor del envío no está incluido; se paga
+            directamente al recibir el pedido.
           </p>
+          <fieldset class="payment-choice" :disabled="busy || !!orderId">
+            <legend>Forma de pago</legend>
+            <label class="payment-option">
+              <input
+                v-model="paymentMethod"
+                type="radio"
+                value="BREB"
+                :disabled="!brebQrImage"
+              />
+              <span
+                ><strong>Bre-B / QR</strong
+                ><small
+                  >Usa el precio publicado y paga desde tu banco o billetera
+                  compatible.</small
+                ></span
+              >
+            </label>
+            <p v-if="!brebQrImage" class="muted">
+              El pago Bre-B estará disponible cuando la tienda configure su QR.
+            </p>
+            <label class="payment-option">
+              <input v-model="paymentMethod" type="radio" value="WHATSAPP" />
+              <span
+                ><strong>Otros medios por WhatsApp</strong
+                ><small
+                  >Coordina el pago con la tienda. La tienda no tiene una
+                  pasarela Wompi conectada actualmente.</small
+                ></span
+              >
+            </label>
+          </fieldset>
+          <div class="subtotal">
+            <span>Envío</span><strong>Pago al recibir</strong>
+          </div>
+          <div class="subtotal">
+            <span>Total a pagar ahora</span><strong>{{ money(total) }}</strong>
+          </div>
           <fieldset class="order-customer" :disabled="busy || !!readyUrl">
             <legend>Datos para coordinar tu pedido</legend>
             <label
@@ -260,7 +435,7 @@ async function checkout() {
             Al registrar la solicitud reconoces la
             <NuxtLink to="/politica-de-privacidad"
               >Política de Privacidad</NuxtLink
-            >. Si confirmas la compra por WhatsApp, esta se regirá por los
+            >. Cualquier compra confirmada se regirá por los
             <NuxtLink to="/terminos-y-condiciones"
               >Términos y Condiciones</NuxtLink
             >.
@@ -271,11 +446,17 @@ async function checkout() {
             type="submit"
             :disabled="busy"
           >
-            {{ busy ? "Registrando…" : "Registrar solicitud" }}
+            {{
+              busy
+                ? "Registrando…"
+                : paymentMethod === "BREB"
+                  ? "Crear pedido y ver QR"
+                  : "Registrar solicitud"
+            }}
           </button>
           <p v-if="notice" role="status">{{ notice }}</p>
-          <p v-if="orderId" class="order-reference">
-            Referencia: <strong>{{ orderId }}</strong>
+          <p v-if="orderReference" class="order-reference">
+            Referencia: <strong>{{ orderReference }}</strong>
           </p>
           <a
             v-if="readyUrl"
@@ -287,6 +468,63 @@ async function checkout() {
             >Abrir WhatsApp ↗</a
           >
         </form>
+      </div>
+      <div ref="brebPaymentPanel" v-else-if="isBrebOrder" class="breb-payment">
+        <template v-if="paymentStatus === 'PENDING'">
+          <span class="eyebrow">PAGO POR BRE-B</span>
+          <h2 class="breb-order-reference">Pedido {{ orderReference }}</h2>
+          <p class="breb-amount">
+            Total a pagar ahora: <strong>{{ money(brebAmount) }}</strong>
+          </p>
+          <div class="subtotal">
+            <span>Envío</span><strong>Pago al recibir</strong>
+          </div>
+          <img
+            :src="brebQrImage"
+            alt="Código QR Bre-B de Alcéra Perfumes"
+            class="breb-qr"
+          />
+          <p>
+            Escanea el código QR desde la app de tu banco o billetera
+            compatible. El valor corresponde exactamente a los productos; el
+            envío no está incluido.
+          </p>
+          <p class="muted">
+            Si estás comprando desde tu celular, puedes tomar una captura del QR
+            o abrir tu app bancaria y usar la opción de escanear desde una
+            imagen, si está disponible.
+          </p>
+          <p>
+            Cuando hayas realizado el pago, indícanoslo. La confirmación queda
+            pendiente de verificación manual.
+          </p>
+          <button
+            type="button"
+            class="button full"
+            :disabled="busy"
+            @click="reportBrebPayment"
+          >
+            {{ busy ? "Registrando…" : "Ya realicé el pago" }}
+          </button>
+        </template>
+        <template v-else-if="paymentStatus === 'PENDING_VERIFICATION'">
+          <span class="eyebrow">PEDIDO {{ orderReference }}</span>
+          <h2>Verificando pago</h2>
+          <p role="status">
+            Recibimos tu confirmación. Verificaremos el pago y te contactaremos
+            a la mayor brevedad posible.
+          </p>
+          <p class="muted">Tu bolsa fue actualizada.</p>
+        </template>
+        <template v-else>
+          <span class="eyebrow">PEDIDO {{ orderReference }}</span>
+          <h2>Pago confirmado</h2>
+          <p role="status">El equipo actualizará el estado de tu pedido.</p>
+        </template>
+        <p v-if="notice" role="status">{{ notice }}</p>
+        <NuxtLink to="/perfumes" class="text-link" @click="clearSavedBrebOrder"
+          >Seguir explorando</NuxtLink
+        >
       </div>
       <div v-else class="empty">
         <h2>Tu próxima esencia te espera.</h2>
@@ -305,6 +543,56 @@ async function checkout() {
   display: grid;
   gap: 14px;
   min-width: 0;
+}
+.payment-choice {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  padding: 14px;
+  margin: 18px 0;
+}
+.payment-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.payment-option span {
+  display: grid;
+  gap: 4px;
+}
+.payment-option small {
+  color: var(--muted);
+}
+.breb-payment {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+  background: var(--surface);
+}
+.breb-payment h2,
+.breb-payment p {
+  margin: 0;
+}
+.breb-order-reference {
+  font-size: clamp(20px, 5vw, 30px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.breb-amount {
+  font-size: clamp(18px, 4vw, 24px);
+  font-weight: 600;
+}
+.breb-amount strong {
+  font-size: 1.2em;
+}
+.breb-qr {
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  object-fit: contain;
+  margin: 0 auto;
+  background: white;
 }
 .order-customer legend {
   margin-bottom: 12px;

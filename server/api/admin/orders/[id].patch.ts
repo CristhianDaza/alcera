@@ -33,6 +33,13 @@ export default defineEventHandler(async (event) => {
       });
     let updated;
     try {
+      if (
+        (snapshot.data() as Order).paymentMethod === "BREB" &&
+        parsed.data.status === "paid"
+      )
+        throw new Error(
+          "Confirma los pagos Bre-B con la acción de verificación.",
+        );
       updated = applyOrderUpdate(
         snapshot.data() as Order,
         parsed.data,

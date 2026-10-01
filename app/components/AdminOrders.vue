@@ -25,7 +25,11 @@ const form = reactive({
   paymentConfirmed: false,
 });
 const visible = computed(() =>
-  orders.value.filter((o) => !filter.value || o.status === filter.value),
+  orders.value.filter((o) =>
+    filter.value === "breb_pending"
+      ? o.paymentMethod === "BREB" && o.paymentStatus === "PENDING_VERIFICATION"
+      : !filter.value || o.status === filter.value,
+  ),
 );
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("es-CO", {
@@ -152,6 +156,32 @@ async function convertToSale() {
     saving.value = false;
   }
 }
+async function confirmBrebPayment() {
+  if (
+    !selected.value ||
+    selected.value.paymentStatus !== "PENDING_VERIFICATION"
+  )
+    return;
+  saving.value = true;
+  notice.value = "";
+  try {
+    await $fetch(`/api/admin/orders/${selected.value.id}/confirm-payment`, {
+      method: "POST",
+      headers: await props.getHeaders(),
+    });
+    void trackAnalyticsEvent("breb_payment_confirmed", {
+      currency: "COP",
+      value: selected.value.amountToPay ?? selected.value.subtotal,
+      order_id: selected.value.id,
+    });
+    await load();
+    if (!notice.value) notice.value = "Pago Bre-B confirmado y registrado.";
+  } catch (error) {
+    notice.value = errorMessage(error);
+  } finally {
+    saving.value = false;
+  }
+}
 onMounted(() => load());
 </script>
 <template>
@@ -174,6 +204,7 @@ onMounted(() => load());
     <label
       >Filtrar pedidos cargados<select v-model="filter">
         <option value="">Todos los estados</option>
+        <option value="breb_pending">Bre-B · Pendiente de verificar</option>
         <option v-for="status in orderStatuses" :key="status" :value="status">
           {{ orderLabels[status] }}
         </option>
@@ -193,14 +224,25 @@ onMounted(() => load());
       >
         <strong>{{ order.customer.name }} · {{ order.customer.city }}</strong>
         <span
-          >{{ orderLabels[order.status] }} · {{ money(order.subtotal) }} +
+          >{{ order.paymentMethod === "BREB" ? "Bre-B · " : ""
+          }}{{
+            order.paymentStatus === "PENDING_VERIFICATION"
+              ? "Pendiente de verificar pago"
+              : orderLabels[order.status]
+          }}
+          · {{ money(order.amountToPay ?? order.subtotal) }} +
           {{
-            order.shipping === null
-              ? "envío por acordar"
-              : money(order.shipping) + " de envío"
+            order.shippingPaymentType === "PAY_ON_DELIVERY"
+              ? "envío al recibir"
+              : order.shipping === null
+                ? "envío por acordar"
+                : money(order.shipping) + " de envío"
           }}</span
         >
-        <small>{{ formatDate(order.createdAt) }} · {{ order.id }}</small>
+        <small
+          >{{ formatDate(order.createdAt) }} ·
+          {{ order.reference ?? order.id }}</small
+        >
       </button>
     </div>
     <button
@@ -214,7 +256,7 @@ onMounted(() => load());
     </button>
     <article v-if="selected" class="order-detail">
       <div class="order-detail-heading">
-        <h3>Solicitud {{ selected.id }}</h3>
+        <h3>Solicitud {{ selected.reference ?? selected.id }}</h3>
         <button
           type="button"
           class="text-link"
@@ -233,6 +275,19 @@ onMounted(() => load());
           >{{ selected.customer.phone }} ↗</a
         >
       </p>
+      <p v-if="selected.paymentMethod === 'BREB'" class="breb-admin-status">
+        Método: <strong>Bre-B</strong> · Estado de pago:
+        <strong>{{
+          selected.paymentStatus === "PENDING_VERIFICATION"
+            ? "Pendiente de verificar"
+            : selected.paymentStatus === "PAID"
+              ? "Pago confirmado"
+              : "Esperando pago"
+        }}</strong>
+        <span v-if="selected.paymentReportedAt">
+          · Reportado {{ formatDate(selected.paymentReportedAt) }}</span
+        >
+      </p>
       <ul>
         <li
           v-for="item in selected.items"
@@ -243,13 +298,29 @@ onMounted(() => load());
         </li>
       </ul>
       <p>
-        Subtotal: <strong>{{ money(selected.subtotal) }}</strong> · Total:
+        Productos:
+        <strong>{{ money(selected.amountToPay ?? selected.subtotal) }}</strong>
+        · Envío:
         <strong>{{
-          selected.shipping === null
-            ? "Pendiente de acordar envío"
-            : money(selected.subtotal + selected.shipping)
+          selected.shippingPaymentType === "PAY_ON_DELIVERY"
+            ? "Pago al recibir"
+            : selected.shipping === null
+              ? "Pendiente de acordar"
+              : money(selected.shipping)
         }}</strong>
       </p>
+      <button
+        v-if="
+          selected.paymentMethod === 'BREB' &&
+          selected.paymentStatus === 'PENDING_VERIFICATION'
+        "
+        type="button"
+        class="button"
+        :disabled="saving || loading"
+        @click="confirmBrebPayment"
+      >
+        {{ saving ? "Guardando…" : "Confirmar pago" }}
+      </button>
       <button
         v-if="selected.status === 'awaiting_payment'"
         type="button"
