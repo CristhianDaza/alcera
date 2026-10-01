@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { shoppingOccasions } from "../../shared/types";
+import { whatsappContactUrl } from "../../shared/whatsapp";
 const text = z.string().trim().min(1).max(200);
 const optionalText = z.string().trim().min(1).max(500).optional();
 const socialUrl = (hosts: string[]) =>
@@ -136,7 +137,13 @@ export const settingsSchema = z.object({
     .trim()
     .regex(/^$|^[0-9.-]{5,30}$/)
     .default(""),
-  whatsapp: z.string().regex(/^$|^[1-9]\d{7,14}$/),
+  whatsapp: z
+    .string()
+    .trim()
+    .max(2048)
+    .refine((value) => value === "" || Boolean(whatsappContactUrl(value)), {
+      message: "Ingresa un número internacional o un enlace/usuario de WhatsApp válido",
+    }),
   whatsappEnabled: z.boolean(),
   instagram: socialUrl(["instagram.com"]),
   facebook: socialUrl(["facebook.com", "fb.com"]),

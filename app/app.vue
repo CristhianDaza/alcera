@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { whatsappContactUrl } from "#shared/whatsapp";
 import {
   canIndex,
   catalogHasParameters,
@@ -92,8 +93,7 @@ const { openPreferences } = useCookieConsent();
 const mobileMenuOpen = ref(false);
 const contactWhatsappUrl = computed(() => {
   if (store.value.whatsappEnabled === false) return "";
-  const number = store.value.whatsapp?.replace(/\D/g, "");
-  return number ? `https://wa.me/${number}` : "";
+  return whatsappContactUrl(store.value.whatsapp || "");
 });
 function socialProfileUrl(value: string, hosts: string[]) {
   try {

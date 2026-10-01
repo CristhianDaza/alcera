@@ -655,10 +655,12 @@ function move(index: number, direction: number) {
               pattern="[0-9.-]{5,30}"
               maxlength="30" /></label
           ><label
-            >WhatsApp con código de país (sin +)<input
+            >WhatsApp (número internacional o enlace de usuario)<input
               v-model="storeForm.whatsapp"
-              placeholder="Sin configurar"
-              pattern="[1-9][0-9]{7,14}" /></label
+              inputmode="url"
+              placeholder="https://wa.me/AlceraPerfumes"
+              maxlength="2048" />
+            <small>También puedes ingresar el número con código de país, sin +.</small></label
           ><label
             >Perfil de Instagram<input
               v-model="storeForm.instagram"

@@ -1,15 +1,14 @@
 <script setup lang="ts">
+import { whatsappContactUrl } from "#shared/whatsapp";
+
 const store = useStore();
 const route = useRoute();
 const showBackToTop = ref(false);
 
 const whatsappUrl = computed(() => {
   if (store.value.whatsappEnabled === false) return "";
-  const number = store.value.whatsapp?.replace(/\D/g, "");
-  if (!number) return "";
-
   const message = `Hola, quiero recibir asesoría sobre las fragancias de ${store.value.name}.`;
-  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+  return whatsappContactUrl(store.value.whatsapp || "", message);
 });
 
 const telegramUrl = computed(() => {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Product } from "#shared/types";
 import { compareProductPriority } from "#shared/catalog";
+import { whatsappContactUrl } from "#shared/whatsapp";
 
 const catalog = useCatalogStore();
 const {
@@ -39,10 +40,8 @@ usePageSeo(
 
 const whatsappUrl = computed(() => {
   if (store.value.whatsappEnabled === false) return "";
-  const number = store.value.whatsapp?.replace(/\D/g, "");
-  if (!number) return "";
   const message = `Hola, me gustaría recibir asesoría sobre las fragancias de ${store.value.name}.`;
-  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+  return whatsappContactUrl(store.value.whatsapp || "", message);
 });
 
 function trackWhatsappClick(linkLocation: "home_hero" | "home_concierge") {

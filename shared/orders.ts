@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Product } from "./types";
 import { money, variantLabel } from "./commerce";
+import { whatsappContactUrl } from "./whatsapp";
 
 export const orderStatuses = [
   "pending",
@@ -176,5 +177,5 @@ export function orderWhatsappUrl(
   storeName: string,
 ) {
   const message = `Hola, ${storeName}. Quiero confirmar mi solicitud ${order.reference ?? order.id}.\n\n${order.items.map((i) => `• ${i.name} · ${i.size} × ${i.quantity}: ${money(i.price * i.quantity)}`).join("\n")}\n\nSubtotal: ${money(order.subtotal)}\nCiudad: ${order.customer.city}\nEnvío y pago pendientes de confirmar. Esta solicitud no reserva productos.`;
-  return `https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`;
+  return whatsappContactUrl(whatsapp, message);
 }
