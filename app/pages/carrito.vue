@@ -28,8 +28,14 @@ const orderId = ref("");
 const orderReference = ref("");
 const brebAmount = ref(0);
 const brebPaymentPanel = ref<HTMLElement | null>(null);
+const whatsappOrderPanel = ref<HTMLElement | null>(null);
 const isBrebOrder = computed(() =>
   Boolean(orderId.value && paymentMethod.value === "BREB"),
+);
+const isWhatsappOrder = computed(() =>
+  Boolean(
+    orderId.value && paymentMethod.value === "WHATSAPP" && readyUrl.value,
+  ),
 );
 watch(paymentMethod, (method) => {
   void trackAnalyticsEvent("payment_method_selected", {
@@ -66,6 +72,13 @@ async function scrollToBrebPayment() {
     block: "start",
   });
 }
+async function scrollToWhatsappOrder() {
+  await nextTick();
+  whatsappOrderPanel.value?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
 onMounted(async () => {
   try {
     const requestedOrderId =
@@ -97,6 +110,11 @@ function trackWhatsappClick() {
     value: total.value,
     item_count: lines.value.reduce((sum, line) => sum + line.quantity, 0),
   });
+}
+function openWhatsappAndReturnToPerfumes() {
+  trackWhatsappClick();
+  lines.value = [];
+  void router.push("/perfumes");
 }
 watch([customer, contactConsent], () => {
   if (orderId.value) return;
@@ -237,6 +255,9 @@ async function checkout() {
       paymentMethod.value === "BREB"
         ? "Pedido creado. El envío no está incluido y se paga al recibir tu pedido."
         : "Registramos tu solicitud. Abre WhatsApp para acordar el envío y el pago. Aún no es una compra confirmada ni reserva productos.";
+    if (paymentMethod.value === "WHATSAPP" && readyUrl.value) {
+      await scrollToWhatsappOrder();
+    }
   } catch (error) {
     notice.value =
       (error as { data?: { statusMessage?: string } }).data?.statusMessage ||
@@ -298,7 +319,10 @@ function clearSavedBrebOrder() {
       <h1>Tu <em>bolsa.</em></h1>
     </div>
     <ClientOnly
-      ><div v-if="lines.length && !isBrebOrder" class="cart-layout">
+      ><div
+        v-if="lines.length && !isBrebOrder && !isWhatsappOrder"
+        class="cart-layout"
+      >
         <div>
           <NuxtLink class="text-link" to="/perfumes"
             >← Seguir explorando</NuxtLink
@@ -473,15 +497,6 @@ function clearSavedBrebOrder() {
           <p v-if="orderReference" class="order-reference">
             Referencia: <strong>{{ orderReference }}</strong>
           </p>
-          <a
-            v-if="readyUrl"
-            :href="readyUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="button full"
-            @click="trackWhatsappClick"
-            >Abrir WhatsApp ↗</a
-          >
         </form>
       </div>
       <div ref="brebPaymentPanel" v-else-if="isBrebOrder" class="breb-payment">
@@ -539,6 +554,49 @@ function clearSavedBrebOrder() {
         <p v-if="notice" role="status">{{ notice }}</p>
         <NuxtLink to="/perfumes" class="text-link" @click="clearSavedBrebOrder"
           >Seguir explorando</NuxtLink
+        >
+      </div>
+      <div
+        ref="whatsappOrderPanel"
+        v-else-if="isWhatsappOrder"
+        class="breb-payment whatsapp-order"
+      >
+        <span class="eyebrow">SOLICITUD REGISTRADA</span>
+        <h2 class="breb-order-reference">Pedido {{ orderReference }}</h2>
+        <p>
+          Abre WhatsApp para acordar la forma de pago y el envío. La solicitud
+          aún no confirma una compra ni reserva productos.
+        </p>
+        <section
+          class="whatsapp-order-summary"
+          aria-labelledby="whatsapp-summary-title"
+        >
+          <h3 id="whatsapp-summary-title">Resumen del pedido</h3>
+          <div
+            v-for="line in lines"
+            :key="`${line.productId}-${line.variantId}`"
+            class="checkout-summary-row whatsapp-order-item"
+          >
+            <span>{{ line.quantity }} × {{ line.name }} · {{ line.size }}</span>
+            <strong>{{ money(line.price * line.quantity) }}</strong>
+          </div>
+          <div class="checkout-summary-row">
+            <span>Subtotal</span><strong>{{ money(total) }}</strong>
+          </div>
+          <div class="checkout-summary-row">
+            <span>Envío</span><strong>Pago al recibir</strong>
+          </div>
+          <div class="checkout-summary-row checkout-total">
+            <span>Total de productos</span><strong>{{ money(total) }}</strong>
+          </div>
+        </section>
+        <a
+          :href="readyUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="button full"
+          @click="openWhatsappAndReturnToPerfumes"
+          >Abrir WhatsApp ↗</a
         >
       </div>
       <div v-else class="empty">
@@ -707,6 +765,20 @@ function clearSavedBrebOrder() {
 .checkout-consent input[type="checkbox"] {
   flex: 0 0 auto;
   margin-top: 2px;
+}
+.whatsapp-order > p {
+  margin: 0;
+}
+.whatsapp-order-summary {
+  border-block: 1px solid var(--line);
+  padding: 12px 0;
+}
+.whatsapp-order-summary h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.whatsapp-order-item span {
+  overflow-wrap: anywhere;
 }
 .order-customer .check a,
 .checkout-legal a {
