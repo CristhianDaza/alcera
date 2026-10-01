@@ -92,7 +92,7 @@ function isNavigationCurrent(item: (typeof navigation.value)[number]) {
 const { openPreferences } = useCookieConsent();
 const mobileMenuOpen = ref(false);
 const contactWhatsappUrl = computed(() => {
-  if (store.value.whatsappEnabled === false) return "";
+  if (!store.value.whatsappEnabled) return "";
   return whatsappContactUrl(store.value.whatsapp || "");
 });
 function socialProfileUrl(value: string, hosts: string[]) {

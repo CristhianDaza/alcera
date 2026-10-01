@@ -6,7 +6,7 @@ const route = useRoute();
 const showBackToTop = ref(false);
 
 const whatsappUrl = computed(() => {
-  if (store.value.whatsappEnabled === false) return "";
+  if (!store.value.whatsappEnabled) return "";
   const message = `Hola, quiero recibir asesoría sobre las fragancias de ${store.value.name}.`;
   return whatsappContactUrl(store.value.whatsapp || "", message);
 });

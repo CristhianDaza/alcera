@@ -4,7 +4,7 @@ import { whatsappContactUrl } from "#shared/whatsapp";
 const store = useStore();
 
 const whatsappUrl = computed(() => {
-  return store.value.whatsappEnabled !== false
+  return store.value.whatsappEnabled
     ? whatsappContactUrl(store.value.whatsapp || "")
     : "";
 });

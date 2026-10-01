@@ -10,7 +10,7 @@ usePageSeo(
 );
 
 const whatsappUrl = computed(() => {
-  return store.value.whatsappEnabled !== false
+  return store.value.whatsappEnabled
     ? whatsappContactUrl(store.value.whatsapp || "")
     : "";
 });

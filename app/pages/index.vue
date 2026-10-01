@@ -39,7 +39,7 @@ usePageSeo(
 );
 
 const whatsappUrl = computed(() => {
-  if (store.value.whatsappEnabled === false) return "";
+  if (!store.value.whatsappEnabled) return "";
   const message = `Hola, me gustaría recibir asesoría sobre las fragancias de ${store.value.name}.`;
   return whatsappContactUrl(store.value.whatsapp || "", message);
 });

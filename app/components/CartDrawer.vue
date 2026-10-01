@@ -158,7 +158,6 @@ function onKeydown(event: KeyboardEvent) {
 }
 .cart-drawer {
   width: min(440px, 100%);
-  height: 100%;
   height: 100dvh;
   display: flex;
   flex-direction: column;
