@@ -80,6 +80,10 @@ function finishPhotoLoading(event: Event) {
     photoLoading.value = false;
 }
 const added = ref(false);
+const maxedOut = ref(false);
+const adding = ref(false);
+let addedTimer: ReturnType<typeof setTimeout> | undefined;
+let addingTimer: ReturnType<typeof setTimeout> | undefined;
 const recentlyViewed = ref<Product[]>([]);
 const recentlyViewedStorageKey = "esencia-recently-viewed";
 const recentlyViewedStorageLimit = 5;
@@ -94,32 +98,43 @@ const bottleVariants = computed(() =>
 const decantVariants = computed(() => p.variants.filter(isDecantVariant));
 const addButtonLabel = computed(() => {
   if (!variant.value.available) return "Presentación agotada";
-  if (added.value)
-    return quantity.value > 1
-      ? `Añadir otras ${quantity.value} unidades`
-      : "Añadir otra unidad";
-  return quantity.value > 1
-    ? `Añadir ${quantity.value} unidades`
-    : "Añadir a mi bolsa";
+  return added.value ? "Agregado ✓" : "Agregar a la bolsa";
 });
-const { add } = useCart();
+const { add, openDrawer } = useCart();
+onBeforeUnmount(() => {
+  if (addedTimer) clearTimeout(addedTimer);
+  if (addingTimer) clearTimeout(addingTimer);
+});
 function setQuantity(value: number) {
   quantity.value = Math.min(99, Math.max(1, Math.trunc(value) || 1));
   added.value = false;
+  maxedOut.value = false;
 }
 function changeQuantity(event: Event) {
   setQuantity(Number((event.target as HTMLInputElement).value));
 }
-function addSelectedVariant() {
+async function addSelectedVariant(buyNow = false) {
+  if (adding.value || !variant.value.available) return;
+  adding.value = true;
+  if (addingTimer) clearTimeout(addingTimer);
+  addingTimer = setTimeout(() => (adding.value = false), 450);
   const amount = add(p, variant.value, quantity.value);
   addedQuantity.value = amount;
-  added.value = true;
+  maxedOut.value = !amount;
   if (!amount) return;
+  added.value = true;
+  if (addedTimer) clearTimeout(addedTimer);
+  addedTimer = setTimeout(() => (added.value = false), 1600);
   void trackAnalyticsEvent("add_to_cart", {
     currency: "COP",
     value: variant.value.price * amount,
     items: [{ ...analyticsItem(p, variant.value), quantity: amount }],
   });
+  if (buyNow) {
+    await navigateTo("/carrito");
+    return;
+  }
+  openDrawer(p.id, variant.value.id);
 }
 
 function isStoredProduct(value: unknown): value is Product {
@@ -347,7 +362,12 @@ useHead({
             @load="finishPhotoLoading"
             @error="finishPhotoLoading"
           />
-          <div v-if="photoLoading" class="detail-photo__loading" role="status" aria-label="Cargando imagen">
+          <div
+            v-if="photoLoading"
+            class="detail-photo__loading"
+            role="status"
+            aria-label="Cargando imagen"
+          >
             <span class="detail-photo__spinner" aria-hidden="true"></span>
           </div>
         </div>
@@ -524,12 +544,22 @@ useHead({
               </button>
             </div>
             <button
+              type="button"
               class="button add-to-cart"
-              :disabled="!variant.available"
-              @click="addSelectedVariant"
+              :disabled="!variant.available || adding"
+              aria-live="polite"
+              @click="addSelectedVariant()"
             >
               {{ addButtonLabel }}
               <span>＋</span>
+            </button>
+            <button
+              type="button"
+              class="buy-now"
+              :disabled="!variant.available || adding"
+              @click="addSelectedVariant(true)"
+            >
+              Comprar ahora
             </button>
           </div>
           <dl
@@ -561,15 +591,8 @@ useHead({
             <li>Envíos a toda Colombia</li>
             <li>Asesoría antes de comprar</li>
           </ul>
-          <p v-if="added" class="added-notice" role="status">
-            {{
-              addedQuantity === 0
-                ? "Ya tienes el máximo de 99 unidades en tu bolsa."
-                : addedQuantity === 1
-                  ? "Una unidad añadida a tu bolsa."
-                  : `${addedQuantity} unidades añadidas a tu bolsa.`
-            }}
-            <NuxtLink class="text-link" to="/carrito">Ver bolsa</NuxtLink>
+          <p v-if="maxedOut" class="added-notice" role="status">
+            Ya tienes el máximo de 99 unidades de esta presentación en tu bolsa.
           </p>
           <p class="muted">
             Finaliza tu consulta por WhatsApp.<br />Envío y forma de pago a
@@ -723,7 +746,9 @@ useHead({
   animation: detail-photo-spin 0.75s linear infinite;
 }
 @keyframes detail-photo-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .purchase-guidance {
   margin: -7px 0 20px;
@@ -878,6 +903,21 @@ useHead({
   min-width: 0;
   min-height: 50px;
   padding-inline: 16px;
+}
+.buy-now {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.buy-now:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
 }
 .aroma-description {
   margin: 0 0 26px;

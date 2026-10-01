@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
     });
   const input = parsed.data;
   const config = await settings();
-  if (!config.whatsapp)
+  if (input.paymentMethod === "WHATSAPP" && !config.whatsapp)
     throw createError({
       statusCode: 503,
       statusMessage: "La tienda aún no tiene WhatsApp configurado.",
@@ -69,6 +69,10 @@ export default defineEventHandler(async (event) => {
         statusCode: 429,
         statusMessage: "Hay demasiadas solicitudes. Inténtalo en unos minutos.",
       });
+    const now = new Date().toISOString();
+    const year = now.slice(0, 4);
+    const referenceRef = db.collection("orderCounters").doc(year);
+    const referenceCounter = await tx.get(referenceRef);
     const ids = [...new Set(input.items.map((i) => i.productId))];
     const snapshots = await tx.getAll(
       ...ids.map((id) => db.collection("products").doc(id)),
@@ -85,9 +89,10 @@ export default defineEventHandler(async (event) => {
         statusMessage: (error as Error).message,
       });
     }
-    const now = new Date().toISOString();
+    const reference = `ALC-${year}-${String((referenceCounter.data()?.value ?? 0) + 1).padStart(4, "0")}`;
     const result: Order = {
       id: ref.id,
+      reference,
       customer: input.customer,
       items,
       subtotal: items.reduce(
@@ -107,8 +112,24 @@ export default defineEventHandler(async (event) => {
           note: "Solicitud registrada desde la bolsa.",
         },
       ],
+      ...(input.paymentMethod === "BREB"
+        ? {
+            paymentMethod: "BREB" as const,
+            paymentProvider: "BREB" as const,
+            paymentStatus: "PENDING" as const,
+            amountToPay: items.reduce(
+              (sum, item) => sum + item.price * item.quantity,
+              0,
+            ),
+            shippingPaymentType: "PAY_ON_DELIVERY" as const,
+          }
+        : { paymentMethod: "WHATSAPP" as const }),
     };
     tx.create(ref, { ...result, fingerprint, contactConsentAt: now });
+    tx.set(referenceRef, {
+      value: (referenceCounter.data()?.value ?? 0) + 1,
+      updatedAt: now,
+    });
     tx.set(rateRef, {
       count: (rate.data()?.count ?? 0) + 1,
       expiresAt: new Date((bucket + 2) * 600000),
@@ -118,6 +139,11 @@ export default defineEventHandler(async (event) => {
   setResponseStatus(event, 201);
   return {
     id: order.id,
-    whatsappUrl: orderWhatsappUrl(order, config.whatsapp, config.name),
+    reference: order.reference ?? order.id,
+    amountToPay: order.amountToPay ?? order.subtotal,
+    whatsappUrl:
+      order.paymentMethod === "BREB"
+        ? null
+        : orderWhatsappUrl(order, config.whatsapp, config.name),
   };
 });

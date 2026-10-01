@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Product } from "./types";
 import { money, variantLabel } from "./commerce";
+import { whatsappContactUrl } from "./whatsapp";
 
 export const orderStatuses = [
   "pending",
@@ -33,6 +34,7 @@ export const orderTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
 const identifier = z.string().regex(/^[a-zA-Z0-9-]{1,120}$/);
 export const orderRequestSchema = z.object({
   requestId: z.uuid(),
+  paymentMethod: z.enum(["BREB", "WHATSAPP"]).default("WHATSAPP"),
   customer: z.object({
     name: z.string().trim().min(2).max(120),
     phone: z
@@ -77,6 +79,7 @@ export interface OrderHistory {
 }
 export interface Order {
   id: string;
+  reference?: string;
   customer: OrderRequest["customer"];
   items: OrderItem[];
   subtotal: number;
@@ -86,6 +89,14 @@ export interface Order {
   updatedAt: string;
   tracking: string;
   history: OrderHistory[];
+  paymentMethod?: "BREB" | "WHATSAPP";
+  paymentProvider?: "BREB";
+  paymentStatus?: "PENDING" | "PENDING_VERIFICATION" | "PAID";
+  amountToPay?: number;
+  shippingPaymentType?: "PAY_ON_DELIVERY";
+  paymentReportedAt?: string;
+  paymentVerifiedAt?: string;
+  paymentVerifiedBy?: string;
 }
 export const orderUpdateSchema = z.object({
   expectedStatus: z.enum(orderStatuses),
@@ -165,6 +176,6 @@ export function orderWhatsappUrl(
   whatsapp: string,
   storeName: string,
 ) {
-  const message = `Hola, ${storeName}. Quiero confirmar mi solicitud ${order.id}.\n\n${order.items.map((i) => `• ${i.name} · ${i.size} × ${i.quantity}: ${money(i.price * i.quantity)}`).join("\n")}\n\nSubtotal: ${money(order.subtotal)}\nCiudad: ${order.customer.city}\nEnvío y pago pendientes de confirmar. Esta solicitud no reserva productos.`;
-  return `https://wa.me/${whatsapp}?text=${encodeURIComponent(message)}`;
+  const message = `Hola, ${storeName}. Quiero confirmar mi solicitud ${order.reference ?? order.id}.\n\n${order.items.map((i) => `• ${i.name} · ${i.size} × ${i.quantity}: ${money(i.price * i.quantity)}`).join("\n")}\n\nSubtotal: ${money(order.subtotal)}\nCiudad: ${order.customer.city}\nEnvío y pago pendientes de confirmar. Esta solicitud no reserva productos.`;
+  return whatsappContactUrl(whatsapp, message);
 }

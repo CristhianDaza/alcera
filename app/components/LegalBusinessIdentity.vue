@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { whatsappContactUrl } from "#shared/whatsapp";
+
 const store = useStore();
 
 const whatsappUrl = computed(() => {
-  const number = store.value.whatsapp?.replace(/\D/g, "");
-  return store.value.whatsappEnabled !== false && number
-    ? `https://wa.me/${number}`
+  return store.value.whatsappEnabled
+    ? whatsappContactUrl(store.value.whatsapp || "")
     : "";
 });
 

@@ -21,6 +21,7 @@ export default defineEventHandler(async (event) => {
     const value = doc.data() as Order;
     return {
       id: doc.id,
+      reference: value.reference ?? doc.id,
       customer: value.customer,
       items: value.items,
       subtotal: value.subtotal,
@@ -30,6 +31,13 @@ export default defineEventHandler(async (event) => {
       updatedAt: value.updatedAt,
       tracking: value.tracking,
       history: value.history,
+      paymentMethod: value.paymentMethod,
+      paymentStatus: value.paymentStatus,
+      amountToPay: value.amountToPay,
+      shippingPaymentType: value.shippingPaymentType,
+      paymentReportedAt: value.paymentReportedAt,
+      paymentVerifiedAt: value.paymentVerifiedAt,
+      paymentVerifiedBy: value.paymentVerifiedBy,
     };
   });
   return {

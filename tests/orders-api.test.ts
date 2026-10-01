@@ -18,7 +18,10 @@ const input = {
 let records: Map<string, any>, body: unknown;
 let createOrder: (event: never) => Promise<any>,
   updateOrder: (event: never) => Promise<any>,
-  listOrders: (event: never) => Promise<any>;
+  listOrders: (event: never) => Promise<any>,
+  reportBrebPayment: (event: never) => Promise<any>,
+  confirmBrebPayment: (event: never) => Promise<any>,
+  getOrder: (event: never) => Promise<any>;
 const admin = vi.fn();
 beforeEach(async () => {
   vi.stubGlobal("defineEventHandler", (handler: unknown) => handler);
@@ -46,7 +49,11 @@ beforeEach(async () => {
   });
   vi.stubGlobal("database", () => ({
     collection: (collection: string) => ({
-      doc: (id: string) => ({ path: `${collection}/${id}`, id }),
+      doc: (id: string) => ({
+        path: `${collection}/${id}`,
+        id,
+        get: async () => snapshot({ path: `${collection}/${id}`, id }),
+      }),
     }),
     runTransaction: async (callback: (tx: unknown) => Promise<unknown>) => {
       const writes: (() => void)[] = [];
@@ -75,13 +82,25 @@ beforeEach(async () => {
     .default as never;
   listOrders = (await import("../server/api/admin/orders/index.get"))
     .default as never;
+  reportBrebPayment = (
+    await import("../server/api/orders/[id]/report-payment.post")
+  ).default as never;
+  confirmBrebPayment = (
+    await import("../server/api/admin/orders/[id]/confirm-payment.post")
+  ).default as never;
+  getOrder = (await import("../server/api/orders/[id].get")).default as never;
 });
 describe("API de pedidos", () => {
   it("persiste una sola solicitud al reintentar y no devuelve datos privados", async () => {
     const first = await createOrder({} as never);
     const second = await createOrder({} as never);
     expect(second).toEqual(first);
-    expect(Object.keys(first).sort()).toEqual(["id", "whatsappUrl"]);
+    expect(Object.keys(first).sort()).toEqual([
+      "amountToPay",
+      "id",
+      "reference",
+      "whatsappUrl",
+    ]);
     expect(
       [...records.keys()].filter((k) => k.startsWith("orders/")),
     ).toHaveLength(1);
@@ -89,6 +108,7 @@ describe("API de pedidos", () => {
       subtotal: variant.price * 2,
       status: "pending",
     });
+    expect(first.reference).toMatch(/^ALC-\d{4}-\d{4}$/);
     body = { ...input, customer: { ...input.customer, name: "Otra persona" } };
     await expect(createOrder({} as never)).rejects.toMatchObject({
       statusCode: 409,
@@ -145,6 +165,69 @@ describe("API de pedidos", () => {
     });
     await expect(listOrders({} as never)).rejects.toMatchObject({
       statusCode: 403,
+    });
+    await expect(confirmBrebPayment({} as never)).rejects.toMatchObject({
+      statusCode: 403,
+    });
+  });
+  it("crea Bre-B al precio Firestore, registra el reporte una vez y exige verificación admin", async () => {
+    body = {
+      ...input,
+      paymentMethod: "BREB",
+      paymentStatus: "PAID",
+      amountToPay: 1,
+    };
+    const created = await createOrder({} as never);
+    const stored = records.get(`orders/${input.requestId}`);
+    expect(created).toMatchObject({
+      id: input.requestId,
+      amountToPay: variant.price * 2,
+      whatsappUrl: null,
+    });
+    expect(stored).toMatchObject({
+      paymentMethod: "BREB",
+      paymentProvider: "BREB",
+      paymentStatus: "PENDING",
+      amountToPay: variant.price * 2,
+      shippingPaymentType: "PAY_ON_DELIVERY",
+      shipping: null,
+      status: "pending",
+    });
+    expect(await getOrder({} as never)).toMatchObject({
+      id: input.requestId,
+      amountToPay: variant.price * 2,
+      paymentStatus: "PENDING",
+    });
+    await reportBrebPayment({} as never);
+    await reportBrebPayment({} as never);
+    expect(records.get(`orders/${input.requestId}`)).toMatchObject({
+      status: "awaiting_payment",
+      paymentStatus: "PENDING_VERIFICATION",
+    });
+    expect(records.get(`orders/${input.requestId}`).history).toHaveLength(2);
+    body = {
+      expectedStatus: "awaiting_payment",
+      status: "paid",
+      shipping: null,
+      tracking: "",
+      note: "",
+    };
+    await expect(updateOrder({} as never)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    await confirmBrebPayment({} as never);
+    expect(records.get(`orders/${input.requestId}`)).toMatchObject({
+      status: "paid",
+      paymentStatus: "PAID",
+      paymentVerifiedBy: "admin",
+    });
+    const verifiedAt = records.get(
+      `orders/${input.requestId}`,
+    ).paymentVerifiedAt;
+    await reportBrebPayment({} as never);
+    expect(records.get(`orders/${input.requestId}`)).toMatchObject({
+      paymentStatus: "PAID",
+      paymentVerifiedAt: verifiedAt,
     });
   });
   it("guarda cambios e historial, rechaza cambios concurrentes y mantiene la referencia de reintentos", async () => {
