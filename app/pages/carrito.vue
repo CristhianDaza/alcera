@@ -343,18 +343,29 @@ function clearSavedBrebOrder() {
           </article>
         </div>
         <form class="summary" @submit.prevent="checkout">
-          <span class="eyebrow">TU SELECCIÓN</span>
-          <h2>Resumen</h2>
-          <div class="subtotal">
-            <span>Subtotal</span><strong>{{ money(total) }}</strong>
-          </div>
-          <p>
-            Precios en COP. El valor del envío no está incluido; se paga
-            directamente al recibir el pedido.
-          </p>
+          <section
+            class="checkout-summary"
+            aria-labelledby="checkout-summary-title"
+          >
+            <h2 id="checkout-summary-title">Resumen del pedido</h2>
+            <div class="checkout-summary-row">
+              <span>Subtotal</span><strong>{{ money(total) }}</strong>
+            </div>
+            <div class="checkout-summary-row">
+              <span>Envío</span><strong>Pago al recibir</strong>
+            </div>
+            <div class="checkout-summary-row checkout-total">
+              <span>Total a pagar ahora</span
+              ><strong>{{ money(total) }}</strong>
+            </div>
+            <p class="shipping-note">El envío se paga al recibir tu pedido.</p>
+          </section>
           <fieldset class="payment-choice" :disabled="busy || !!orderId">
             <legend>Forma de pago</legend>
-            <label class="payment-option">
+            <label
+              class="payment-option"
+              :class="{ 'is-selected': paymentMethod === 'BREB' }"
+            >
               <input
                 v-model="paymentMethod"
                 type="radio"
@@ -363,34 +374,30 @@ function clearSavedBrebOrder() {
               />
               <span
                 ><strong>Bre-B / QR</strong
-                ><small
-                  >Usa el precio publicado y paga desde tu banco o billetera
-                  compatible.</small
+                ><small>Paga desde tu banco o billetera compatible.</small>
+                <small class="payment-total"
+                  >Total: {{ money(total) }}</small
                 ></span
               >
             </label>
             <p v-if="!brebQrImage" class="muted">
               El pago Bre-B estará disponible cuando la tienda configure su QR.
             </p>
-            <label class="payment-option">
+            <label
+              class="payment-option"
+              :class="{ 'is-selected': paymentMethod === 'WHATSAPP' }"
+            >
               <input v-model="paymentMethod" type="radio" value="WHATSAPP" />
               <span
-                ><strong>Otros medios por WhatsApp</strong
+                ><strong>Coordinar pago por WhatsApp</strong
                 ><small
-                  >Coordina el pago con la tienda. La tienda no tiene una
-                  pasarela Wompi conectada actualmente.</small
+                  >Te contactaremos para acordar la forma de pago.</small
                 ></span
               >
             </label>
           </fieldset>
-          <div class="subtotal">
-            <span>Envío</span><strong>Pago al recibir</strong>
-          </div>
-          <div class="subtotal">
-            <span>Total a pagar ahora</span><strong>{{ money(total) }}</strong>
-          </div>
           <fieldset class="order-customer" :disabled="busy || !!readyUrl">
-            <legend>Datos para coordinar tu pedido</legend>
+            <legend>Datos del pedido</legend>
             <label
               >Nombre<input
                 v-model="customer.name"
@@ -420,8 +427,16 @@ function clearSavedBrebOrder() {
                 placeholder="Medellín, Antioquia"
                 required
             /></label>
+          </fieldset>
+          <section class="checkout-consent" aria-labelledby="consent-title">
+            <h3 id="consent-title">Consentimiento</h3>
             <label class="check"
-              ><input v-model="contactConsent" type="checkbox" required />
+              ><input
+                v-model="contactConsent"
+                type="checkbox"
+                :disabled="busy || !!readyUrl"
+                required
+              />
               <span
                 >Autorizo que la tienda trate estos datos y me contacte para
                 gestionar esta solicitud, conforme a la
@@ -430,7 +445,7 @@ function clearSavedBrebOrder() {
                 >.</span
               ></label
             >
-          </fieldset>
+          </section>
           <p class="checkout-legal">
             Al registrar la solicitud reconoces la
             <NuxtLink to="/politica-de-privacidad"
@@ -450,8 +465,8 @@ function clearSavedBrebOrder() {
               busy
                 ? "Registrando…"
                 : paymentMethod === "BREB"
-                  ? "Crear pedido y ver QR"
-                  : "Registrar solicitud"
+                  ? "Continuar al pago"
+                  : "Coordinar por WhatsApp"
             }}
           </button>
           <p v-if="notice" role="status">{{ notice }}</p>
@@ -539,29 +554,101 @@ function clearSavedBrebOrder() {
 .order-customer {
   border: 0;
   padding: 0;
-  margin: 22px 0;
+  margin: 16px 0 18px;
   display: grid;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
 }
 .payment-choice {
   display: grid;
-  gap: 12px;
-  border: 1px solid var(--line);
-  padding: 14px;
-  margin: 18px 0;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 20px 0 0;
+}
+.payment-choice legend {
+  margin-bottom: 10px;
+  font-weight: 600;
 }
 .payment-option {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
   gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+.payment-option.is-selected {
+  border: 2px solid var(--accent);
+  padding: 13px;
+  background: var(--surface);
+}
+.payment-option:focus-within {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 3px;
+}
+.payment-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
 }
 .payment-option span {
   display: grid;
-  gap: 4px;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .payment-option small {
   color: var(--muted);
+  line-height: 1.4;
+}
+.payment-option .payment-total {
+  color: var(--ink);
+  font-weight: 600;
+}
+.checkout-summary h2 {
+  margin: 0 0 14px;
+  font-size: clamp(24px, 3vw, 30px);
+}
+.checkout-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 8px 0;
+}
+.checkout-summary-row strong {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.checkout-total {
+  margin-top: 6px;
+  padding: 14px 0 10px;
+  border-top: 1px solid var(--line-strong);
+  font-weight: 700;
+}
+.checkout-total strong {
+  color: var(--accent);
+  font-size: 1.2em;
+}
+.shipping-note {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+.checkout-consent {
+  margin: 0 0 12px;
+}
+.checkout-consent h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
 }
 .breb-payment {
   width: min(100%, 620px);
@@ -595,7 +682,7 @@ function clearSavedBrebOrder() {
   background: white;
 }
 .order-customer legend {
-  margin-bottom: 12px;
+  margin-bottom: 4px;
   font-weight: 600;
 }
 .order-customer label:not(.check) {
@@ -609,6 +696,17 @@ function clearSavedBrebOrder() {
 .order-customer .check {
   align-items: flex-start;
   font-size: 12px;
+}
+.checkout-consent .check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.checkout-consent input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin-top: 2px;
 }
 .order-customer .check a,
 .checkout-legal a {
@@ -624,5 +722,19 @@ function clearSavedBrebOrder() {
 .order-reference {
   overflow-wrap: anywhere;
   font-size: 12px;
+}
+@media (max-width: 700px) {
+  .summary {
+    padding: 20px 16px;
+  }
+  .payment-option {
+    padding: 13px;
+  }
+  .payment-option.is-selected {
+    padding: 12px;
+  }
+  .summary .button.full {
+    min-height: 52px;
+  }
 }
 </style>
