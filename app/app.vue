@@ -347,6 +347,7 @@ watch(
       </div>
     </footer>
     <FloatingActions />
+    <CartDrawer />
     <TawkChat />
     <CookieConsent />
   </div>

@@ -2,6 +2,8 @@ import type { CartLine, Product, Variant } from "#shared/types";
 import { variantLabel } from "#shared/commerce";
 export function useCart() {
   const lines = useState<CartLine[]>("cart", () => []);
+  const drawerLineKey = useState("cart-drawer-line", () => "");
+  const drawerOpen = useState("cart-drawer-open", () => false);
   const count = computed(() => lines.value.reduce((s, l) => s + l.quantity, 0));
   const total = computed(() =>
     lines.value.reduce((s, l) => s + l.price * l.quantity, 0),
@@ -27,5 +29,21 @@ export function useCart() {
       });
     return addedQuantity;
   }
-  return { lines, count, total, add };
+  function openDrawer(productId: string, variantId: string) {
+    drawerLineKey.value = `${productId}-${variantId}`;
+    drawerOpen.value = true;
+  }
+  function closeDrawer() {
+    drawerOpen.value = false;
+  }
+  return {
+    lines,
+    count,
+    total,
+    add,
+    drawerLineKey,
+    drawerOpen,
+    openDrawer,
+    closeDrawer,
+  };
 }
