@@ -5123,3 +5123,32 @@ main:focus {
         min-height: 40px;
     }
 }
+
+@keyframes admin-spinner-rotate {
+    to { transform: rotate(360deg); }
+}
+
+.admin [aria-busy="true"] button:disabled::after,
+.admin[aria-busy="true"] button:disabled::after,
+.business-panel[aria-busy="true"] button:disabled::after,
+.orders-panel[aria-busy="true"] button:disabled::after {
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    margin-left: 0.65em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    content: "";
+    vertical-align: -0.12em;
+    animation: admin-spinner-rotate 700ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin [aria-busy="true"] button:disabled::after,
+    .admin[aria-busy="true"] button:disabled::after,
+    .business-panel[aria-busy="true"] button:disabled::after,
+    .orders-panel[aria-busy="true"] button:disabled::after {
+        animation-duration: 1.5s;
+    }
+}

@@ -15,6 +15,18 @@ const orders = ref<Order[]>([]),
 const loading = ref(false),
   saving = ref(false),
   notice = ref("");
+const { notify } = useAdminNotifications();
+watch(notice, (value) => {
+  if (value) notify(value, adminNotificationType(value));
+});
+function focusInvalid(event: Event) {
+  const field = event.target;
+  if (!(field instanceof HTMLElement)) return;
+  requestAnimationFrame(() => {
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+    field.focus({ preventScroll: true });
+  });
+}
 const selected = ref<Order | null>(null),
   filter = ref("");
 const form = reactive({
@@ -44,6 +56,7 @@ function errorMessage(error: unknown) {
   );
 }
 async function load(more = false) {
+  if (loading.value) return;
   loading.value = true;
   notice.value = "";
   try {
@@ -84,6 +97,8 @@ function select(order: Order) {
 }
 async function remove() {
   if (
+    saving.value ||
+    loading.value ||
     !selected.value ||
     !window.confirm(
       `¿Eliminar la solicitud ${selected.value.id}? Esta acción no se puede deshacer.`,
@@ -108,7 +123,12 @@ async function remove() {
   }
 }
 async function save() {
-  if (!selected.value || (form.status === "paid" && !form.paymentConfirmed))
+  if (
+    saving.value ||
+    loading.value ||
+    !selected.value ||
+    (form.status === "paid" && !form.paymentConfirmed)
+  )
     return;
   saving.value = true;
   notice.value = "";
@@ -134,6 +154,8 @@ async function save() {
 }
 async function convertToSale() {
   if (
+    saving.value ||
+    loading.value ||
     !selected.value ||
     !window.confirm(`¿Crear una venta desde la solicitud ${selected.value.id}?`)
   )
@@ -158,6 +180,8 @@ async function convertToSale() {
 }
 async function confirmBrebPayment() {
   if (
+    saving.value ||
+    loading.value ||
     !selected.value ||
     selected.value.paymentStatus !== "PENDING_VERIFICATION"
   )
@@ -185,7 +209,12 @@ async function confirmBrebPayment() {
 onMounted(() => load());
 </script>
 <template>
-  <section class="orders-panel" aria-labelledby="orders-title">
+  <section
+    class="orders-panel"
+    aria-labelledby="orders-title"
+    :aria-busy="saving || loading"
+    @invalid.capture="focusInvalid"
+  >
     <div class="section-heading">
       <h2 id="orders-title">Pedidos</h2>
       <button
@@ -210,7 +239,6 @@ onMounted(() => load());
         </option>
       </select></label
     >
-    <p v-if="notice" role="status" class="notice">{{ notice }}</p>
     <p v-if="loading" role="status">Cargando pedidos…</p>
     <p v-else-if="!visible.length">No hay pedidos en esta selección.</p>
     <div class="order-list">
@@ -325,10 +353,10 @@ onMounted(() => load());
         v-if="selected.status === 'awaiting_payment'"
         type="button"
         class="button"
-        :disabled="saving"
+        :disabled="saving || loading"
         @click="convertToSale"
       >
-        Convertir en venta
+        {{ saving ? "Creando venta…" : "Convertir en venta" }}
       </button>
       <p v-else-if="selected.status === 'pending'" class="muted">
         Confirma primero la disponibilidad y el valor del envío. Después podrás
@@ -401,7 +429,8 @@ onMounted(() => load());
         :disabled="saving || loading"
         @click="remove"
       >
-        Eliminar pedido
+        <span v-if="saving" class="admin-spinner" aria-hidden="true" />
+        {{ saving ? "Eliminando…" : "Eliminar pedido" }}
       </button>
       <p v-if="selected.tracking">
         Transportadora y guía: {{ selected.tracking }}

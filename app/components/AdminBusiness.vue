@@ -84,6 +84,19 @@ function selectSection(value: Section) {
 }
 const busy = ref(false),
   notice = ref("");
+const { notify } = useAdminNotifications();
+watch(notice, (value) => {
+  if (!value) return;
+  notify(value, adminNotificationType(value));
+});
+function focusInvalid(event: Event) {
+  const field = event.target;
+  if (!(field instanceof HTMLElement)) return;
+  requestAnimationFrame(() => {
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+    field.focus({ preventScroll: true });
+  });
+}
 const dashboard = ref<DashboardData | null>(null),
   sales = ref<Sale[]>([]),
   salesCursor = ref(""),
@@ -368,7 +381,7 @@ async function load(target = section.value) {
 watch(section, (value) => load(value));
 onMounted(() => load("summary"));
 async function loadMoreSales() {
-  if (!salesCursor.value) return;
+  if (busy.value || !salesCursor.value) return;
   const version = salesLoadVersion;
   busy.value = true;
   try {
@@ -977,7 +990,9 @@ const movementPickerOptions = computed(() =>
   options.value
     .filter((item) => !item.isDecant)
     .map((item) => {
-      const product = props.catalog.find((entry) => entry.id === item.productId);
+      const product = props.catalog.find(
+        (entry) => entry.id === item.productId,
+      );
       const brand = product?.brand ?? "";
       return {
         ...item,
@@ -2304,7 +2319,11 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
 </script>
 
 <template>
-  <section class="business-panel">
+  <section
+    class="business-panel"
+    :aria-busy="busy"
+    @invalid.capture="focusInvalid"
+  >
     <nav class="business-nav" aria-label="Gestión del negocio">
       <button
         v-for="item in [
@@ -2324,7 +2343,6 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
         {{ item[1] }}
       </button>
     </nav>
-    <p v-if="notice" class="notice" role="status">{{ notice }}</p>
     <p v-if="busy" class="muted" role="status">Actualizando información…</p>
 
     <template v-if="section === 'summary'">
@@ -3844,6 +3862,7 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           >Comprobante (opcional)<input
             type="file"
             accept="image/jpeg,image/png,image/webp,application/pdf"
+            :disabled="busy"
             @change="selectExpenseReceipt"
           /><small v-if="expenseForm.receipt"
             >Archivo cargado correctamente.</small
