@@ -80,7 +80,7 @@ const store = useStore();
 usePageSeo(
   () => `Decants de perfumes originales · ${store.value.name}`,
   "Descubre perfumes originales en presentaciones decant de 5 ml, 10 ml, 30 ml y otros tamaños disponibles en Colombia.",
-  "/images/hero-perfumes-editorial-v2.webp",
+  "/images/hero-perfumes-alcera.jpg",
   { imageAlt: "Selección de decants de perfumes originales" },
 );
 const base = siteBase(useRuntimeConfig().public.siteUrl);

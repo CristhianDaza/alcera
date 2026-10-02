@@ -90,7 +90,7 @@ usePageSeo(
   () =>
     `${props.landing.title}${page.value && page.value > 1 ? ` · Página ${page.value}` : ""} · ${store.value.name}`,
   props.landing.description,
-  "/images/hero-perfumes-editorial-v2.webp",
+  "/images/hero-perfumes-alcera.jpg",
   { imageAlt: props.landing.title, canonical },
 );
 

@@ -290,7 +290,7 @@ usePageSeo(
   () =>
     `Perfumes para mujer, hombre y unisex${page.value > 1 ? ` · Página ${page.value}` : ""} · ${store.value.name}`,
   "Explora perfumes por marca, familia olfativa y presentación. Precios en COP y pedidos por WhatsApp.",
-  "/images/hero-perfumes-editorial-v2.webp",
+  "/images/hero-perfumes-alcera.jpg",
   { imageAlt: "Colección de perfumes disponibles en Colombia" },
 );
 const base = siteBase(useRuntimeConfig().public.siteUrl);

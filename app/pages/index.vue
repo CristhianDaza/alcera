@@ -31,10 +31,9 @@ const store = useStore();
 usePageSeo(
   `Perfumes en Colombia · ${store.value.name}`,
   "Descubre fragancias florales, amaderadas y cítricas. Encuentra un perfume que deje huella y consulta tu pedido por WhatsApp en Colombia.",
-  "/images/hero-perfumes-editorial-v2.webp",
+  "/images/hero-perfumes-alcera.jpg",
   {
-    imageAlt:
-      "Selección de perfumes de Alcéra Perfumes sobre una composición editorial",
+    imageAlt: "Composición de perfumes Alcéra sobre bloques de piedra",
   },
 );
 
@@ -161,23 +160,11 @@ watch(finderOpen, (isOpen) => {
       </div>
     </div>
     <div class="hero-image">
-      <div class="hero-image-brand">
-        <img
-          src="/brand/alcera-logo.png"
-          alt="Alcéra Perfumes"
-          width="3200"
-          height="1200"
-        />
-      </div>
       <img
-        src="/images/hero-perfumes-editorial-v2.webp"
-        srcset="
-          /images/hero-perfumes-editorial-v2-480.webp  480w,
-          /images/hero-perfumes-editorial-v2-768.webp  768w,
-          /images/hero-perfumes-editorial-v2.webp     1122w
-        "
+        src="/images/hero-perfumes-alcera.jpg"
+        srcset="/images/hero-perfumes-alcera-480.jpg 480w, /images/hero-perfumes-alcera.jpg 623w"
         sizes="(max-width: 700px) 100vw, (max-width: 1050px) 43vw, 40vw"
-        alt="Frascos de perfume sin marca sobre una base escultórica con cinta color vino"
+        alt="Perfumes en frascos negros, turquesa, verdes y rojos sobre bases de piedra"
         fetchpriority="high"
         decoding="async"
         width="1122"
