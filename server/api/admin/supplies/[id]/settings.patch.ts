@@ -1,3 +1,4 @@
+import { FieldValue } from "firebase-admin/firestore";
 import {
   supplySettingsSchema,
   type Supply,
@@ -31,24 +32,26 @@ export default defineEventHandler(async (event) => {
       statusMessage:
         "La capacidad en ml es obligatoria para un envase de decant",
     });
-  await ref.update(
-    firestoreData({
-      ...(body.name !== undefined ? { name: body.name } : {}),
-      ...(body.sku !== undefined ? { sku: body.sku } : {}),
-      ...(body.minimumStock !== undefined
-        ? { minimumStock: body.minimumStock }
+  await ref.update({
+    ...(body.name !== undefined ? { name: body.name } : {}),
+    ...(body.sku !== undefined ? { sku: body.sku } : {}),
+    ...(body.minimumStock !== undefined
+      ? { minimumStock: body.minimumStock }
+      : {}),
+    ...(body.averageCost !== undefined
+      ? { averageCost: body.averageCost }
+      : {}),
+    ...(body.active !== undefined ? { active: body.active } : {}),
+    category,
+    unit,
+    capacityMl,
+    ...(body.automaticConsumption === null
+      ? { automaticConsumption: FieldValue.delete() }
+      : body.automaticConsumption
+        ? { automaticConsumption: body.automaticConsumption }
         : {}),
-      ...(body.averageCost !== undefined
-        ? { averageCost: body.averageCost }
-        : {}),
-      ...(body.active !== undefined ? { active: body.active } : {}),
-      category,
-      unit,
-      capacityMl,
-      automaticConsumption: undefined,
-      updatedAt: nowIso(),
-    }),
-  );
+    updatedAt: nowIso(),
+  });
   const { automaticConsumption: _previous, ...rest } = supply;
   return {
     ...rest,
@@ -64,5 +67,10 @@ export default defineEventHandler(async (event) => {
     category,
     unit,
     capacityMl,
+    ...(body.automaticConsumption === undefined
+      ? { automaticConsumption: supply.automaticConsumption }
+      : body.automaticConsumption
+        ? { automaticConsumption: body.automaticConsumption }
+        : {}),
   };
 });

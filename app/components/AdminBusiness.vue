@@ -10,6 +10,7 @@ import {
   inventoryUnits,
   inventoryUnitLabels,
   millilitersFromSize,
+  plannedDecantSupplies,
   paymentMethods,
   saleChannels,
   saleStatuses,
@@ -437,6 +438,105 @@ const saleForm = reactive({
   items: [saleLine()],
   supplyUses: [] as SaleSupplyUseForm[],
 });
+const saleEstimate = computed(() => {
+  if (!saleForm.items.length) return null;
+  const selected = saleForm.items.map((line) =>
+    options.value.find(
+      (item) => `${item.productId}/${item.variantId}` === line.selection,
+    ),
+  );
+  if (selected.some((item) => !item)) return null;
+  const supplyById = new Map(supplies.value.map((item) => [item.id, item]));
+  const sourceRemaining = new Map(
+    decantSources.value.map((source) => [source.id, source.remainingMl]),
+  );
+  const configured = plannedDecantSupplies(
+    saleForm.items.map((line, index) => {
+      const option = selected[index]!;
+      const variant = props.catalog
+        .find((product) => product.id === option.productId)
+        ?.variants.find((item) => item.id === option.variantId);
+      return option.isDecant
+        ? {
+            sizeMl: millilitersFromSize(option.size),
+            quantity: Number(line.quantity),
+            configuredSupplies: variant?.inventory?.decantSupplies,
+          }
+        : null;
+    }),
+    supplies.value,
+  );
+  let productCost = 0;
+  let supplyCost = 0;
+  let revenue = Number(saleForm.shipping) || 0;
+  for (const [index, line] of saleForm.items.entries()) {
+    const option = selected[index]!;
+    const quantity = Number(line.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1) return null;
+    revenue += quantity * Number(line.unitPrice) - Number(line.discount);
+    if (!option.isDecant) {
+      productCost += quantity * option.averageCost;
+      continue;
+    }
+    const ml = millilitersFromSize(option.size);
+    const container = supplyById.get(line.inventoryItemId);
+    if (!ml || !container || !container.active) return null;
+    const source = decantSources.value
+      .filter(
+        (item) => item.productId === option.productId && item.status === "open",
+      )
+      .sort((a, b) => a.openedAt.localeCompare(b.openedAt))
+      .find((item) => (sourceRemaining.get(item.id) ?? 0) >= ml * quantity);
+    if (!source) return null;
+    sourceRemaining.set(
+      source.id,
+      sourceRemaining.get(source.id)! - ml * quantity,
+    );
+    const row = inventory.value.find(
+      (item) =>
+        item.productId === option.productId &&
+        item.variantId === option.variantId,
+    );
+    productCost +=
+      quantity *
+      (ml * source.costPerMl +
+        container.averageCost +
+        (row?.decantPackagingCost ?? 0));
+    for (const [supplyId, amount] of configured.perLine[index]!) {
+      const supply = supplyById.get(supplyId);
+      if (!supply?.active) return null;
+      supplyCost += supply.averageCost * amount;
+    }
+  }
+  for (const [supplyId, amount] of configured.perSale) {
+    const supply = supplyById.get(supplyId);
+    if (!supply?.active) return null;
+    supplyCost += supply.averageCost * amount;
+  }
+  for (const use of saleForm.supplyUses) {
+    const supply = supplyById.get(use.supplyId);
+    if (!supply?.active) return null;
+    supplyCost += supply.averageCost * Number(use.quantity);
+  }
+  return {
+    revenue,
+    productCost,
+    supplyCost,
+    profit: revenue - productCost - supplyCost,
+  };
+});
+function saleGrossProfit(sale: Sale) {
+  return (
+    sale.total -
+    (sale.refundTotal ?? 0) -
+    (sale.items.reduce(
+      (cost, item) => cost + item.unitCost * item.quantity,
+      0,
+    ) -
+      (sale.returnedCost ?? 0) +
+      (sale.additionalInventoryCost ?? 0))
+  );
+}
 const manuallySelectableSupplies = computed(() =>
   supplies.value
     .map(inventoryItemOf)
@@ -1084,12 +1184,12 @@ async function configureStock(row: InventoryRow) {
       },
       {
         key: "packaging",
-        label: "Costo de atomizador, etiqueta y empaque (COP)",
+        label: "Otro costo por decant sin insumo registrado (COP)",
         value: String(row.decantPackagingCost),
         type: "number",
         min: 0,
         step: 1,
-        help: "Solo aplica si seleccionas Decant.",
+        help: "No repitas el costo del envase, etiqueta o bolsa si ya los registraste como insumos.",
       },
     ],
   });
@@ -1444,7 +1544,11 @@ async function editSupply(supply: Supply) {
   });
 }
 async function configureDecantSupply(row: InventoryRow) {
-  if (!supplies.value.filter((supply) => supply.active).length) {
+  if (
+    !supplies.value.some(
+      (supply) => supply.active && supply.category !== "DECANT_CONTAINER",
+    )
+  ) {
     notice.value = "Primero añade al menos un insumo.";
     return;
   }
@@ -1461,7 +1565,10 @@ async function configureDecantSupply(row: InventoryRow) {
         options: [
           { value: "", label: "Selecciona…" },
           ...supplies.value
-            .filter((supply) => supply.active)
+            .filter(
+              (supply) =>
+                supply.active && supply.category !== "DECANT_CONTAINER",
+            )
             .map((supply) => ({
               value: supply.id,
               label: `${supply.name} (${supply.stock} disponibles)`,
@@ -1548,6 +1655,7 @@ async function removeDecantSupply(
   });
 }
 async function assignSupplyToDecant(supply: Supply) {
+  if (supply.category === "DECANT_CONTAINER") return;
   const decants = inventory.value.filter((row) => row.type === "decant");
   if (!decants.length) {
     notice.value = "Primero crea una presentación de tipo Decant.";
@@ -2699,6 +2807,23 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
               </button>
             </div>
           </div>
+          <div v-if="saleEstimate" class="wide business-card">
+            <strong
+              >Utilidad bruta estimada: {{ money(saleEstimate.profit) }}</strong
+            >
+            <p class="muted">
+              Venta {{ money(saleEstimate.revenue) }} · perfume, mililitros y
+              envases {{ money(saleEstimate.productCost) }} · etiquetas, bolsas
+              y otros insumos {{ money(saleEstimate.supplyCost) }}
+            </p>
+          </div>
+          <p
+            v-else-if="saleForm.items.some((line) => line.selection)"
+            class="wide muted"
+          >
+            Para ver la utilidad estimada del decant, selecciona un envase y ten
+            un frasco abierto con mililitros disponibles.
+          </p>
           <label class="wide"
             >Notas<textarea
               v-model="saleForm.notes"
@@ -2778,6 +2903,11 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
               <td>
                 {{ money(sale.total)
                 }}<small>Saldo {{ money(sale.balanceDue) }}</small>
+                <small
+                  v-if="sale.inventoryAppliedAt && sale.status !== 'cancelled'"
+                >
+                  Utilidad bruta {{ money(saleGrossProfit(sale)) }}
+                </small>
               </td>
               <td>
                 <span class="status-pill">{{ labels[sale.status] }}</span>
@@ -2904,6 +3034,22 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
             </tbody>
           </table>
         </div>
+        <p
+          v-if="
+            saleDetail.sale.inventoryAppliedAt &&
+            saleDetail.sale.status !== 'cancelled'
+          "
+        >
+          <strong>
+            Utilidad bruta de la venta:
+            {{ money(saleGrossProfit(saleDetail.sale)) }}
+          </strong>
+          <small>
+            Incluye los mililitros, el envase y los insumos consumidos al
+            confirmar la venta. Insumos por pedido:
+            {{ money(saleDetail.sale.additionalInventoryCost ?? 0) }}.
+          </small>
+        </p>
         <h4>Pagos</h4>
         <p v-if="!saleDetail.payments.length" class="muted">No hay pagos.</p>
         <p v-for="payment in saleDetail.payments" :key="payment.id">
@@ -3145,6 +3291,19 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                   >{{ row.brand }} ·
                   {{ row.type === "decant" ? "Decant" : "Frasco" }}</small
                 >
+                <small
+                  v-if="row.type === 'decant' && row.decantSupplies?.length"
+                >
+                  Insumos:
+                  {{
+                    row.decantSupplies
+                      .map(
+                        (use) =>
+                          `${supplies.find((supply) => supply.id === use.supplyId)?.name ?? "Insumo"} × ${use.quantity} ${use.consumption === "sale" ? "por venta" : "por decant"}`,
+                      )
+                      .join(", ")
+                  }}
+                </small>
               </td>
               <td>
                 <span class="stock-dot" :class="`stock-${row.state}`"></span
@@ -3171,6 +3330,31 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                   Configurar
                 </button>
                 <button
+                  v-if="row.type === 'decant'"
+                  class="text-link"
+                  type="button"
+                  @click="configureDecantSupply(row)"
+                >
+                  Añadir insumo
+                </button>
+                <button
+                  v-for="use in row.type === 'decant'
+                    ? (row.decantSupplies ?? [])
+                    : []"
+                  :key="`${use.supplyId}-${use.consumption}`"
+                  class="text-link"
+                  type="button"
+                  @click="
+                    removeDecantSupply(row, use.supplyId, use.consumption)
+                  "
+                >
+                  Quitar
+                  {{
+                    supplies.find((supply) => supply.id === use.supplyId)
+                      ?.name ?? "insumo"
+                  }}
+                </button>
+                <button
                   v-if="row.type === 'bottle' && row.stock > 0"
                   class="text-link"
                   type="button"
@@ -3188,8 +3372,9 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           <div>
             <h3>Inventario de insumos</h3>
             <p class="muted">
-              Envases, cajas, bolsas, etiquetas y otros consumibles. Solo el
-              envase elegido se descuenta automáticamente al vender un decant.
+              Envases, cajas, bolsas, etiquetas y otros consumibles. El envase
+              elegido y los insumos configurados se descuentan al confirmar una
+              venta con decants.
             </p>
           </div>
           <button
@@ -3267,6 +3452,28 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
                     @click="adjustSupply(supply)"
                   >
                     Ajustar
+                  </button>
+                  <button
+                    v-if="
+                      inventoryItemOf(supply).category !== 'DECANT_CONTAINER'
+                    "
+                    type="button"
+                    class="text-link"
+                    :disabled="busy"
+                    @click="configureSupplyConsumption(supply)"
+                  >
+                    Regla para decants
+                  </button>
+                  <button
+                    v-if="
+                      inventoryItemOf(supply).category !== 'DECANT_CONTAINER'
+                    "
+                    type="button"
+                    class="text-link"
+                    :disabled="busy"
+                    @click="assignSupplyToDecant(supply)"
+                  >
+                    Asignar a un decant
                   </button>
                 </td>
               </tr>

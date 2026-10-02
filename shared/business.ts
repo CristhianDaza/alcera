@@ -817,6 +817,46 @@ export const decantUnitCost = (
   packagingCost: number,
 ) => Math.round(sizeMl * costPerMl) + packagingCost;
 
+/** Calcula los insumos configurados por decant y una sola vez por venta. */
+export function plannedDecantSupplies(
+  lines: Array<{
+    sizeMl: number;
+    quantity: number;
+    configuredSupplies?: import("./types").DecantSupplyUse[];
+  } | null>,
+  supplies: Supply[],
+) {
+  const perLine = lines.map(() => new Map<string, number>());
+  const perSale = new Map<string, number>();
+  lines.forEach((line, index) => {
+    if (!line) return;
+    const explicit = line.configuredSupplies ?? [];
+    const explicitIds = new Set(explicit.map((use) => use.supplyId));
+    const inherited = supplies.flatMap((supply) => {
+      const rule = supply.automaticConsumption;
+      return rule &&
+        !explicitIds.has(supply.id) &&
+        (rule.sizeMl === undefined || rule.sizeMl === line.sizeMl)
+        ? [{ supplyId: supply.id, ...rule }]
+        : [];
+    });
+    for (const use of [...explicit, ...inherited]) {
+      if (use.consumption === "decant")
+        perLine[index]!.set(
+          use.supplyId,
+          (perLine[index]!.get(use.supplyId) ?? 0) +
+            use.quantity * line.quantity,
+        );
+      else
+        perSale.set(
+          use.supplyId,
+          Math.max(perSale.get(use.supplyId) ?? 0, use.quantity),
+        );
+    }
+  });
+  return { perLine, perSale };
+}
+
 export function landedUnitCost(
   lineTotal: number,
   quantity: number,
