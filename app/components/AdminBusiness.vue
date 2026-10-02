@@ -971,6 +971,39 @@ const movementForm = reactive({
   reference: "conteo físico",
   reason: "inventario inicial",
 });
+const movementPickerQuery = ref("");
+const movementPickerOpen = ref(false);
+const movementPickerOptions = computed(() =>
+  options.value
+    .filter((item) => !item.isDecant)
+    .map((item) => {
+      const product = props.catalog.find((entry) => entry.id === item.productId);
+      const brand = product?.brand ?? "";
+      return {
+        ...item,
+        selection: `${item.productId}/${item.variantId}`,
+        searchLabel: `${item.label} ${brand}`,
+        displayLabel: brand
+          ? `${item.purchaseLabel} · ${brand} · Frasco completo`
+          : item.label,
+      };
+    }),
+);
+const movementPickerMatches = computed(() => {
+  const term = normalizePicker(movementPickerQuery.value);
+  if (!term) return [];
+  return movementPickerOptions.value
+    .filter((item) => normalizePicker(item.searchLabel).includes(term))
+    .sort((a, b) => a.displayLabel.localeCompare(b.displayLabel, "es"))
+    .slice(0, 50);
+});
+function selectMovementOption(
+  option: (typeof movementPickerOptions.value)[number],
+) {
+  movementForm.selection = option.selection;
+  movementPickerQuery.value = option.displayLabel;
+  movementPickerOpen.value = false;
+}
 async function createMovement() {
   if (!movementForm.selection) return;
   await perform(async () => {
@@ -2945,18 +2978,65 @@ function exportCsv(name: string, rows: Array<Array<string | number>>) {
           class="admin-fields compact-form"
           @submit.prevent="createMovement"
         >
-          <label class="wide"
-            >Presentación<select v-model="movementForm.selection" required>
-              <option value="">Selecciona…</option>
-              <option
-                v-for="item in options"
-                :key="item.productId + item.variantId"
-                :value="`${item.productId}/${item.variantId}`"
+          <div class="sale-picker wide">
+            <label
+              >Presentación<input
+                v-model="movementPickerQuery"
+                type="search"
+                role="combobox"
+                aria-autocomplete="list"
+                :aria-expanded="movementPickerOpen"
+                aria-controls="inventory-movement-options"
+                autocomplete="off"
+                placeholder="Busca perfume, marca o tamaño…"
+                required
+                @focus="movementPickerOpen = true"
+                @blur="movementPickerOpen = false"
+                @keydown.esc="movementPickerOpen = false"
+                @input="
+                  movementForm.selection = '';
+                  movementPickerOpen = true;
+                "
+            /></label>
+            <div
+              v-if="movementPickerOpen"
+              id="inventory-movement-options"
+              class="sale-picker-menu"
+              role="listbox"
+            >
+              <p class="sale-picker-hint">
+                {{
+                  movementPickerQuery
+                    ? "Resultados de búsqueda"
+                    : "Escribe el nombre, la marca o el tamaño para buscar."
+                }}
+              </p>
+              <button
+                v-for="item in movementPickerMatches"
+                :key="item.selection"
+                type="button"
+                class="sale-picker-option"
+                role="option"
+                @mousedown.prevent="selectMovementOption(item)"
               >
-                {{ item.label }}
-              </option>
-            </select></label
-          ><label
+                {{ item.displayLabel }}
+              </button>
+              <p
+                v-if="movementPickerQuery && !movementPickerMatches.length"
+                class="sale-picker-empty"
+              >
+                No encontramos presentaciones con ese texto.
+              </p>
+              <p
+                v-else-if="movementPickerMatches.length === 50"
+                class="sale-picker-hint"
+              >
+                Mostrando 50 resultados. Escribe algo más para afinar la
+                búsqueda.
+              </p>
+            </div>
+          </div>
+          <label
             >Tipo<select v-model="movementForm.type">
               <option value="adjustment">Ajuste</option>
               <option value="customer_return">Devolución cliente</option>
