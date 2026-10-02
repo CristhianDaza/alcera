@@ -151,4 +151,5 @@ export const settingsSchema = z.object({
   telegram: z.string().regex(/^$|^[A-Za-z][A-Za-z0-9_]{4,31}$/),
   telegramEnabled: z.boolean(),
   tawkEnabled: z.boolean(),
+  metaPixelId: z.string().trim().regex(/^$|^\d{5,20}$/).default(""),
 });

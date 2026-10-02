@@ -407,6 +407,7 @@ export async function settings(): Promise<Settings> {
       telegram: "",
       telegramEnabled: false,
       tawkEnabled: false,
+      metaPixelId: "1117452117477934",
     };
   return cached(settingsCache, SETTINGS_CACHE_MS, async () => {
     const doc = await database().collection("settings").doc("store").get();
@@ -423,6 +424,7 @@ export async function settings(): Promise<Settings> {
       telegram: "",
       telegramEnabled: false,
       tawkEnabled: true,
+      metaPixelId: "1117452117477934",
       ...stored,
       name:
         !stored?.name || stored.name === "Esencia"

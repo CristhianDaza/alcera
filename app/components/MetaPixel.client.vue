@@ -1,8 +1,9 @@
 <script setup lang="ts">
 const { consent, hydrateConsent } = useCookieConsent();
+const store = useStore();
 const route = useRoute();
-const pixelId = "1117452117477934";
 const scriptId = "meta-pixel-script";
+const initializedPixelIds = new Set<string>();
 
 type Fbq = ((...args: unknown[]) => void) & {
   callMethod?: (...args: unknown[]) => void;
@@ -16,36 +17,42 @@ function fbqWindow() {
   return window as typeof window & { fbq?: Fbq; _fbq?: Fbq };
 }
 
-function enableMetaPixel() {
+function enableMetaPixel(pixelId: string) {
+  if (!pixelId || initializedPixelIds.has(pixelId)) return;
+
   const target = fbqWindow();
-  if (target.fbq) return;
+  if (!target.fbq) {
+    const fbq = function (...args: unknown[]) {
+      if (fbq.callMethod) fbq.callMethod(...args);
+      else fbq.queue.push(args);
+    } as Fbq;
+    fbq.queue = [];
+    fbq.push = fbq;
+    fbq.loaded = true;
+    fbq.version = "2.0";
+    target.fbq = fbq;
+    target._fbq = fbq;
+  }
 
-  const fbq = function (...args: unknown[]) {
-    if (fbq.callMethod) fbq.callMethod(...args);
-    else fbq.queue.push(args);
-  } as Fbq;
-  fbq.queue = [];
-  fbq.push = fbq;
-  fbq.loaded = true;
-  fbq.version = "2.0";
-  target.fbq = fbq;
-  target._fbq = fbq;
-  fbq("init", pixelId);
-  fbq("track", "PageView");
+  initializedPixelIds.add(pixelId);
+  target.fbq("init", pixelId);
+  target.fbq("track", "PageView");
 
-  const script = document.createElement("script");
-  script.id = scriptId;
-  script.async = true;
-  script.src = "https://connect.facebook.net/en_US/fbevents.js";
-  document.head.appendChild(script);
+  if (!document.getElementById(scriptId)) {
+    const script = document.createElement("script");
+    script.id = scriptId;
+    script.async = true;
+    script.src = "https://connect.facebook.net/en_US/fbevents.js";
+    document.head.appendChild(script);
+  }
 }
 
 onMounted(() => {
   hydrateConsent();
   watch(
-    consent,
-    (value) => {
-      if (value === "accepted") enableMetaPixel();
+    [consent, () => store.value.metaPixelId],
+    ([value, pixelId]) => {
+      if (value === "accepted") enableMetaPixel(pixelId || "");
     },
     { immediate: true },
   );
@@ -53,7 +60,12 @@ onMounted(() => {
   watch(
     () => route.fullPath,
     () => {
-      if (consent.value === "accepted" && document.getElementById(scriptId)) {
+      const pixelId = store.value.metaPixelId;
+      if (
+        consent.value === "accepted" &&
+        initializedPixelIds.has(pixelId) &&
+        document.getElementById(scriptId)
+      ) {
         fbqWindow().fbq?.("track", "PageView");
       }
     },

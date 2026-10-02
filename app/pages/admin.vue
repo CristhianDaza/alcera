@@ -727,6 +727,19 @@ function move(index: number, direction: number) {
               pattern="[A-Za-z][A-Za-z0-9_]{4,31}"
               maxlength="32"
           /></label>
+          <label
+            >ID del píxel de Meta<input
+              v-model="storeForm.metaPixelId"
+              inputmode="numeric"
+              placeholder="1117452117477934"
+              pattern="[0-9]{5,20}"
+              maxlength="20"
+            />
+            <small
+              >Déjalo vacío para desactivar el píxel. Solo se carga si aceptan
+              las cookies opcionales.</small
+            ></label
+          >
           <fieldset class="contact-channel-options">
             <legend>Canales de atención visibles</legend>
             <label class="check"

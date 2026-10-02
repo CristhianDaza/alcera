@@ -76,6 +76,7 @@ export interface Settings {
   telegram: string;
   telegramEnabled: boolean;
   tawkEnabled: boolean;
+  metaPixelId: string;
 }
 export interface CartLine {
   productId: string;
