@@ -64,7 +64,12 @@ export default defineEventHandler(async (event) => {
       sale.channel,
       (channels.get(sale.channel) ?? 0) + sale.total - (sale.refundTotal ?? 0),
     );
-    for (const item of sale.items) {
+    const lineRevenue = sale.items.reduce(
+      (total, item) => total + Math.max(0, item.lineTotal),
+      0,
+    );
+    let allocatedSupplyCost = 0;
+    for (const [index, item] of sale.items.entries()) {
       const key = `${item.productId}/${item.variantId}`;
       const brand = item.brand ?? "Sin marca";
       const returned =
@@ -73,7 +78,20 @@ export default defineEventHandler(async (event) => {
         ) ?? 0;
       const quantity = Math.max(0, item.quantity - returned);
       const revenue = Math.round(item.lineTotal * (quantity / item.quantity));
-      const cost = quantity * item.unitCost;
+      const sharedCost =
+        index === sale.items.length - 1
+          ? (sale.additionalInventoryCost ?? 0) - allocatedSupplyCost
+          : lineRevenue > 0
+            ? Math.round(
+                ((sale.additionalInventoryCost ?? 0) *
+                  Math.max(0, item.lineTotal)) /
+                  lineRevenue,
+              )
+            : Math.round(
+                (sale.additionalInventoryCost ?? 0) / sale.items.length,
+              );
+      allocatedSupplyCost += sharedCost;
+      const cost = quantity * item.unitCost + sharedCost;
       const current = products.get(key) ?? {
         name: `${item.name} · ${item.size}`,
         brand,

@@ -10,6 +10,7 @@ import {
   decantUnitCost,
   inventoryItemOf,
   millilitersFromSize,
+  plannedDecantSupplies,
 } from "../../../../../shared/business";
 import type { Product } from "../../../../../shared/types";
 
@@ -47,7 +48,7 @@ export default defineEventHandler(async (event) => {
         ].filter((id): id is string => Boolean(id)),
       ),
     ];
-    const [snapshots, sourceSnapshots, supplySnapshots] = await Promise.all([
+    const [snapshots, sourceSnapshots] = await Promise.all([
       Promise.all(refs.map((ref) => tx.get(ref))),
       Promise.all(
         productIds.map((productId) =>
@@ -56,9 +57,6 @@ export default defineEventHandler(async (event) => {
           ),
         ),
       ),
-      Promise.all(
-        supplyIds.map((id) => tx.get(db.collection("supplies").doc(id))),
-      ),
     ]);
     const products = new Map(
       snapshots.map((snapshot) => [
@@ -66,6 +64,22 @@ export default defineEventHandler(async (event) => {
         { id: snapshot.id, ...snapshot.data() } as Product,
       ]),
     );
+    const decantLines = sale.items.map((item) => {
+      const variant = findVariant(products.get(item.productId), item.variantId);
+      const inventory = inventoryOf(variant);
+      return variant.type === "decant" || inventory.mode === "decant"
+        ? {
+            sizeMl: millilitersFromSize(variant.size),
+            quantity: item.quantity,
+            configuredSupplies: inventory.decantSupplies,
+          }
+        : null;
+    });
+    const supplySnapshots = decantLines.some(Boolean)
+      ? (await tx.get(db.collection("supplies"))).docs
+      : await Promise.all(
+          supplyIds.map((id) => tx.get(db.collection("supplies").doc(id))),
+        );
     const at = nowIso();
     const updatedProducts = new Map<string, Product>();
     const sourcesByProduct = new Map(
@@ -86,9 +100,12 @@ export default defineEventHandler(async (event) => {
           inventoryItemOf(docData<Supply>(snapshot)),
         ]),
     );
+    const configuredSupplies = plannedDecantSupplies(decantLines, [
+      ...supplies.values(),
+    ]);
     const supplyUse = new Map<string, number>();
     let additionalInventoryCost = 0;
-    const items = sale.items.map((item) => {
+    const items = sale.items.map((item, index) => {
       const product =
         updatedProducts.get(item.productId) ?? products.get(item.productId);
       const variant = findVariant(product, item.variantId);
@@ -136,10 +153,34 @@ export default defineEventHandler(async (event) => {
         if (source.remainingMl === 0) source.status = "empty";
         source.updatedAt = at;
         sourceUpdates.set(source.id, source);
+        const configuredPerUnitCost =
+          [...configuredSupplies.perLine[index]!].reduce(
+            (cost, [supplyId, quantity]) => {
+              const supply = supplies.get(supplyId);
+              if (
+                !supply ||
+                !supply.active ||
+                supply.category === "DECANT_CONTAINER"
+              )
+                throw createError({
+                  statusCode: 409,
+                  statusMessage:
+                    "Un insumo configurado para el decant no está disponible",
+                });
+              supplyUse.set(
+                supplyId,
+                (supplyUse.get(supplyId) ?? 0) + quantity,
+              );
+              return cost + supply.averageCost * quantity;
+            },
+            0,
+          ) / item.quantity;
         const unitCost = decantUnitCost(
           ml,
           source.costPerMl,
-          (current.decantPackagingCost ?? 0) + container.averageCost,
+          (current.decantPackagingCost ?? 0) +
+            container.averageCost +
+            configuredPerUnitCost,
         );
         movements.push({
           id: newId(),
@@ -202,6 +243,17 @@ export default defineEventHandler(async (event) => {
       return { ...item, unitCost: current.averageCost };
     });
     const supplyMovements: SupplyMovement[] = [];
+    for (const [supplyId, quantity] of configuredSupplies.perSale) {
+      const supply = supplies.get(supplyId);
+      if (!supply || !supply.active || supply.category === "DECANT_CONTAINER")
+        throw createError({
+          statusCode: 409,
+          statusMessage:
+            "Un insumo configurado para la venta no está disponible",
+        });
+      supplyUse.set(supplyId, (supplyUse.get(supplyId) ?? 0) + quantity);
+      additionalInventoryCost += supply.averageCost * quantity;
+    }
     for (const use of sale.supplyUses ?? []) {
       const supply = supplies.get(use.supplyId);
       if (!supply || !supply.active || supply.category === "DECANT_CONTAINER")
@@ -235,7 +287,7 @@ export default defineEventHandler(async (event) => {
         stockAfter: after,
         referenceType: "sale",
         referenceId: saleId,
-        reason: `Venta ${sale.number} · envase de decant`,
+        reason: `Venta ${sale.number} · ${supply.name}`,
         occurredAt: at,
         createdAt: at,
         createdBy: admin.uid,

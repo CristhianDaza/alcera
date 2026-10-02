@@ -60,6 +60,19 @@ const email = ref(""),
   notice = ref(""),
   busy = ref(false),
   checkingSession = ref(true);
+const { notify } = useAdminNotifications();
+const editorForm = ref<HTMLFormElement | null>(null);
+watch(notice, (value) => {
+  if (value) notify(value, adminNotificationType(value));
+});
+function focusInvalid(event: Event) {
+  const field = event.target;
+  if (!(field instanceof HTMLElement)) return;
+  requestAnimationFrame(() => {
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+    field.focus({ preventScroll: true });
+  });
+}
 const catalog = ref<Product[]>([]),
   storeForm = ref<Settings>({ ...useStore().value }),
   editor = ref<EditableProduct | null>(null);
@@ -239,6 +252,7 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => stopAuthListener?.());
 async function login() {
+  if (busy.value) return;
   busy.value = true;
   notice.value = "";
   try {
@@ -255,14 +269,25 @@ async function login() {
   }
 }
 async function logout() {
-  const { signOut } = await import("firebase/auth");
-  await signOut(await auth());
-  token.value = "";
-  restoredUid = "";
-  editor.value = null;
-  catalog.value = [];
+  if (busy.value) return;
+  busy.value = true;
+  notice.value = "";
+  try {
+    const { signOut } = await import("firebase/auth");
+    await signOut(await auth());
+    token.value = "";
+    restoredUid = "";
+    editor.value = null;
+    catalog.value = [];
+    notice.value = "Sesión cerrada.";
+  } catch (e) {
+    notice.value = message(e);
+  } finally {
+    busy.value = false;
+  }
 }
 async function removeProduct(product: Product) {
+  if (busy.value) return;
   if (
     !window.confirm(
       `¿Eliminar “${product.name}”? Esta acción no se puede deshacer.`,
@@ -423,7 +448,7 @@ watch(
   },
 );
 async function save() {
-  if (!editor.value) return;
+  if (!editor.value || busy.value) return;
   const shouldAddAnother = !editor.value.id && addAnother.value;
   busy.value = true;
   notice.value = "";
@@ -488,7 +513,8 @@ async function save() {
       updateAdminQuery({ editor: "new" }, "replace");
       edit();
       await nextTick();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      editorForm.value?.scrollIntoView({ behavior: "smooth", block: "start" });
+      editorForm.value?.focus({ preventScroll: true });
       notice.value =
         "Perfume guardado. Agrega el siguiente cuando estés listo.";
     } else {
@@ -502,6 +528,7 @@ async function save() {
   }
 }
 async function saveSettings() {
+  if (busy.value) return;
   busy.value = true;
   try {
     useStore().value = await $fetch<Settings>("/api/admin/settings", {
@@ -545,21 +572,25 @@ function move(index: number, direction: number) {
 }
 </script>
 <template>
-  <section class="shell section admin">
+  <section
+    class="shell section admin"
+    :aria-busy="busy"
+    @invalid.capture="focusInvalid"
+  >
+    <AdminToast />
     <div class="section-heading">
       <div>
         <span class="eyebrow">ESPACIO PRIVADO</span>
         <h1>El atelier.</h1>
       </div>
-      <button v-if="token" class="text-link" @click="logout">
-        Cerrar sesión
+      <button v-if="token" class="text-link" :disabled="busy" @click="logout">
+        {{ busy ? "Cerrando sesión…" : "Cerrar sesión" }}
       </button>
     </div>
     <p v-if="demo" class="demo-banner">
       Modo de demostración. Para administrar el catálogo real, configura los
       servicios y desactiva la demostración.
     </p>
-    <p v-if="notice" class="notice" role="status">{{ notice }}</p>
     <div v-if="checkingSession" class="login-panel" role="status">
       <h2>Preparando el atelier…</h2>
       <p>Estamos comprobando tu sesión.</p>
@@ -659,8 +690,12 @@ function move(index: number, direction: number) {
               v-model="storeForm.whatsapp"
               inputmode="url"
               placeholder="https://wa.me/AlceraPerfumes"
-              maxlength="2048" />
-            <small>También puedes ingresar el número con código de país, sin +.</small></label
+              maxlength="2048"
+            />
+            <small
+              >También puedes ingresar el número con código de país, sin
+              +.</small
+            ></label
           ><label
             >Perfil de Instagram<input
               v-model="storeForm.instagram"
@@ -708,7 +743,7 @@ function move(index: number, direction: number) {
             >
           </fieldset>
           <button class="button" :disabled="busy || demo">
-            Guardar configuración
+            {{ busy ? "Guardando…" : "Guardar configuración" }}
           </button>
         </form>
       </section>
@@ -765,7 +800,7 @@ function move(index: number, direction: number) {
                 :disabled="busy || demo"
                 @click="removeProduct(p)"
               >
-                Eliminar
+                {{ busy ? "Eliminando…" : "Eliminar" }}
               </button>
             </div>
           </div>
@@ -822,6 +857,7 @@ function move(index: number, direction: number) {
         </template></template
       >
       <form
+        ref="editorForm"
         v-else-if="tab === 'products' && editor"
         class="editor"
         @submit.prevent="save"

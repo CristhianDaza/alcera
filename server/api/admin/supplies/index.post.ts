@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     ...body,
     capacityMl: body.category === "DECANT_CONTAINER" ? body.capacityMl! : null,
     unit: body.category === "DECANT_CONTAINER" ? "UNIT" : body.unit,
-    automaticConsumption: undefined,
+    automaticConsumption: body.automaticConsumption,
     active: body.active,
     createdAt: at,
     updatedAt: at,
