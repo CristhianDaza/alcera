@@ -63,7 +63,8 @@ watch(preferencesOpen, (open) => {
       <p id="cookie-description">
         Usamos cookies y tecnologías similares necesarias para guardar tu bolsa,
         tema y preferencias. Si nos autorizas, también podremos medir de forma
-        general cómo se usa la tienda y activar el chat para atenderte mejor.
+        general cómo se usa la tienda, medir campañas publicitarias y activar el
+        chat para atenderte mejor.
       </p>
 
       <div class="cookie-panel__actions">

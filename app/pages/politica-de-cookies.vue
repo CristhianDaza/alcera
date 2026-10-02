@@ -40,7 +40,7 @@ const whatsappUrl = computed(() => {
         <strong>Tu elección</strong>
         <p>
           Las tecnologías necesarias mantienen la tienda funcionando. La
-          medición y el chat solo se activan con tu autorización.
+          medición, publicidad y el chat solo se activan con tu autorización.
         </p>
         <button class="button" type="button" @click="openPreferences">
           Configurar cookies
@@ -59,8 +59,8 @@ const whatsappUrl = computed(() => {
           <p>
             Algunas son necesarias para prestar las funciones que solicitas.
             Otras nos ayudan a conocer, de manera general, cómo se utiliza la
-            tienda o permiten ofrecer atención mediante chat; estas últimas son
-            opcionales.
+            tienda, medir campañas publicitarias o permiten ofrecer atención
+            mediante chat; estas últimas son opcionales.
           </p>
         </section>
 
@@ -145,6 +145,22 @@ const whatsappUrl = computed(() => {
                 >Información de cookies de Tawk.to</a
               >
             </article>
+            <article>
+              <span>Publicidad</span>
+              <h3>Meta Pixel</h3>
+              <p>
+                Registra visitas y navegación para medir el rendimiento de las
+                campañas publicitarias de Meta. Puede utilizar cookies como
+                <code>_fbp</code> y <code>_fbc</code> para reconocer el navegador
+                y atribuir visitas a anuncios.
+              </p>
+              <a
+                href="https://www.facebook.com/privacy/policies/cookies"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Información sobre cookies de Meta</a
+              >
+            </article>
           </div>
         </section>
 
@@ -154,8 +170,8 @@ const whatsappUrl = computed(() => {
             Puedes aceptar o rechazar las tecnologías opcionales desde el aviso
             inicial. También puedes cambiar tu decisión en cualquier momento
             mediante el enlace “Configurar cookies” ubicado en el pie de página.
-            Al rechazarlas, dejamos de activar la medición y el chat en visitas
-            posteriores.
+            Al rechazarlas, dejamos de activar la medición, la publicidad y el
+            chat en visitas posteriores.
           </p>
           <p>
             Tu navegador también permite consultar, bloquear o eliminar cookies

@@ -349,6 +349,7 @@ watch(
     <FloatingActions />
     <CartDrawer />
     <TawkChat />
+    <MetaPixel />
     <CookieConsent />
   </div>
 </template>
