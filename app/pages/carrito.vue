@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { money, reconcileCart } from "#shared/commerce";
+import { buildMetaContent } from "#shared/meta";
+import { trackMetaBrowserEvent } from "~/utils/metaPixel";
 type BrebPaymentStatus = "PENDING" | "PENDING_VERIFICATION" | "PAID";
 const { lines, total } = useCart(),
   store = useStore();
+const { consent: cookieConsent } = useCookieConsent();
 const catalog = useCatalogStore();
 const route = useRoute();
 const router = useRouter();
@@ -176,6 +179,7 @@ async function checkout() {
         city: customer.city.trim(),
       },
       contactConsent: contactConsent.value,
+      marketingConsent: cookieConsent.value === "accepted",
       items: updated.map((line) => ({
         productId: line.productId,
         variantId: line.variantId,
@@ -190,6 +194,20 @@ async function checkout() {
       item_count: updated.reduce((sum, line) => sum + line.quantity, 0),
       items: analyticsItems.value,
     });
+    trackMetaBrowserEvent(
+      "InitiateCheckout",
+      buildMetaContent(
+        updated.flatMap((line) => {
+          const product = products.find((item) => item.id === line.productId);
+          const variant = product?.variants.find(
+            (item) => item.id === line.variantId,
+          );
+          return product && variant
+            ? [{ product, variant, quantity: line.quantity }]
+            : [];
+        }),
+      ),
+    );
     const bytes = await crypto.subtle.digest(
       "SHA-256",
       new TextEncoder().encode(JSON.stringify(payload)),

@@ -45,6 +45,7 @@ export const orderRequestSchema = z.object({
     city: z.string().trim().min(2).max(120),
   }),
   contactConsent: z.literal(true),
+  marketingConsent: z.boolean().default(false),
   items: z
     .array(
       z.object({
@@ -77,6 +78,8 @@ export interface OrderHistory {
   actor: string;
   note: string;
 }
+export type MetaPurchaseStatus =
+  "pending" | "sending" | "sent" | "failed" | "suppressed";
 export interface Order {
   id: string;
   reference?: string;
@@ -97,6 +100,14 @@ export interface Order {
   paymentReportedAt?: string;
   paymentVerifiedAt?: string;
   paymentVerifiedBy?: string;
+  marketingConsent?: boolean;
+  metaPurchaseEventId?: string;
+  metaPurchaseStatus?: MetaPurchaseStatus;
+  metaPurchaseAttemptedAt?: string;
+  metaPurchaseSentAt?: string;
+  metaPurchaseAttemptCount?: number;
+  metaPurchaseErrorCode?: string;
+  metaPurchaseErrorStatus?: number;
 }
 export const orderUpdateSchema = z.object({
   expectedStatus: z.enum(orderStatuses),

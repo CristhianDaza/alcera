@@ -94,6 +94,7 @@ export default defineEventHandler(async (event) => {
       id: ref.id,
       reference,
       customer: input.customer,
+      marketingConsent: input.marketingConsent,
       items,
       subtotal: items.reduce(
         (sum, item) => sum + item.price * item.quantity,

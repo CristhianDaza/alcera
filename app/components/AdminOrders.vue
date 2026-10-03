@@ -179,27 +179,42 @@ async function convertToSale() {
   }
 }
 async function confirmBrebPayment() {
+  const isRetry = selected.value?.paymentStatus === "PAID";
   if (
     saving.value ||
     loading.value ||
     !selected.value ||
-    selected.value.paymentStatus !== "PENDING_VERIFICATION"
+    (selected.value.paymentStatus !== "PENDING_VERIFICATION" &&
+      !(
+        isRetry &&
+        ["failed", "sending"].includes(selected.value.metaPurchaseStatus || "")
+      ))
   )
     return;
   saving.value = true;
   notice.value = "";
   try {
-    await $fetch(`/api/admin/orders/${selected.value.id}/confirm-payment`, {
+    const result = await $fetch<{
+      metaPurchaseStatus:
+        "sent" | "failed" | "sending" | "suppressed" | "not_sent";
+    }>(`/api/admin/orders/${selected.value.id}/confirm-payment`, {
       method: "POST",
       headers: await props.getHeaders(),
     });
-    void trackAnalyticsEvent("breb_payment_confirmed", {
-      currency: "COP",
-      value: selected.value.amountToPay ?? selected.value.subtotal,
-      order_id: selected.value.id,
-    });
+    if (!isRetry)
+      void trackAnalyticsEvent("breb_payment_confirmed", {
+        currency: "COP",
+        value: selected.value.amountToPay ?? selected.value.subtotal,
+        order_id: selected.value.id,
+      });
     await load();
-    if (!notice.value) notice.value = "Pago Bre-B confirmado y registrado.";
+    if (!notice.value)
+      notice.value =
+        result.metaPurchaseStatus === "failed"
+          ? "Pago confirmado. No se pudo enviar la compra a Meta; puedes reintentar desde el pedido."
+          : isRetry
+            ? "Compra reenviada a Meta."
+            : "Pago Bre-B confirmado y registrado.";
   } catch (error) {
     notice.value = errorMessage(error);
   } finally {
@@ -316,6 +331,22 @@ onMounted(() => load());
           · Reportado {{ formatDate(selected.paymentReportedAt) }}</span
         >
       </p>
+      <p
+        v-if="
+          selected.paymentMethod === 'BREB' && selected.paymentStatus === 'PAID'
+        "
+        class="muted"
+      >
+        Envío de compra a Meta:
+        <strong>{{
+          selected.metaPurchaseStatus === "suppressed"
+            ? "No enviado (sin consentimiento)"
+            : selected.metaPurchaseStatus || "Pendiente"
+        }}</strong>
+        <span v-if="selected.metaPurchaseAttemptCount">
+          · Intentos {{ selected.metaPurchaseAttemptCount }}</span
+        >
+      </p>
       <ul>
         <li
           v-for="item in selected.items"
@@ -348,6 +379,25 @@ onMounted(() => load());
         @click="confirmBrebPayment"
       >
         {{ saving ? "Guardando…" : "Confirmar pago" }}
+      </button>
+      <button
+        v-if="
+          selected.paymentMethod === 'BREB' &&
+          selected.paymentStatus === 'PAID' &&
+          ['failed', 'sending'].includes(selected.metaPurchaseStatus || '')
+        "
+        type="button"
+        class="text-link"
+        :disabled="saving || loading"
+        @click="confirmBrebPayment"
+      >
+        {{
+          saving
+            ? "Reintentando…"
+            : selected.metaPurchaseStatus === "sending"
+              ? "Revisar o reintentar envío a Meta"
+              : "Reintentar envío de compra a Meta"
+        }}
       </button>
       <button
         v-if="selected.status === 'awaiting_payment'"

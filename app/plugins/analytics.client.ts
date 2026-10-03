@@ -3,11 +3,13 @@ import {
   setStoreAnalyticsConsent,
   trackAnalyticsEvent,
 } from "~/utils/analytics";
+import { setMetaPixelConsent } from "~/utils/metaPixel";
 
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig().public;
   const { consent, hydrateConsent } = useCookieConsent();
   hydrateConsent();
+  setMetaPixelConsent(consent.value === "accepted");
 
   const router = useRouter();
   let lastLocation = "";
@@ -24,6 +26,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   }
 
   function applyConsent(accepted: boolean) {
+    setMetaPixelConsent(accepted);
     setStoreAnalyticsConsent(accepted);
     if (!accepted) return;
 

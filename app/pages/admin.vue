@@ -731,13 +731,13 @@ function move(index: number, direction: number) {
             >ID del píxel de Meta<input
               v-model="storeForm.metaPixelId"
               inputmode="numeric"
-              placeholder="1117452117477934"
+              placeholder="ID del Pixel de producción"
               pattern="[0-9]{5,20}"
               maxlength="20"
             />
             <small
-              >Déjalo vacío para desactivar el píxel. Solo se carga si aceptan
-              las cookies opcionales.</small
+              >Déjalo vacío para desactivar el píxel. Solo se carga en
+              producción, tras aceptar las cookies opcionales.</small
             ></label
           >
           <fieldset class="contact-channel-options">

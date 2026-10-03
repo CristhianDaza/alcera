@@ -14,7 +14,7 @@ export const useStore = () =>
     telegram: "",
     telegramEnabled: false,
     tawkEnabled: true,
-    metaPixelId: "1117452117477934",
+    metaPixelId: "",
   }));
 export function usePageSeo(
   title: MaybeRefOrGetter<string>,

@@ -38,6 +38,11 @@ export default defineEventHandler(async (event) => {
       paymentReportedAt: value.paymentReportedAt,
       paymentVerifiedAt: value.paymentVerifiedAt,
       paymentVerifiedBy: value.paymentVerifiedBy,
+      metaPurchaseStatus: value.metaPurchaseStatus,
+      metaPurchaseAttemptedAt: value.metaPurchaseAttemptedAt,
+      metaPurchaseSentAt: value.metaPurchaseSentAt,
+      metaPurchaseErrorCode: value.metaPurchaseErrorCode,
+      metaPurchaseAttemptCount: value.metaPurchaseAttemptCount,
     };
   });
   return {

@@ -4,6 +4,8 @@ import { money, variantLabel } from "#shared/commerce";
 import { isDecantVariant, selectRelatedProducts } from "#shared/catalog";
 import type { Product } from "#shared/types";
 import { seoLanding, seoLandingForFilter } from "#shared/seo-landings";
+import { buildMetaContent } from "#shared/meta";
+import { trackMetaBrowserEvent } from "~/utils/metaPixel";
 
 const route = useRoute();
 const catalog = useCatalogStore();
@@ -130,6 +132,12 @@ async function addSelectedVariant(buyNow = false) {
     value: variant.value.price * amount,
     items: [{ ...analyticsItem(p, variant.value), quantity: amount }],
   });
+  trackMetaBrowserEvent(
+    "AddToCart",
+    buildMetaContent([
+      { product: p, variant: variant.value, quantity: amount },
+    ]),
+  );
   if (buyNow) {
     await navigateTo("/carrito");
     return;
@@ -171,6 +179,10 @@ function saveRecentlyViewed() {
 
 onMounted(() => {
   saveRecentlyViewed();
+  trackMetaBrowserEvent(
+    "ViewContent",
+    buildMetaContent([{ product: p, variant: variant.value, quantity: 1 }]),
+  );
   void trackAnalyticsEvent("view_item", {
     currency: "COP",
     value: variant.value.price,

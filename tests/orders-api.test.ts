@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import { demoProducts } from "../shared/demo";
 const product = demoProducts[0]!,
   variant = product.variants[0]!;
@@ -6,6 +7,7 @@ const input = {
   requestId: "5a6ebbec-338f-46cb-9262-49304c281352",
   customer: { name: "Cliente", phone: "3001234567", city: "Bogotá" },
   contactConsent: true,
+  marketingConsent: true,
   items: [
     {
       productId: product.id,
@@ -23,6 +25,7 @@ let createOrder: (event: never) => Promise<any>,
   confirmBrebPayment: (event: never) => Promise<any>,
   getOrder: (event: never) => Promise<any>;
 const admin = vi.fn();
+const metaFetch = vi.fn();
 beforeEach(async () => {
   vi.stubGlobal("defineEventHandler", (handler: unknown) => handler);
   vi.stubGlobal("createError", (data: { statusMessage: string }) =>
@@ -32,7 +35,20 @@ beforeEach(async () => {
   vi.stubGlobal("settings", async () => ({
     name: "ALCÉRA",
     whatsapp: "573001234567",
+    metaPixelId: "123456789012345",
   }));
+  vi.stubGlobal("useRuntimeConfig", () => ({
+    public: { siteUrl: "https://alcera.example" },
+  }));
+  vi.stubEnv("META_PIXEL_ID", "123456789012345");
+  vi.stubEnv("META_CAPI_ACCESS_TOKEN", "test-server-secret");
+  vi.stubEnv("META_TEST_EVENT_CODE", "");
+  metaFetch.mockReset().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ events_received: 1 }),
+  } as Response);
+  vi.stubGlobal("fetch", metaFetch);
   vi.stubGlobal("getRequestIP", () => "127.0.0.1");
   vi.stubGlobal("setResponseStatus", vi.fn());
   vi.stubGlobal("readRawBody", async () => JSON.stringify(body));
@@ -198,8 +214,13 @@ describe("API de pedidos", () => {
       amountToPay: variant.price * 2,
       paymentStatus: "PENDING",
     });
+    records.set(`orders/${input.requestId}`, {
+      ...records.get(`orders/${input.requestId}`),
+      shipping: 15000,
+    });
     await reportBrebPayment({} as never);
     await reportBrebPayment({} as never);
+    expect(metaFetch).not.toHaveBeenCalled();
     expect(records.get(`orders/${input.requestId}`)).toMatchObject({
       status: "awaiting_payment",
       paymentStatus: "PENDING_VERIFICATION",
@@ -215,19 +236,94 @@ describe("API de pedidos", () => {
     await expect(updateOrder({} as never)).rejects.toMatchObject({
       statusCode: 409,
     });
-    await confirmBrebPayment({} as never);
+    const confirmation = await confirmBrebPayment({} as never);
+    expect(confirmation).toEqual({ ok: true, metaPurchaseStatus: "sent" });
     expect(records.get(`orders/${input.requestId}`)).toMatchObject({
       status: "paid",
       paymentStatus: "PAID",
       paymentVerifiedBy: "admin",
+      shipping: 15000,
+      metaPurchaseStatus: "sent",
+      metaPurchaseAttemptCount: 1,
     });
+    const firstMetaEvent = JSON.parse(metaFetch.mock.calls[0]![1].body).data[0];
+    expect(firstMetaEvent).toMatchObject({
+      event_name: "Purchase",
+      event_id: expect.any(String),
+      action_source: "website",
+      custom_data: {
+        content_ids: [variant.id],
+        content_type: "product",
+        value: variant.price * 2,
+        currency: "COP",
+        num_items: 2,
+      },
+    });
+    expect(firstMetaEvent.custom_data.contents).toEqual([
+      { id: variant.id, quantity: 2, item_price: variant.price },
+    ]);
+    expect(firstMetaEvent.user_data).toEqual({
+      ph: [createHash("sha256").update("573001234567").digest("hex")],
+    });
+    expect(JSON.stringify(firstMetaEvent)).not.toContain("573001234567");
     const verifiedAt = records.get(
       `orders/${input.requestId}`,
     ).paymentVerifiedAt;
     await reportBrebPayment({} as never);
+    await confirmBrebPayment({} as never);
+    expect(metaFetch).toHaveBeenCalledTimes(1);
     expect(records.get(`orders/${input.requestId}`)).toMatchObject({
       paymentStatus: "PAID",
       paymentVerifiedAt: verifiedAt,
+    });
+  });
+  it("no revierte un pago si CAPI falla y permite reintentar con el mismo event_id", async () => {
+    body = { ...input, paymentMethod: "BREB" };
+    await createOrder({} as never);
+    await reportBrebPayment({} as never);
+    metaFetch.mockRejectedValueOnce(new TypeError("network failure"));
+
+    const failed = await confirmBrebPayment({} as never);
+    const paidOrder = records.get(`orders/${input.requestId}`);
+    const eventId = paidOrder.metaPurchaseEventId;
+    expect(failed).toEqual({ ok: true, metaPurchaseStatus: "failed" });
+    expect(paidOrder).toMatchObject({
+      status: "paid",
+      paymentStatus: "PAID",
+      metaPurchaseStatus: "failed",
+      metaPurchaseErrorCode: "network_error",
+    });
+
+    const retried = await confirmBrebPayment({} as never);
+    expect(retried).toEqual({ ok: true, metaPurchaseStatus: "sent" });
+    expect(metaFetch).toHaveBeenCalledTimes(2);
+    expect(records.get(`orders/${input.requestId}`)).toMatchObject({
+      status: "paid",
+      paymentStatus: "PAID",
+      metaPurchaseStatus: "sent",
+      metaPurchaseEventId: eventId,
+      metaPurchaseAttemptCount: 2,
+    });
+    const retryEventId = JSON.parse(metaFetch.mock.calls[1]![1].body).data[0]
+      .event_id;
+    expect(retryEventId).toBe(eventId);
+  });
+  it("no envía Purchase cuando el pedido se creó sin consentimiento de marketing", async () => {
+    body = { ...input, paymentMethod: "BREB", marketingConsent: false };
+    await createOrder({} as never);
+    await reportBrebPayment({} as never);
+
+    const confirmation = await confirmBrebPayment({} as never);
+    expect(confirmation).toEqual({
+      ok: true,
+      metaPurchaseStatus: "suppressed",
+    });
+    expect(metaFetch).not.toHaveBeenCalled();
+    expect(records.get(`orders/${input.requestId}`)).toMatchObject({
+      status: "paid",
+      paymentStatus: "PAID",
+      marketingConsent: false,
+      metaPurchaseStatus: "suppressed",
     });
   });
   it("guarda cambios e historial, rechaza cambios concurrentes y mantiene la referencia de reintentos", async () => {
